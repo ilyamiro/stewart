@@ -26,8 +26,8 @@ def logging_setup():
     log_files = sorted(glob.glob(os.path.join(LOG_DIR, "log_*.log")), key=os.path.getmtime)
 
     # Keep only the last 5 log files
-    if len(log_files) > 5:
-        for log_file in log_files[:-5]:
+    if len(log_files) > 3:
+        for log_file in log_files[:-3]:
             os.remove(log_file)
 
     logging.debug("Logging system setup ended successfully. Application started")
