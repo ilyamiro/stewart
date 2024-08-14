@@ -3,10 +3,12 @@ import os.path
 from datetime import datetime
 import glob
 
+from utils import verbose_off
+
 LOG_DIR = os.path.join(os.path.dirname(__file__), "app_log")
 
 
-def logging_setup():
+def logging_setup(verbose: bool = True):
     if not os.path.exists(LOG_DIR):
         os.makedirs(LOG_DIR)
 
@@ -22,6 +24,9 @@ def logging_setup():
             logging.StreamHandler()
         ]
     )
+
+    if not verbose:
+        verbose_off()
 
     log_files = sorted(glob.glob(os.path.join(LOG_DIR, "log_*.log")), key=os.path.getmtime)
 

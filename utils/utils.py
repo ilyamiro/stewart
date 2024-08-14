@@ -1,5 +1,6 @@
 import subprocess
 import logging
+import sys
 
 import vosk
 # loggers
@@ -19,3 +20,8 @@ def verbose_off():
     SetLogLevel(-1)
     disable_logging()
     logging.getLogger("root").setLevel(logging.DEBUG)
+
+
+def system_setup():
+    if sys.platform == "linux":
+        run("jack_control", "start")
