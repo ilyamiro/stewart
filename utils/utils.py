@@ -1,11 +1,8 @@
+import os.path
 import subprocess
 import logging
 import sys
-
-import vosk
-# loggers
-from vosk import SetLogLevel
-from voicesynth import disable_logging
+import yaml
 
 
 def run(*args, stdout: bool = False):
@@ -16,12 +13,12 @@ def run(*args, stdout: bool = False):
     )
 
 
-def verbose_off():
-    SetLogLevel(-1)
-    disable_logging()
-    logging.getLogger("root").setLevel(logging.DEBUG)
-
-
 def system_setup():
     if sys.platform == "linux":
         run("jack_control", "start")
+
+
+def yaml_load(path: str):
+    if os.path.exists(path):
+        with open(path) as file:
+            return yaml.safe_load(file)

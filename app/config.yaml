@@ -1,0 +1,27 @@
+configuration:
+  triggers: [стюарт, стюард]
+  gpt: false
+commands:
+  - command-ru: [открой, проводник]
+    command-en: [open, files]
+    action: subprocess
+    parameters:
+      command: [xdg-open, /home/ilyamiro]
+    responses-ru: ["системные файлы открыты, сэр", "Открыл проводник, сэр", ""]
+    responses-en: ["Opened files, sir", "Opened the file system for you, sir", "Files are opened"]
+# an example of commands distribution:
+#employees:
+#  - name: Alice
+#    role: Developer
+#    age: 28
+#    department: Engineering
+#
+#  - name: Bob
+#    role: Designer
+#    age: 32
+#    department: Design
+#
+#  - name: Charlie
+#    role: Manager
+#    age: 35
+#    department: Management

@@ -101,7 +101,7 @@ class Tree:
         Recursive method to add a command to the CommandTree.
 
         Parameters:
-        - node: The current node in the trie.
+        - node: The current node in the tree.
         - command: The remaining parts of the command (as a tuple).
         - handler: The action associated with the command.
         - parameters: Additional parameters associated with the command.
