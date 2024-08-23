@@ -6,18 +6,18 @@ class CommandNode:
     Represents a node in the trie structure for voice assistant commands.
     """
 
-    def __init__(self, handler=None, parameters=None, command=None, synthesize=None, equivalents=None):
+    def __init__(self, action=None, parameters=None, command=None, synthesize=None, equivalents=None):
         """
         Initializes a CommandNode.
 
         Parameters:
-        - handler: The action associated with the command.
+        - action: The action associated with the command.
         - parameters: Additional parameters associated with the command.
         - synthesize: Speech synthesis information.
         - command: Original command string.
         """
         self.children = {}  # Child nodes, where keys are the next parts of the command
-        self.handler = handler
+        self.action = action
         self.parameters = parameters
         self.command = command
         self.synthesize = synthesize
@@ -80,7 +80,7 @@ class Tree:
             equal_commands = details.get("equivalents")
             if equal_commands:
                 for equal in equal_commands:
-                    self.add_commands({equal: {"handler": details.get("handler"),
+                    self.add_commands({equal: {"action": details.get("action"),
                                                "parameters": details.get("parameters"),
                                                "synthesize": details.get("synthesize")}})
             expanded_command = self.expand_synonyms(command)
@@ -93,17 +93,17 @@ class Tree:
                     command.pop(command.index(word))
                     self.add_commands({tuple(command): details})
                     break
-            self._add_command_recursive(self.root, tuple(expanded_command), details.get("handler"),
+            self._add_command_recursive(self.root, tuple(expanded_command), details.get("action"),
                                         details.get("parameters"), details.get("synthesize"))
 
-    def _add_command_recursive(self, node, command, handler, parameters=None, synthesize=None):
+    def _add_command_recursive(self, node, command, action, parameters=None, synthesize=None):
         """
         Recursive method to add a command to the CommandTree.
 
         Parameters:
         - node: The current node in the tree.
         - command: The remaining parts of the command (as a tuple).
-        - handler: The action associated with the command.
+        - action: The action associated with the command.
         - parameters: Additional parameters associated with the command.
         - synthesize: Speech synthesis information.
 
@@ -111,7 +111,7 @@ class Tree:
         - The current node after adding the command.
         """
         if not command:
-            node.handler = handler
+            node.action = action
             node.parameters = parameters
             node.command = command  # Assign the original command here
             node.synthesize = synthesize
@@ -121,7 +121,7 @@ class Tree:
         if part not in node.children:
             node.children[part] = CommandNode()
 
-        return self._add_command_recursive(node.children[part], command[1:], handler, parameters, synthesize)
+        return self._add_command_recursive(node.children[part], command[1:], action, parameters, synthesize)
 
     def find_command(self, command):
         """
@@ -131,7 +131,7 @@ class Tree:
         - command: The command to search for (as a list of parts).
 
         Returns:
-        - A tuple containing the handler, parameters, synthesize information, and the full command string.
+        - A tuple containing the action, parameters, synthesize information, and the full command string.
         """
         expanded_command = self.expand_synonyms(command)
         node = self.root
@@ -141,8 +141,8 @@ class Tree:
                 found_one += 1
                 node = node.children[part]
             else:
-                if found_one >= 1 and node.handler:
-                    return node.handler, node.parameters, node.synthesize
+                if found_one >= 1 and node.action:
+                    return node.action, node.parameters, node.synthesize
                 return None  # Command not found
 
-        return node.handler, node.parameters, node.synthesize
+        return node.action, node.parameters, node.synthesize

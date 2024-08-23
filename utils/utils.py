@@ -1,3 +1,4 @@
+import json
 import os.path
 import subprocess
 import logging
@@ -22,3 +23,9 @@ def yaml_load(path: str):
     if os.path.exists(path):
         with open(path) as file:
             return yaml.safe_load(file)
+
+
+def json_load(path: str):
+    if os.path.exists(path):
+        with open(path) as file:
+            return json.load(file)

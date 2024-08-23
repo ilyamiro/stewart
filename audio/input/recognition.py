@@ -15,7 +15,7 @@ logger = get_logger("audio input")
 
 
 class STT:
-    def __init__(self):
+    def __init__(self, lang: str, size: str = "small"):
         self.pyaudio_instance = pyaudio.PyAudio()
         logger.info("PyAudio instance created")
 
@@ -23,7 +23,7 @@ class STT:
                                                  frames_per_buffer=8000)
         logger.debug("PyAudio stream instance successfully opened for input")
 
-        self.model = Model(f"{DIR}/models/vosk-model-small-ru-0.22")
+        self.model = Model(f"{DIR}/models/vosk-model-{size}-{lang}")
         self.recognizer = KaldiRecognizer(self.model, 16000)
 
         logger.debug("Vosk recognition system initialized")
