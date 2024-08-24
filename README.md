@@ -6,7 +6,7 @@
 
 > Useful and extendable voice assistant for Linux and Windows
 
-[![github release version](https://img.shields.io/github/v/release/ilyamiro/Stewart.svg)](https://github.com/ilyamiro/Stewart/releases/latest) [![license](https://img.shields.io/github/license/ilyamiro/Stewart.svg)](https://github.com/ilyamiro/Stewart/master/LICENSE)
+[![github release version](https://img.shields.io/github/v/release/ilyamiro/Stewart.svg)](https://github.com/ilyamiro/Stewart/releases/latest) [![license](https://img.shields.io/github/license/ilyamiro/Stewart.svg)](https://github.com/ilyamiro/Stewart/master/LICENSE.md)
 
 <a id="link-wiki" href="https://github.com/ilyamiro/Stewart/wiki"><strong>📘Explore the wiki</strong></a>
 <h3> WARNING: the project is in development and it might not work as intended</h3>
