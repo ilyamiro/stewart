@@ -5,6 +5,8 @@ import threading
 import time
 import os
 import json
+import inspect
+from importlib import import_module
 
 # Third-party imports
 from playsound import playsound
@@ -14,17 +16,15 @@ from g4f.client import Client as GPTClient
 # Local imports
 from audio.input import STT
 from audio.output import ttsi
-
-from logs import get_logger
-
 from utils import *
-
 from tree import Tree
 
 DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_FILE = f"{DIR}/config.yaml"
+PARENT_DIR = os.path.dirname(DIR)
 
-logger = get_logger("app")
+CONFIG_FILE = f"{os.path.dirname(DIR)}/config.yaml"
+
+logger = logging.getLogger("App")
 
 
 class App:
@@ -38,30 +38,32 @@ class App:
         """Sound effect decorator for initializing"""
 
         def wrapper(self, *args, **kwargs):
+            self.config = yaml_load(CONFIG_FILE)
+            self.lang = self.config["lang"]["prefix"]
+            logger.info("Configuration file loaded")
+
             playsound(f"{os.path.dirname(DIR)}/data/sounds/startup.wav", block=False)
             result = func(self, *args, **kwargs)
-            ttsi.say("Конфигурация ядра завершена")
+            ttsi.say(random.choice(self.config[f"answers-{self.lang}"]["startup"]))
             return result
 
         return wrapper
 
     @sound_effect_decorator
     def __init__(self):
-        # Configration file
-        self.config = yaml_load(CONFIG_FILE)
-        self.lang = self.config["lang"]["prefix"]
-
-        logger.info("Configuration file loaded")
-
-        self.trigger_needed = None
-        if self.config["trigger"]["trigger-mode"] == "timed":
-            self.trigger_needed = True
+        # TODO: add function "set trigger mode"
+        #  in which if the trigger is set to "disabled", self.trigger_timed_needed has to be set to True
+        self.trigger_timed_needed = True if self.config["trigger"]["trigger-mode"] != "disabled" else False
 
         # data tree initializing
         self.tree = Tree()
         self.tree_init()
 
         logger.info("Data tree initialized")
+
+        # import modules for command processing
+        self.MODULES_PATH = f"{PARENT_DIR}/{self.config['module']['dir']}"
+        self.modules = self.import_modules_from_directory(self.MODULES_PATH)
 
         # voice recognition
         self.stt = STT(self.lang)
@@ -80,8 +82,12 @@ class App:
 
         logger.info("Initialized GPT settings and a GPT client")
 
-        # starting the voice recognition
         self.recognition_thread = threading.Thread(target=self.recognition)
+
+        logger.debug("Successfully finished main app instance initialization")
+
+    def start(self):
+        # starting the voice recognition
         self.recognition_thread.start()
 
         logger.debug(f"Recognition thread started with name: {self.recognition_thread.name}")
@@ -89,22 +95,38 @@ class App:
     def recognition(self):
         while True:
             for word in self.stt.listen():
-                result = self.remove_trigger_word(word)
-                if result != "blank":
-                    self.handle(result)
+                if self.trigger_timed_needed:
+                    result = self.remove_trigger_word(word)
+                    if result != "blank":
+                        if self.config["trigger"]["trigger-mode"] == "timed":
+                            self.trigger_timed_needed = False
+                            self.trigger_counter(self.config["trigger"]["trigger-time"])
+                        self.handle(result)
+                else:
+                    self.handle(word)
+
+    def remove_trigger_word(self, request):
+        for trigger in self.config["trigger"]["triggers"]:
+            if trigger in request:
+                request = " ".join(request.split(trigger)[1:])[1:]
+                return request
+        return "blank"
 
     def trigger_counter(self, times):
-        pass
+        trigger_word_countdown_thread = threading.Timer(times, self.trigger_change)
+        trigger_word_countdown_thread.start()
+        logger.info("Trigger countdown started")
 
     def trigger_change(self):
-        pass
+        self.trigger_timed_needed = True
+        logger.info("Trigger countdown ended")
 
     def tree_init(self):
 
         def add_command(com: tuple, handler: str, parameters: dict = None, synthesize: list = None,
                         synonyms: dict = None, equivalents: list = None):
             self.tree.add_commands(
-                {com: {"handler": handler, "parameters": parameters, "synthesize": synthesize, "synonyms": synonyms,
+                {com: {"action": handler, "parameters": parameters, "synthesize": synthesize, "synonyms": synonyms,
                        "equivalents": equivalents}})
 
         commands = self.config["commands"]
@@ -149,28 +171,61 @@ class App:
             total = self.multihandle(request)
             if len(total) == 1:
                 # if there is only one command, process it
-                result = self.tree.find_command(total[0])
-                if result:
-                    result = list(result)
-                    result.extend([total[0], request])
-                    self.do_synth(result)
+                self.process_command(total[0], request)
             elif len(total) > 1:
-                pass
+                # if there are multiple commands, we can't play multiple audios at once as they would overlap.
+                # so, we just play a confirmative phrase, like "Doing that now, sir" or else.
+                ttsi.say(random.choice(self.config[f"answers-{self.lang}"]["multi"]))
+                # processing each command separately
+                for command in total:
+                    self.process_command(command, request, multi=True)
             elif not total and self.config["gpt"]["state"]:
-                pass
+                answer = self.gpt_answer(request)
+                ttsi.say(answer)
                 # If something was said by user after the trigger word, but no commands were recognized,
                 # then this phrase is being sent to gpt model for answering
 
+    def process_command(self, command, full, multi: bool = False):
+        result = self.tree.find_command(command)
+        if result:
+            result = list(result)
+            result.extend([command, full])
+            if result[2] and not multi:
+                ttsi.say(random.choice(result[2]))
+            self.do(result)
+
     def do(self, request):
-        if request[2]:
-            ttsi.say(random.choice(*request[2]))
+        print(request)
         thread = threading.Thread(target=getattr(self.find_arch(request[0]), request[0]),
                                   kwargs={"parameters": request[1], "command": request[3],
                                           "request": request[4]})
         thread.start()
 
-    def find_arch(self, request):
-        pass
+    def import_modules_from_directory(self, directory):
+        modules = []
+
+        # List all files in the directory
+        for filename in os.listdir(directory):
+            # Check if the file is a Python file
+            if filename.endswith('.py'):
+                # Remove the .py extension to get the module name
+                module_name = filename[:-3]
+                # Import the module dynamically
+                try:
+                    module = import_module(self.config["module"]["dir"].replace("/", ".") + "." + module_name)
+                    modules.append(module)
+                except ImportError as e:
+                    logger.info(f"Failed to import {module_name}: {e}")
+        return modules
+
+    def find_arch(self, name):
+        for module in self.modules:
+            members = inspect.getmembers(module)
+            functions = [member[0] for member in members if inspect.isfunction(member[1])]
+            if name in functions:
+                return module
+        if name in dir(self):
+            return self
 
     def multihandle(self, request):
         list_of_commands, current_command = [], []
@@ -194,7 +249,7 @@ class App:
             list_of_commands.append(current_command)
         return list_of_commands
 
-    def answer_gpt(self, query):
+    def gpt_answer(self, query):
         answer = self.gpt_client.chat.completions.create(
             messages=[*self.gpt_start, *self.gpt_history, {"role": "user", "content": query}],
             provider=self.gpt_provider,

@@ -1,6 +1,6 @@
-from .synthesis import TTS, MODEL_NAME, SPEAKER
+from .synthesis import TTS
 
 # ttsi = tts instance
 ttsi = TTS()
 
-__all__ = ["ttsi", "TTS", "MODEL_NAME", "SPEAKER"]
+__all__ = ["ttsi", "TTS"]

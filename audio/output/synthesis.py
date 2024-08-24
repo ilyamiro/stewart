@@ -1,28 +1,33 @@
 import threading
 import os
+import logging
 
 from voicesynth import Model, Synthesizer
 
-from logs import get_logger
+from utils import yaml_load
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 
-MODEL_NAME = "v4_ru"
-SPEAKER = "eugene"
+config = yaml_load(f"{os.path.dirname(os.path.dirname(DIR))}/config.yaml")
 
-logger = get_logger("synthesis")
+LANG = config["lang"]["prefix"]
+SEX = config["voice"]["sex"]
+SPEAKER = config["voice"][LANG][SEX]
+MODEL = config["voice"][LANG]["model"]
+
+logger = logging.getLogger("TTS")
 
 
 class TTS:
     def __init__(self):
-        self.model = Model(MODEL_NAME, f"{DIR}/models/{MODEL_NAME}.pt")
+        self.model = Model(MODEL, f"{DIR}/models/{LANG}.pt")
         self.model.set_speaker(SPEAKER)
 
-        logger.debug(f"TTS model configured. Name: {MODEL_NAME}, speaker {SPEAKER} set")
+        logger.debug(f"TTS model configured. lang: {LANG}, speaker {SPEAKER} set")
 
         self.synthesizer = Synthesizer(self.model)
 
-        logger.debug(f"Synthesizer configured for a model {MODEL_NAME}")
+        logger.debug(f"Synthesizer configured")
 
         self.active = True
 

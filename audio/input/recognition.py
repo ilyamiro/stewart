@@ -6,12 +6,10 @@ import json
 from vosk import KaldiRecognizer, Model
 import pyaudio
 
-from logs import get_logger
-
 # file directory
 DIR = os.path.dirname(os.path.abspath(__file__))
 
-logger = get_logger("audio input")
+logger = logging.getLogger("STT")
 
 
 class STT:
@@ -33,7 +31,7 @@ class STT:
         if self.recognizer.AcceptWaveform(data) and len(data) > 1 and self.stream.is_active():
             answer = json.loads(self.recognizer.Result())
             if answer["text"]:
-                logger.info(f"Text recognized in input stream: {answer['text']}")
+                logger.info(f"Text recognized: {answer['text']}")
                 yield answer["text"]
 
 
