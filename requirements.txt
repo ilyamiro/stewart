@@ -1,5 +1,8 @@
-PyAudio~=0.2.14
+playsound~=1.3.0
 vosk~=0.3.45
 voicesynth~=0.1.5.post2
-playsound~=1.3.0
+PyAudio~=0.2.14
 PyYAML~=6.0
+g4f~=0.3.2.4
+num2words~=0.5.13
+words2numsrus~=0.1.0
