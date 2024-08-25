@@ -11,12 +11,14 @@ voice:
     model: v3_en
     m: en_70
     f: en_76
+startup:
+  sound: data/sounds/startup.wav
 module:
   dir: modules
 trigger:
-  triggers: [стюарт, стюард]
+  triggers: [стюарт, стюард, stewart]
   trigger-mode: disabled # timed, disabled, enabled
-  trigger-time: 15 # if tirgger mode is timed, the amount of time it takes for VA to forget it was called
+  trigger-time: 25 # if trigger mode is timed, the amount of time it takes for VA to forget it was called
 command-spec:
   no-multi-first-words-ru: ["найди", "найти", "запиши", "скажи", "ответь"]
   no-multi-first-words-en: ["find", "write", "answer"]
@@ -51,21 +53,8 @@ answers-en:
     - "Yes, sir"
     - "Of course, sir"
 commands:
-  - command-ru: [открой, проводник]
-    command-en: [open, files]
-    action: subprocess
-    parameters:
-      command: [xdg-open, /home/ilyamiro]
-    responses-ru: ["Cистемные файлы открыты, сэр", "Открыл проводник, сэр", "Проводник запущен"]
-    responses-en: ["Opened files, sir", "Opened the file system for you, sir", "Files are opened"]
-    synonyms-ru:
-      "запусти": "открой"
-    synonyms-en:
-      "start": "open"
-    equivalents-ru:
-      - [открой, системные, файлы]
-    equivalents-en:
-      - [open, system, files]
+
+
 # an example of commands distribution:
 #employees:
 #  - name: Alice

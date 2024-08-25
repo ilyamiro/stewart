@@ -43,9 +43,8 @@ class App:
             logger.info("Configuration file loaded")
 
             playsound(f"{os.path.dirname(DIR)}/data/sounds/startup.wav", block=False)
-            result = func(self, *args, **kwargs)
+            func(self, *args, **kwargs)
             ttsi.say(random.choice(self.config[f"answers-{self.lang}"]["startup"]))
-            return result
 
         return wrapper
 
@@ -122,20 +121,15 @@ class App:
         logger.info("Trigger countdown ended")
 
     def tree_init(self):
-
-        def add_command(com: tuple, handler: str, parameters: dict = None, synthesize: list = None,
-                        synonyms: dict = None, equivalents: list = None):
-            self.tree.add_commands(
-                {com: {"action": handler, "parameters": parameters, "synthesize": synthesize, "synonyms": synonyms,
-                       "equivalents": equivalents}})
-
         commands = self.config["commands"]
+        commands_repeat = self.config["commands-repeat"]
+
         for command in commands:
             equiv = command.get(f'equivalents-{self.lang}', [])
             if equiv:
                 for eq in equiv:
                     equiv[equiv.index(eq)] = tuple(eq)
-            add_command(
+            self.add_command(
                 tuple(command[f"command-{self.lang}"]),
                 command["action"],
                 command.get("parameters", {}),
@@ -143,6 +137,22 @@ class App:
                 command.get(f"synonyms-{self.lang}", {}),
                 equiv
             )
+
+        for repeat in commands_repeat:
+            for key in repeat[f"links-{self.lang}"]:
+                self.add_command(
+                    (*repeat.get(f"command-{self.lang}"), key),
+                    repeat.get("action"),
+                    {repeat.get("parameter"): repeat.get(f"links-{self.lang}").get(key)},
+                    [],
+                    repeat.get(f"synonyms-{self.lang}"),
+                )
+
+    def add_command(self, com: tuple, action: str, parameters: dict = None, synthesize: list = None,
+                    synonyms: dict = None, equivalents: list = None):
+        self.tree.add_commands(
+            {com: {"action": action, "parameters": parameters, "synthesize": synthesize, "synonyms": synonyms,
+                   "equivalents": equivalents}})
 
     def history_update(self, request):
         timestamp = datetime.now().isoformat()
