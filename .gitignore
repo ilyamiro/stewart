@@ -3,3 +3,4 @@ logs/app_log
 **/__pycache__
 audio/output/audio.wav
 test.py
+audio/output/models/*
