@@ -34,6 +34,9 @@ class STT:
                 logger.info(f"Text recognized: {answer['text']}")
                 yield answer["text"]
 
+    def create_new_recognizer(self):
+        self.recognizer = KaldiRecognizer(self.model, 16000)
 
-
-
+    def set_grammar(self, path):
+        with open(path, "r", encoding="utf-8") as file:
+            self.recognizer.SetGrammar(file.readline())

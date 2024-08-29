@@ -5,12 +5,32 @@ import logging
 import sys
 import yaml
 import re
+from importlib import import_module
 
 from num2words import num2words
 from words2numsrus import NumberExtractor
-import g4f
 
 extractor = NumberExtractor()
+
+logger = logging.getLogger("utils")
+
+
+def import_modules_from_directory(directory):
+    modules = []
+
+    # List all files in the directory
+    for filename in os.listdir(directory):
+        # Check if the file is a Python file
+        if filename.endswith('.py'):
+            # Remove the .py extension to get the module name
+            module_name = filename[:-3]
+            # Import the module dynamically
+            try:
+                module = import_module(directory.replace("/", ".") + "." + module_name)
+                modules.append(module)
+            except ImportError as e:
+                logger.info(f"Failed to import {module_name}: {e}")
+    return modules
 
 
 def run(*args, stdout: bool = False):

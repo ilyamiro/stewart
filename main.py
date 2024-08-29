@@ -6,9 +6,11 @@ import logging
 from logs import logging_setup
 from utils import system_setup
 
-from gui import main
-
+from app import App
+# from gui import main
 
 if __name__ == "__main__":
     system_setup()
-    main()
+    app = App()
+    app.start()
+    # main()

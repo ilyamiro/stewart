@@ -1,6 +1,6 @@
 <br>
 <div align="center">
-    <img src="stewart_logo.png" alt="Logo" width="" height="165">
+    <img src="data/images/stewart_logo.png" alt="Logo" width="" height="165">
     <h1>🖥️Stewart</h1>
 </div>
 

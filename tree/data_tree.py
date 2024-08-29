@@ -34,6 +34,7 @@ class Tree:
         Initializes a CommandTree with a root CommandNode.
         """
         self.root = CommandNode()
+        self.recognizer_string = ""
         self.synonym_map = {}  # Synonym mapping for words with the same meaning
         self.first_words = set()
 
@@ -71,10 +72,12 @@ class Tree:
         """
         for command, details in commands.items():
             self.first_words.add(command[0])
+            self.recognizer_string += f" {' '.join(command)}"
             synonyms = details.get("synonyms")
             if synonyms:
                 for synonim in synonyms.keys():
                     self.add_synonym(synonim, synonyms[synonim])
+                    self.recognizer_string += f" {synonim}"
                     if synonyms[synonim] in self.first_words:
                         self.first_words.add(synonim)
             equal_commands = details.get("equivalents")
@@ -84,13 +87,13 @@ class Tree:
                                                "parameters": details.get("parameters"),
                                                "synthesize": details.get("synthesize")}})
             expanded_command = self.expand_synonyms(command)
-            for word in command:
-                if word.split()[0] != word:
-                    com = (a for a in word.split())
+            for words in command:
+                if words.split()[0] != words:
+                    redone_command = (word for word in words.split())
                     command = list(command)
-                    for el in com:
-                        command.insert(command.index(word), el)
-                    command.pop(command.index(word))
+                    for element in redone_command:
+                        command.insert(command.index(words), element)
+                    command.pop(command.index(words))
                     self.add_commands({tuple(command): details})
                     break
             self._add_command_recursive(self.root, tuple(expanded_command), details.get("action"),

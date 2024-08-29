@@ -6,7 +6,6 @@ import time
 import os
 import json
 import inspect
-from importlib import import_module
 
 # Third-party imports
 from playsound import playsound
@@ -52,7 +51,7 @@ class App:
     def __init__(self):
         # TODO: add function "set trigger mode"
         #  in which if the trigger is set to "disabled", self.trigger_timed_needed has to be set to True
-        self.trigger_timed_needed = True if self.config["trigger"]["trigger-mode"] != "disabled" else False
+        self.trigger_timed_needed = self.config["trigger"]["trigger-mode"] != "disabled"
 
         # data tree initializing
         self.tree = Tree()
@@ -61,16 +60,19 @@ class App:
         logger.info("Data tree initialized")
 
         # import modules for command processing
-        self.MODULES_PATH = f"{PARENT_DIR}/{self.config['module']['dir']}"
-        self.modules = self.import_modules_from_directory(self.MODULES_PATH)
+        self.modules = import_modules_from_directory(self.config['module']['dir'])
 
         # voice recognition
         self.stt = STT(self.lang)
 
+        # restricting recognition by adding grammar made of commands
+        self.grammar_recognition_restricted_create()
+        self.stt.set_grammar(f"{os.path.dirname(DIR)}/data/grammar/grammar-{self.lang}.txt")
+
         logger.debug("Speech to text instance initialized")
 
         # history of requests
-        self.history_file = f"{DIR}/history.json"
+        self.history = []
 
         # gpt settings
         self.gpt_history = []
@@ -91,6 +93,21 @@ class App:
 
         logger.debug(f"Recognition thread started with name: {self.recognition_thread.name}")
 
+    def grammar_recognition_restricted_create(self):
+        with open(f"{PARENT_DIR}/data/grammar/grammar-{self.lang}.txt", "w") as file:
+            file.write('["' + " ".join(self.config['trigger'].get(f"triggers-{self.lang}")))
+            file.write(self.config["speech"].get(f"restricted-add-line-{self.lang}"))
+            file.write(self.tree.recognizer_string + '"]')
+
+    def grammar_restrict(self, **kwargs):
+        if kwargs["parameters"]["way"] == "on":
+            self.stt.create_new_recognizer()
+        if kwargs["parameters"]["way"] == "off":
+            self.stt.set_grammar(f"{os.path.dirname(DIR)}/data/grammar/grammar-{self.lang}.txt")
+
+    def repeat(self, **kwargs):
+        self.handle(self.history[-1].get("request"))
+
     def recognition(self):
         while True:
             for word in self.stt.listen():
@@ -105,7 +122,7 @@ class App:
                     self.handle(word)
 
     def remove_trigger_word(self, request):
-        for trigger in self.config["trigger"]["triggers"]:
+        for trigger in self.config["trigger"][f"triggers-{self.lang}"]:
             if trigger in request:
                 request = " ".join(request.split(trigger)[1:])[1:]
                 return request
@@ -158,16 +175,10 @@ class App:
         timestamp = datetime.now().isoformat()
         new_event = {"timestamp": timestamp, "request": request}
 
-        try:
-            with open(self.history_file, 'r') as f:
-                history = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            history = []
+        if len(self.history) > self.config.get("max-history-length"):
+            self.history.pop(0)
 
-        history.append(new_event)
-
-        with open(self.history_file, 'w') as f:
-            json.dump(history, f, indent=4)
+        self.history.append(new_event)
 
     def handle(self, request):
         if not request and self.config["trigger"]["trigger-mode"] != "disabled":
@@ -177,6 +188,7 @@ class App:
             # and did not specify the command; therefore, we answer with a default phrase
             ttsi.say(random.choice(self.config[f"answers-{self.lang}"]["default"]))
         else:
+            self.history_update(request)
             # checking whether the request contains multiple commands
             total = self.multihandle(request)
             if len(total) == 1:
@@ -210,23 +222,6 @@ class App:
                                   kwargs={"parameters": request[1], "command": request[3],
                                           "request": request[4]})
         thread.start()
-
-    def import_modules_from_directory(self, directory):
-        modules = []
-
-        # List all files in the directory
-        for filename in os.listdir(directory):
-            # Check if the file is a Python file
-            if filename.endswith('.py'):
-                # Remove the .py extension to get the module name
-                module_name = filename[:-3]
-                # Import the module dynamically
-                try:
-                    module = import_module(self.config["module"]["dir"].replace("/", ".") + "." + module_name)
-                    modules.append(module)
-                except ImportError as e:
-                    logger.info(f"Failed to import {module_name}: {e}")
-        return modules
 
     def find_arch(self, name):
         for module in self.modules:
