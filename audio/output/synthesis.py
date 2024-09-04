@@ -15,25 +15,25 @@ SEX = config["voice"]["sex"]
 SPEAKER = config["voice"][LANG][SEX]
 MODEL = config["voice"][LANG]["model"]
 
-logger = logging.getLogger("TTS")
+log = logging.getLogger("TTS")
 
 
 class TTS:
     def __init__(self):
-        self.model = Model(MODEL, f"{DIR}/models/{LANG}.pt")
+        self.model = Model(MODEL, f"{DIR}/models/{MODEL}.pt")
         self.model.set_speaker(SPEAKER)
 
-        logger.debug(f"TTS model configured. lang: {LANG}, speaker {SPEAKER} set")
+        log.debug(f"TTS model configured. lang: {LANG}, speaker {SPEAKER} set")
 
         self.synthesizer = Synthesizer(self.model)
 
-        logger.debug(f"Synthesizer configured")
+        log.debug(f"Synthesizer configured")
 
         self.active = True
 
-    def say(self, text):
+    def say(self, text, prosody=94):
         if self.active:
-            thread = threading.Thread(target=self.synthesizer.say, kwargs={"text": text, "path": f"{DIR}/audio.wav", "prosody_rate": 94, "module": "playsound"})
+            thread = threading.Thread(target=self.synthesizer.say, kwargs={"text": text, "path": f"{DIR}/audio.wav", "prosody_rate": prosody, "module": "playsound"})
             thread.start()
 
-            logger.debug(f"TTS thread started: {text}")
+            log.debug(f"TTS thread started: {text}")

@@ -30,3 +30,5 @@ def scroll(**kwargs):
             mouse.wheel(1)
         case "down":
             mouse.wheel(-1)
+
+

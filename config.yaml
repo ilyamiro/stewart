@@ -3,8 +3,9 @@ lang:
   name: english
 max-history-length: 4
 trigger:
-  triggers-ru: [стюарт, стюард]
-  triggers-en: [stewart, stuart]
+  triggers:
+    ru: [стюарт, стюард]
+    en: [stewart, stuart]
   trigger-mode: enabled # timed, disabled, enabled
   trigger-time: 25 # if trigger mode is timed, the amount of time it takes for VA to forget it was called
 voice:
@@ -15,240 +16,315 @@ voice:
     f: kseniya
   en:
     model: v3_en
-    m: en_70
+    m: en_73
     f: en_76
 startup:
   sound: data/sounds/startup.wav
 speech:
   speech-mode-restricted: false
-  restricted-add-line-ru: " один два три четыре пять шесть семь восемь девять десять одиннадцать двенадцать тринадцать четырнадцать пятнадцать шестнадцать семнадцать восемнадцать девятнадцать двадцать тридцать сорок пятьдесят шестьдесят семьдесят восемьдесят девяносто сто первый второй третий четвертый пятый шестой седьмой восьмой девятый десятый одиннадцатый двенадцатый тринадцатый четырнадцатый пятнадцатый шестнадцатый семнадцатый восемнадцатый девятнадцатый двадцатый тридцатый сороковой пятидесятый шестидесятый семидесятый восьмидесятый девяностый сотый минута минут минуты минута час часов часа"
-  restricted-add-line-en: " one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety a hundred an the on around all over first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth thirtieth fortieth fiftieth sixtieth seventieth eightieth ninetieth hour minute minutes hours"
+  restricted-add-line:
+    ru: " один два три четыре пять шесть семь восемь девять десять одиннадцать двенадцать тринадцать четырнадцать пятнадцать шестнадцать семнадцать восемнадцать девятнадцать двадцать тридцать сорок пятьдесят шестьдесят семьдесят восемьдесят девяносто сто первый второй третий четвертый пятый шестой седьмой восьмой девятый десятый одиннадцатый двенадцатый тринадцатый четырнадцатый пятнадцатый шестнадцатый семнадцатый восемнадцатый девятнадцатый двадцатый тридцатый сороковой пятидесятый шестидесятый семидесятый восьмидесятый девяностый сотый минута минут минуты минута час часов часа"
+    en: " one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety a hundred an the on around all over first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth thirtieth fortieth fiftieth sixtieth seventieth eightieth ninetieth hour minute minutes hours"
 module:
   dir: modules
 command-spec:
-  no-multi-first-words-ru: ["найди", "найти", "запиши", "скажи", "ответь"]
-  no-multi-first-words-en: ["find", "write", "answer"]
-  connect-word-ru: "и"
-  connect-word-en: "and"
+  no-multi-first-words:
+    ru: ["найди", "найти", "запиши", "скажи", "ответь"]
+    en: ["find", "write", "answer"]
+  connect-word:
+    ru: "и"
+    en: "and"
 gpt:
   state: off
   provider: You
-  start-prompt-ru: "Отныне действуй как Стюарт, голосовой помощник. Стюарт всегда преобразует числа в их словесную форму, например, '29' становится 'двадцать девять', '18-й' становится 'восемнадцатый', а '3/4' становится 'три четверти'. Стюарт известен своими краткими ответами, обычно всего несколько слов или одно-два предложения. Стюарт также никогда не говорит, что ему было велено что-то делать. Начнем (не подтверждай)."
-  start-prompt-en: "From now on, please act as Stewart, the voice assistant. Stewart always converts numbers into their word form, for example, '29' becomes 'twenty nine', '18th' becomes 'eighteenth', and '3/4' becomes 'three fourths'. Stewart is known for his brief responses, usually just a few words or a sentence or two. Stewart also never states that he was instructed to do anything. Let's begin (don't confirm)"
-  start-answer-ru: "Как я могу вам помочь, сэр?"
-  start-answer-en: "How can i help you, sir?"
-answers-ru:
-  startup:
-    - "Конфигурация ядра завершена. Голосовой ассистент готов к работе"
-    - "Загрузка успешно завершена. Чем могу быть полезен, сэр?"
-  default:
-    - "Я здесь, чтобы помочь вам, сэр"
-    - "Чем могу быть полезен, сэр?"
-  multi:
-    - "Конечно, сэр"
-    - "Уже выполняю, сэр"
-    - "Безусловно, сэр"
-answers-en:
-  startup:
-    - "Core configuration process ended. How can i assist you today?"
-  default:
-    - "I am at your service, sir"
-    - "I am here to help, sir"
-  multi:
-    - "Processing your commands, sir"
-    - "Yes, sir"
-    - "Of course, sir"
+  start-prompt:
+    ru:
+      - {"role": "user", "content": "Отныне действуй как Стюарт, голосовой помощник. Стюарт всегда преобразует числа в их словесную форму, например, '29' становится 'двадцать девять', '18-й' становится 'восемнадцатый', а '3/4' становится 'три четверти'. Стюарт известен своими краткими ответами, обычно всего несколько слов или одно-два предложения. Стюарт также никогда не говорит, что ему было велено что-то делать. Начнем (не подтверждай)."}
+      - {"role": "system", "content": "Как я могу вам помочь, сэр?"}
+    en:
+      - {"role": "user", "content": "From now on, please act as Stewart, the voice assistant. Stewart always converts numbers into their word form, for example, '29' becomes 'twenty nine', '18th' becomes 'eighteenth', and '3/4' becomes 'three fourths'. Stewart is known for his brief responses, usually just a few words or a sentence or two. Stewart also never states that he was instructed to do anything. Let's begin (don't confirm)"}
+      - {"role": "system", "content":  "How can i help you, sir?"}
+answers:
+  ru:
+    startup:
+      - "Конфигурация ядра завершена. Голосовой ассистент готов к работе"
+      - "Загрузка успешно завершена. Чем могу быть полезен, сэр?"
+    default:
+      - "Я здесь, чтобы помочь вам, сэр"
+      - "Чем могу быть полезен, сэр?"
+    multi:
+      - "Конечно, сэр"
+      - "Уже выполняю, сэр"
+      - "Безусловно, сэр"
+  en:
+    startup:
+      - "Core configuration process has been completed. How can I assist you today?"
+      - "I am fully operational and ready for today, sir. What can I do for you?"
+      - "Startup process ended successfully. Is there something specific you need help with, sir?"
+      - "Initialization complete. How may I assist you today, sir?"
+      - "Systems are online and ready. What can I do for you, sir?"
+      - "Startup sequence finished. How can I be of service today, sir?"
+      - "All systems are ready to go. What do you need assistance with, sir?"
+      - "Boot process completed successfully. How may I help you today, sir?"
+      - "Ready for operation. What tasks do you have for me, sir?"
+      - "Startup routine finished. How can I assist you today, sir?"
+      - "All systems are up and running. How can I be of help today, sir?"
+      - "Initialization sequence complete. What do you need assistance with, sir?"
+      - "Systems are fully operational. How may I assist you today, sir?"
+      - "Startup procedures are complete. What can I do for you, sir?"
+      - "All checks are green. How can I be of service today, sir?"
+      - "Startup protocols executed successfully. What tasks do you have for me, sir?"
+      - "Systems are ready for action. How may I help you today, sir?"
+      - "Initialization finished successfully. What can I assist you with, sir?"
+      - "All systems are online and ready. How can I be of help today, sir?"
+      - "Startup sequence completed. What do you need assistance with, sir?"
+    edefault:
+      - "I am at your service, sir. How can I assist you today?"
+      - "I am here to help, sir. What do you need assistance with?"
+      - "At your command, sir. How may I assist you?"
+      - "Ready to serve, sir. What do you need help with?"
+      - "I am here for you, sir. What can I do for you today?"
+      - "How may I be of assistance, sir?"
+      - "I am available to help, sir. What do you need?"
+
+    multi:
+      - "Processing your commands, sir. Please stand by."
+      - "Yes, sir. I am ready to execute your instructions."
+      - "Of course, sir. I will proceed with your requests."
+      - "Executing your commands, sir. One moment please."
+      - "Affirmative, sir. I will carry out your instructions."
+      - "Understood, sir. Proceeding with your requests."
+      - "Acknowledged, sir. I will handle your commands."
+      - "Yes, sir. I am on it."
+      - "Certainly, sir. I will take care of that for you."
+
 commands:
-  - command-ru: [открой, проводник]
-    command-en: [open, files]
-    action: subprocess
-    parameters:
-      command: [xdg-open, /home/ilyamiro]
-    responses-ru: ["Cистемные файлы открыты, сэр", "Открыл проводник, сэр", "Проводник запущен"]
-    responses-en: ["Opened files, sir", "Opened the file system for you, sir", "Files are opened"]
-    synonyms-ru:
-      "запусти": "открой"
-    synonyms-en:
-      "start": "open"
-    equivalents-ru:
-      - [открой, системные, файлы]
-    equivalents-en:
-      - [open, system, files]
-  - command-ru: [ включи, свободный, режим ]
-    command-en: [ enable, free, mode ]
-    action: grammar_restrict
-    parameters:
-      way: "on"
-    responses-ru: [  ]
-    responses-en: [ ]
-    synonyms-ru:
-    synonyms-en:
-    equivalents-ru:
-    equivalents-en:
-      - [ turn, "on", free, mode]
-  - command-ru: [ выключи, свободный, режим ]
-    command-en: [ disable, free, mode ]
-    action: grammar_restrict
-    parameters:
-      way: "off"
-    responses-ru: [ ]
-    responses-en: [ ]
-    synonyms-ru:
-      отключи: выключи
-    synonyms-en:
-      disabled: disable
-    equivalents-ru:
-    equivalents-en:
-      - [ turn, "off", free, mode ]
-      - [ disable, free, speech, mode]
-  - command-ru: [ закрой, окно ]
-    command-en: [ close, window ]
-    action: hotkey
-    parameters:
-      hotkey: [ alt, f4 ]
-    responses-ru: [ "Закрыл окно, сэр", "Закрыл, сэр", "Приложение закрыто, сэр" ]
-    responses-en: [ "Closed it, sir", "Closed the window, sir", "Killed an application, sir"]
-    synonyms-ru:
-    synonyms-en:
-      "end": "close"
-      "kill": close
-    equivalents-ru:
-      - [ закрой, приложение ]
-    equivalents-en:
-      - [ close, the, window ]
-      - [close, an, app]
-      - [close, the, app]
-  - command-ru: [ повтори ]
-    command-en: [ repeat ]
-    action: repeat
-    parameters: {}
-    responses-ru: []
-    responses-en: []
-    synonyms-ru: {}
-    synonyms-en: {}
-    equivalents-ru:
-      - [ сделай, это, снова ]
-      - [ сделай, это, опять ]
-    equivalents-en:
-      - [ do, it, again ]
-  - command-ru: [ страница, вниз ]
-    command-en: [ scroll, down ]
-    action: scroll
-    parameters:
-      way: down
-    responses-ru: ["Пролистнул вниз, сэр", "Опустил страницу вниз, сэр"]
-    responses-en: ["Scrolled down, sir", "Page down, sir" ]
-    synonyms-ru:
-      низ: вниз
-    synonyms-en: { }
-    equivalents-ru:
-      - [ колесо, вниз ]
-      - [ листай, вниз ]
-    equivalents-en:
-      - [ page, down ]
-  - command-ru: [ страница, вверх ]
-    command-en: [ scroll, down ]
-    action: scroll
-    parameters:
-      way: up
-    responses-ru: [ ]
-    responses-en: [ ]
-    synonyms-ru: { }
-    synonyms-en: { }
-    equivalents-ru:
-      - [ колесо, вниз ]
-      - [ листай, вниз ]
-    equivalents-en:
-      - [ page, down ]
+# Template:
+#  - command: [ ]
+#    action:
+#    parameters:
+#    responses:
+#    synonyms:
+#    equivalents:
+  ru:
+    - command: [открой, проводник]
+      action: subprocess
+      parameters:
+        command: [xdg-open, /home/ilyamiro]
+      responses: ["Cистемные файлы открыты, сэр", "Открыл проводник, сэр", "Проводник запущен"]
+      synonyms:
+        "запусти": "открой"
+      equivalents:
+        - [открой, системные, файлы]
+
+    - command: [ включи, свободный, режим ]
+      action: grammar_restrict
+      parameters:
+        way: "on"
+      responses: [ "Свободный режим активирован", "Вы свободны говорить, сэр", "Вы можете говорить, сэр" ]
+      synonyms:
+      equivalents: [ ]
+
+    - command: [ выключи, свободный, режим ]
+      action: grammar_restrict
+      parameters:
+        way: "off"
+      responses: [ ]
+      synonyms:
+        отключи: выключи
+      equivalents: [ ]
+
+    - command: [ закрой, окно ]
+      action: hotkey
+      parameters:
+        hotkey: [ alt, f4 ]
+      responses: [ "Закрыл окно, сэр", "Закрыл, сэр", "Приложение закрыто, сэр" ]
+      synonyms:
+      equivalents:
+        - [ закрой, приложение ]
+
+    - command: [ повтори ]
+      action: repeat
+      parameters: { }
+      responses: [ ]
+      synonyms: { }
+      equivalents:
+        - [ сделай, это, снова ]
+        - [ сделай, это, опять ]
+
+    - command: [ страница, вниз ]
+      action: scroll
+      parameters:
+        way: down
+      responses: [ "Пролистнул вниз, сэр", "Опустил страницу, сэр" ]
+      synonyms:
+        "сайт": "страница"
+      equivalents: []
+
+    - command: [ страница, вверх ]
+      action: scroll
+      parameters:
+        way: up
+      responses: [ ]
+      synonyms:
+        верх: вверх
+      equivalents:
+        - [ колесо, вверх ]
+        - [ листай, вниз ]
+
+  en:
+    - command: [open, files]
+      action: subprocess
+      parameters:
+        command: [ xdg-open, /home/ilyamiro ]
+      responses: ["Opened files, sir", "Opened the file system for you, sir", "Files are opened"]
+      synonyms:
+        "start": "open"
+      equivalents:
+        - [ open, system, files ]
+
+    - command: [ enable, free, mode ]
+      action: grammar_restrict
+      parameters:
+        way: "on"
+      responses: [ "You are now free to speak, sir", "Speak freely, sir", "I have enabled unrestricted speech recognition mode, sir", "Word recognition is set to free mode, sir", "Voice recognition systems were unrestrained", "Restrains were turned off, sir" ]
+      synonyms:
+      equivalents:
+        - [ turn, "on", free, mode ]
+        - [ enable, free, speech, mode ]
+
+    - command: [ disable, free, mode ]
+      action: grammar_restrict
+      parameters:
+        way: "off"
+      responses: [ ]
+      synonyms:
+        disabled: disable
+      equivalents:
+        - [ turn, "off", free, mode ]
+        - [ disable, free, speech, mode ]
+
+    - command: [ close, window ]
+      action: hotkey
+      parameters:
+        hotkey: [ alt, f4 ]
+      responses: [ "Closed it, sir", "Closed the window, sir", "Killed an application, sir" ]
+      synonyms:
+        "end": "close"
+        "kill": close
+      equivalents:
+        - [ close, the, window ]
+        - [ close, an, app ]
+        - [ close, the, app ]
+
+    - command: [ repeat ]
+      action: repeat
+      parameters: { }
+      responses: [ ]
+      synonyms: { }
+      equivalents:
+        - [ do, it, again ]
+
+    - command: [ scroll, down ]
+      action: scroll
+      parameters:
+        way: down
+      responses: [ "Scrolled down, sir", "Page down, sir" ]
+      synonyms: { }
+      equivalents:
+        - [ page, down ]
+
+    - command: [ scroll, up ]
+      action: scroll
+      parameters:
+        way: up
+      responses: [ ]
+      synonyms: { }
+      equivalents:
+        - [ page, up ]
+
+
 
 commands-repeat:
-  - command-ru: [открой, ]
-    command-en: [open, ]
-    action: subprocess
-    parameter: command
-    links-ru:
-      обсидиан: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=obsidian.sh", "--file-forwarding", "md.obsidian.Obsidian", "@@u", "%U", "@@", "/dev/null 2>&1" ]
-      телеграм: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=telegram-desktop", "--file-forwarding", "org.telegram.desktop", "@@u", "%u", "@@", "/dev/null 2>&1" ]
-      терминал: [ "kitty" ]
-      среду разработки: [ "bash", "/home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh" ]
-      запись экрана: [ "obs" ]
-      игры: [ "steam" ]
-      ворд: [ "libreoffice", "--writer" ]
-      простое сообщество: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=com.discordapp.Discord", "com.discordapp.Discord", "/dev/null 2>&1" ]
-      центр приложений: [ "gnome-software" ]
-      браузер: [ "xdg-open", "https://" ]
-      документы: [xdg-open, "/home/ilyamiro/Документы"]
-      музыку: [xdg-open, "/home/ilyamiro/Музыка"]
-      загрузки: [xdg-open, "/home/ilyamiro/Загрузки"]
-      видео: [xdg-open, "/home/ilyamiro/Видео"]
-      изображения: [xdg-open, "/home/ilyamiro/Изображения"]
-    links-en:
-      obsidian: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=obsidian.sh", "--file-forwarding", "md.obsidian.Obsidian", "@@u", "%U", "@@", "/dev/null 2>&1" ]
-      telegram: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=telegram-desktop", "--file-forwarding", "org.telegram.desktop", "@@u", "%u", "@@", "/dev/null 2>&1" ]
-      terminal: [ "kitty" ]
-      pycharm: [ "bash", "/home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh" ]
-      screen recorder: [ "obs" ]
-      steam: [ "steam" ]
-      libra office: [ "libreoffice", "--writer" ]
-      discord: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=com.discordapp.Discord", "com.discordapp.Discord", "/dev/null 2>&1" ]
-      software center: [ "gnome-software" ]
-      browser: [ "xdg-open", "https://" ]
-      documents: [ xdg-open, "/home/ilyamiro/Документы" ]
-      music: [ xdg-open, "/home/ilyamiro/Музыка" ]
-      downloads: [ xdg-open, "/home/ilyamiro/Загрузки" ]
-      video: [ xdg-open, "/home/ilyamiro/Видео" ]
-      pictures: [ xdg-open, "/home/ilyamiro/Изображения" ]
-    synonyms-en:
-      console: terminal
-      downloads: download
-      videos: video
-      images: pictures
-      picture: pictures
-      image: pictures
-  - command-ru: [ "закрой" ]
-    command-en: [ "close" ]
-    action: "subprocess"
-    parameter: "command"
-    links-ru:
-      обсидиан: [ "sudo", "killall", "obsidian" ]
-      телеграм: [ "sudo", "killall", "telegram-desktop" ]
-      терминал: [ "sudo", "killall", "kitty" ]
-      запись экрана: [ "sudo", "killall", "obs" ]
-      игры: [ "sudo", "killall", "steam" ]
-      простое сообщество: [ "sudo", "killall", "Discord" ]
-      центр приложений: [ "sudo", "killall", "gnome-software" ]
-      прокси: [ "sudo", "killall", "openvpn" ]
-      браузер: [ "sudo", "killall", "firefox" ]
-    links-en:
-      obsidian: [ "sudo", "killall", "obsidian" ]
-      telegram: [ "sudo", "killall", "telegram-desktop" ]
-      terminal: [ "sudo", "killall", "kitty" ]
-      screen recorder: [ "sudo", "killall", "obs" ]
-      steam: [ "sudo", "killall", "steam" ]
-      discord: [ "sudo", "killall", "Discord" ]
-      software center: [ "sudo", "killall", "gnome-software" ]
-      proxy: [ "sudo", "killall", "openvpn" ]
-      browser: [ "sudo", "killall", "firefox" ]
-    synonyms-ru:
-    synonyms-en:
+  ru:
+    - command: [открой, ]
+      action: subprocess
+      parameter: command
+      links:
+        обсидиан: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=obsidian.sh", "--file-forwarding", "md.obsidian.Obsidian", "@@u", "%U", "@@", "/dev/null 2>&1" ]
+        телеграм: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=telegram-desktop", "--file-forwarding", "org.telegram.desktop", "@@u", "%u", "@@", "/dev/null 2>&1" ]
+        терминал: [ "kitty" ]
+        среду разработки: [ "bash", "/home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh" ]
+        запись экрана: [ "obs" ]
+        игры: [ "steam" ]
+        ворд: [ "libreoffice", "--writer" ]
+        простое сообщество: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=com.discordapp.Discord", "com.discordapp.Discord", "/dev/null 2>&1" ]
+        центр приложений: [ "gnome-software" ]
+        браузер: [ "xdg-open", "https://" ]
+        документы: [ xdg-open, "/home/ilyamiro/Документы" ]
+        музыку: [ xdg-open, "/home/ilyamiro/Музыка" ]
+        загрузки: [ xdg-open, "/home/ilyamiro/Загрузки" ]
+        видео: [ xdg-open, "/home/ilyamiro/Видео" ]
+        изображения: [ xdg-open, "/home/ilyamiro/Изображения" ]
+        блокнот: [ gedit ]
+      synonyms: {}
 
+    - command: [ "закрой" ]
+      action: "subprocess"
+      parameter: "command"
+      links-ru:
+        обсидиан: [ "sudo", "killall", "obsidian" ]
+        телеграм: [ "sudo", "killall", "telegram-desktop" ]
+        терминал: [ "sudo", "killall", "kitty" ]
+        запись экрана: [ "sudo", "killall", "obs" ]
+        игры: [ "sudo", "killall", "steam" ]
+        простое сообщество: [ "sudo", "killall", "Discord" ]
+        центр приложений: [ "sudo", "killall", "gnome-software" ]
+        прокси: [ "sudo", "killall", "openvpn" ]
+        браузер: [ "sudo", "killall", "firefox" ]
+      synonyms-ru: { }
 
+  en:
+    - command: [open, ]
+      action: subprocess
+      parameter: command
+      links:
+        obsidian: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=obsidian.sh", "--file-forwarding", "md.obsidian.Obsidian", "@@u", "%U", "@@", "/dev/null 2>&1" ]
+        telegram: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=telegram-desktop", "--file-forwarding", "org.telegram.desktop", "@@u", "%u", "@@", "/dev/null 2>&1" ]
+        terminal: [ "kitty" ]
+        code editor: [ "bash", "/home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh" ]
+        screen recorder: [ "obs" ]
+        steam: [ "steam" ]
+        libra office: [ "libreoffice", "--writer" ]
+        discord: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=com.discordapp.Discord", "com.discordapp.Discord", "/dev/null 2>&1" ]
+        software center: [ "gnome-software" ]
+        browser: [ "xdg-open", "https://" ]
+        documents: [ xdg-open, "/home/ilyamiro/Документы" ]
+        music: [ xdg-open, "/home/ilyamiro/Музыка" ]
+        downloads: [ xdg-open, "/home/ilyamiro/Загрузки" ]
+        video: [ xdg-open, "/home/ilyamiro/Видео" ]
+        pictures: [ xdg-open, "/home/ilyamiro/Изображения" ]
+        notes: [gedit]
+      synonyms:
+        console: terminal
+        downloads: download
+        videos: video
+        images: pictures
+        picture: pictures
+        image: pictures
 
+    - command: [ "close" ]
+      action: "subprocess"
+      parameter: "command"
+      links:
+        obsidian: [ "sudo", "killall", "obsidian" ]
+        telegram: [ "sudo", "killall", "telegram-desktop" ]
+        terminal: [ "sudo", "killall", "kitty" ]
+        screen recorder: [ "sudo", "killall", "obs" ]
+        steam: [ "sudo", "killall", "steam" ]
+        discord: [ "sudo", "killall", "Discord" ]
+        software center: [ "sudo", "killall", "gnome-software" ]
+        proxy: [ "sudo", "killall", "openvpn" ]
+        browser: [ "sudo", "killall", "firefox" ]
+      synonyms-en: { }
 
-
-# an example of commands distribution:
-#employees:
-#  - name: Alice
-#    role: Developer
-#    age: 28
-#    department: Engineering
-#
-#  - name: Bob
-#    role: Designer
-#    age: 32
-#    department: Design
-#
-#  - name: Charlie
-#    role: Manager
-#    age: 35
-#    department: Management

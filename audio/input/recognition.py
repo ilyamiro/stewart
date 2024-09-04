@@ -9,34 +9,38 @@ import pyaudio
 # file directory
 DIR = os.path.dirname(os.path.abspath(__file__))
 
-logger = logging.getLogger("STT")
+log = logging.getLogger("STT")
 
 
 class STT:
     def __init__(self, lang: str, size: str = "small"):
         self.pyaudio_instance = pyaudio.PyAudio()
-        logger.info("PyAudio instance created")
+        log.info("PyAudio instance created")
 
         self.stream = self.pyaudio_instance.open(rate=16000, channels=1, format=pyaudio.paInt16, input=True,
                                                  frames_per_buffer=8000)
-        logger.debug("PyAudio stream instance successfully opened for input")
+        log.debug("PyAudio stream instance successfully opened for input")
 
         self.model = Model(f"{DIR}/models/vosk-model-{size}-{lang}")
         self.recognizer = KaldiRecognizer(self.model, 16000)
 
-        logger.debug("Vosk recognition system initialized")
+        log.debug("Vosk recognition system initialized")
 
     def listen(self):
         data = self.stream.read(4000, exception_on_overflow=False)
         if self.recognizer.AcceptWaveform(data) and len(data) > 1 and self.stream.is_active():
             answer = json.loads(self.recognizer.Result())
             if answer["text"]:
-                logger.info(f"Text recognized: {answer['text']}")
+                log.info(f"Text recognized: {answer['text']}")
                 yield answer["text"]
 
     def create_new_recognizer(self):
-        self.recognizer = KaldiRecognizer(self.model, 16000)
+        recognizer = KaldiRecognizer(self.model, 16000)
+        log.info("New vosk recognizer instance created")
+        return recognizer
 
-    def set_grammar(self, path):
+    @staticmethod
+    def set_grammar(path, recognizer):
         with open(path, "r", encoding="utf-8") as file:
-            self.recognizer.SetGrammar(file.readline())
+            recognizer.SetGrammar(file.readline())
+            return recognizer

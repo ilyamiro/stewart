@@ -8,3 +8,4 @@ PyYAML~=6.0
 num2words~=0.5.13
 words2numsrus~=0.1.0
 PyAutoGUI~=0.9.54
+requests~=2.32.2
