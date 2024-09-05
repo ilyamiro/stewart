@@ -27,8 +27,8 @@ def key(**kwargs):
 def scroll(**kwargs):
     match kwargs["parameters"]["way"]:
         case "up":
-            mouse.wheel(1)
+            mouse.scroll(1)
         case "down":
-            mouse.wheel(-1)
+            mouse.scroll(-1)
 
 

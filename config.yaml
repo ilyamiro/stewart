@@ -1,6 +1,7 @@
 lang:
   prefix: en
   name: english
+text-mode: on
 max-history-length: 4
 trigger:
   triggers:
@@ -35,7 +36,7 @@ command-spec:
     ru: "и"
     en: "and"
 gpt:
-  state: off
+  state: on
   provider: You
   start-prompt:
     ru:
@@ -78,7 +79,7 @@ answers:
       - "Initialization finished successfully. What can I assist you with, sir?"
       - "All systems are online and ready. How can I be of help today, sir?"
       - "Startup sequence completed. What do you need assistance with, sir?"
-    edefault:
+    default:
       - "I am at your service, sir. How can I assist you today?"
       - "I am here to help, sir. What do you need assistance with?"
       - "At your command, sir. How may I assist you?"
@@ -242,7 +243,6 @@ commands:
       synonyms: { }
       equivalents:
         - [ page, up ]
-
 
 
 commands-repeat:

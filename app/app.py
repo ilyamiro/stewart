@@ -80,14 +80,14 @@ class App:
         # restricting recognition by adding grammar made of commands
         self.grammar_recognition_restricted_create()
         self.stt.recognizer = self.stt.set_grammar(f"{os.path.dirname(DIR)}/data/grammar/grammar-{self.lang}.txt", self.stt.create_new_recognizer())
+        self.recognition_thread = None
 
         log.debug("Speech to text instance initialized")
-
-        self.recognition_thread = threading.Thread(target=self.recognition)
 
         log.debug("Finished app initialization")
 
     def start(self):
+        self.recognition_thread = threading.Thread(target=self.recognition)
         # starting the voice recognition
         self.recognition_thread.start()
 
@@ -111,16 +111,19 @@ class App:
 
     def recognition(self):
         while True:
-            for word in self.stt.listen():
-                if self.trigger_timed_needed:
-                    result = self.remove_trigger_word(word)
-                    if result != "blank":
-                        if self.config["trigger"]["trigger-mode"] == "timed":
-                            self.trigger_timed_needed = False
-                            self.trigger_counter(self.config["trigger"]["trigger-time"])
-                        self.handle(result)
-                else:
-                    self.handle(word)
+            if self.config["text-mode"]:
+                self.handle(input("Phrase: "))
+            else:
+                for word in self.stt.listen():
+                    if self.trigger_timed_needed:
+                        result = self.remove_trigger_word(word)
+                        if result != "blank":
+                            if self.config["trigger"]["trigger-mode"] == "timed":
+                                self.trigger_timed_needed = False
+                                self.trigger_counter(self.config["trigger"]["trigger-time"])
+                            self.handle(result)
+                    else:
+                        self.handle(word)
 
     def remove_trigger_word(self, request):
         for trigger in self.config["trigger"][f"triggers"][self.lang]:
