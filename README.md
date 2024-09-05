@@ -1,18 +1,12 @@
 <br>
 <div align="center">
     <img src="data/images/stewart_logo.png" alt="Logo" width="" height="165">
-    <h1>🖥️Stewart</h1>
 </div>
 
-Useful and extendable voice assistant for Linux and Windows
 
 [![github release version](https://img.shields.io/github/v/release/ilyamiro/Stewart.svg)](https://github.com/ilyamiro/Stewart/releases/latest) [![license](https://img.shields.io/github/license/ilyamiro/Stewart.svg)](https://github.com/ilyamiro/Stewart/master/LICENSE.md)
 
 <a id="link-wiki" href="https://github.com/ilyamiro/Stewart/wiki"><strong>📘Explore the wiki</strong></a>
-
-> [!WARNING]
-> The project is in development and it DOES NOT work as intended</h3>
-
 
 ## 🚩 Table of Contents
 
@@ -20,15 +14,14 @@ Useful and extendable voice assistant for Linux and Windows
 - [Installation](#installation)
 - [License](#license)
 
-
 ### About
+
+> [!WARNING]
+> The project is in development and it DOES NOT work as intended</h3>
 
 You can read more about **Stewart** on our <a href="https://github.com/ilyamiro/Stewart/wiki">**wiki!**</a>
 
 ### Installation
-
-For deployment, you have to install python 3.11 from <a href="https://www.python.org/downloads/release/python-3116/">python.org</a> 
-if you are on **Windows** (not supported yet) or use a package manager on **Linux** system
 
 > [!IMPORTANT]
 > Windows is not supported at the moment
@@ -44,8 +37,6 @@ if you are on **Windows** (not supported yet) or use a package manager on **Linu
 ```commandline
 python3.11 main.py
 ```
-
-- Does not work on **Windows** yet
 
 
 ### License
