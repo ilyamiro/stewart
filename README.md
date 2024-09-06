@@ -14,17 +14,18 @@
 <a id="link-wiki" href="https://github.com/ilyamiro/Stewart/wiki">📘Explore the wiki</a>
 
 > [!CAUTION]
-> The project is in development and it DOES NOT work as intended</h3>
+> The project is in development and DOES NOT work as intended</h3>
 
 ## 🚩 Table of Contents
 
 - [About](#about)
+- [Roadmap](#roadmap)
 - [Installation](#installation)
 - [License](#license)
 
 ### About
 
-A desktop based voice assistant written in python
+A desktop-based voice assistant written in python
 
 - A **local** vosk STT recognition model 
 - **local voice synthesis model** based on SileroTTS with a use of self-contained library [voicesynth](https://github.com/ilyamiro/voicesynth)
@@ -32,6 +33,20 @@ A desktop based voice assistant written in python
 - **Improved but limited** recognition feature available (+99% voice recognition accuracy for commands)
 - Fast and efficient command **handling**
 - **Linux-based**
+
+### Roadmap
+
+- [ ] Wake word detection
+- [ ] Speaker diarization and recognition for vosk speech-to-text
+- [ ] GUI written with **flet** (Flutter port for python)
+- [ ] Improve extensibility (Plugin support) and create API
+- [ ] Switch to C++
+  - [ ] Write command tree search system in C++
+  - [ ] Migrate voice recognition to C++ 
+- [ ] Wiki
+  - [ ] Command editor
+  - [ ] Reference
+  - [ ] Plugins/Extensions
 
 ### Installation
 
@@ -54,7 +69,7 @@ python3.11 main.py
 ### License
 
 
-Copyright - **2024** -  <i>Miroshnichenko Illia</i> ©
+Copyright - 2024 -  <i>Miroshnichenko Illia</i> ©
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -73,4 +88,4 @@ See the License for the specific language governing permissions and limitations 
 [Badge Release]: https://img.shields.io/github/v/release/ilyamiro/Stewart.svg
 [Badge Language]: https://img.shields.io/github/languages/top/ilyamiro/Stewart
 [Badge License]: https://img.shields.io/github/license/ilyamiro/Stewart
-[Badge Ahh]: https://img.shields.io/badge/Ahh-project-ff69b4
+[Badge Ahh]: https://img.shields.io/badge/Pet-project-C68FE6
