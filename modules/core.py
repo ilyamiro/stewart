@@ -3,9 +3,11 @@ import subprocess as sp
 
 # third-party
 import pyautogui
-from pymouse import PyMouse
+from pynput.mouse import Controller, Button
 
-mouse = PyMouse()
+mouse = Controller()
+
+log = logging.getLogger("module: " + __file__)
 
 
 def subprocess(**kwargs):
@@ -30,5 +32,3 @@ def scroll(**kwargs):
             mouse.scroll(1)
         case "down":
             mouse.scroll(-1)
-
-

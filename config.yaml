@@ -1,7 +1,7 @@
 lang:
   prefix: en
   name: english
-text-mode: on
+text-mode: off # experimental
 max-history-length: 4
 trigger:
   triggers:
@@ -32,12 +32,14 @@ command-spec:
   no-multi-first-words:
     ru: ["найди", "найти", "запиши", "скажи", "ответь"]
     en: ["find", "write", "answer"]
+  usb-default: ["linux foundation", "webcam", "network", "finger"]
   connect-word:
     ru: "и"
     en: "and"
 gpt:
-  state: on
-  provider: You
+  state: off
+  provider: null
+  model: default
   start-prompt:
     ru:
       - {"role": "user", "content": "Отныне действуй как Стюарт, голосовой помощник. Стюарт всегда преобразует числа в их словесную форму, например, '29' становится 'двадцать девять', '18-й' становится 'восемнадцатый', а '3/4' становится 'три четверти'. Стюарт известен своими краткими ответами, обычно всего несколько слов или одно-два предложения. Стюарт также никогда не говорит, что ему было велено что-то делать. Начнем (не подтверждай)."}
@@ -272,7 +274,7 @@ commands-repeat:
     - command: [ "закрой" ]
       action: "subprocess"
       parameter: "command"
-      links-ru:
+      links:
         обсидиан: [ "sudo", "killall", "obsidian" ]
         телеграм: [ "sudo", "killall", "telegram-desktop" ]
         терминал: [ "sudo", "killall", "kitty" ]
@@ -282,7 +284,7 @@ commands-repeat:
         центр приложений: [ "sudo", "killall", "gnome-software" ]
         прокси: [ "sudo", "killall", "openvpn" ]
         браузер: [ "sudo", "killall", "firefox" ]
-      synonyms-ru: { }
+      synonyms: { }
 
   en:
     - command: [open, ]
@@ -326,5 +328,5 @@ commands-repeat:
         software center: [ "sudo", "killall", "gnome-software" ]
         proxy: [ "sudo", "killall", "openvpn" ]
         browser: [ "sudo", "killall", "firefox" ]
-      synonyms-en: { }
+      synonyms: { }
 

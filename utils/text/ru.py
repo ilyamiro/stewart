@@ -1,8 +1,9 @@
+import datetime
 import re
 
 from words2numsrus import NumberExtractor
 
-from default import extract_number
+from .default import extract_number
 
 extractor = NumberExtractor()
 
@@ -11,7 +12,8 @@ def replace_yo_with_e(input_string):
     return input_string.replace("ё", "е")
 
 
-def get_part_of_day(hour):
+def get_part_of_day():
+    hour = datetime.datetime.now().hour
     if 3 <= hour < 12:
         return "доброе утро"
     elif 12 <= hour < 16:
@@ -94,3 +96,6 @@ def find_num_in_list(lst):
 
 def find_num_in_string(lst):
     return extract_number(extractor.replace_groups(replace_yo_with_e(lst)))
+
+
+

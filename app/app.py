@@ -44,7 +44,7 @@ class App:
 
             playsound(f"{os.path.dirname(DIR)}/data/sounds/startup.wav", block=False)
             func(self, *args, **kwargs)
-            ttsi.say(random.choice(self.config[f"answers"][self.lang]["startup"]))
+            ttsi.say(parse_config_answers(self.config[f"answers"][self.lang]["startup"]))
 
         return wrapper
 
@@ -69,7 +69,9 @@ class App:
         # gpt settings
         self.gpt_history = []
         self.gpt_client = GPTClient()
-        self.gpt_provider = getattr(g4f.Provider, self.config["gpt"]["provider"])
+        self.gpt_provider = getattr(g4f.Provider, self.config["gpt"]["provider"]) if self.config["gpt"][
+            "provider"] else None
+        self.gpt_model = getattr(g4f.models, self.config["gpt"]["model"])
         self.gpt_start = self.config["gpt"]["start-prompt"][self.lang]
 
         log.info("Initialized GPT settings and a GPT client")
@@ -79,7 +81,8 @@ class App:
 
         # restricting recognition by adding grammar made of commands
         self.grammar_recognition_restricted_create()
-        self.stt.recognizer = self.stt.set_grammar(f"{os.path.dirname(DIR)}/data/grammar/grammar-{self.lang}.txt", self.stt.create_new_recognizer())
+        self.stt.recognizer = self.stt.set_grammar(f"{os.path.dirname(DIR)}/data/grammar/grammar-{self.lang}.txt",
+                                                   self.stt.create_new_recognizer())
         self.recognition_thread = None
 
         log.debug("Speech to text instance initialized")
@@ -93,23 +96,71 @@ class App:
 
         log.debug(f"Recognition thread started with name: {self.recognition_thread.name}")
 
+    def handle(self, request):
+        if not request and self.config["trigger"]["trigger-mode"] != "disabled":
+            # if the request does not contain anything and the trigger word is required,
+            # it means that the user called for VA with a trigger word
+            # (that got removed by self.remove_trigger_word)
+            # and did not specify the command; therefore, we answer with a default phrase
+            ttsi.say(parse_config_answers(self.config[f"answers"][self.lang]["default"]))
+        else:
+            # update the history of requests to base some commands on the previous requests
+            self.history_update(request)
+            # checking whether the request contains multiple commands
+            total = self.multihandle(request)
+            if len(total) == 1:
+                # if there is only one command, process it
+                self.process_command(total[0], request)
+            elif len(total) > 1:
+                # if there are multiple commands, we can't play multiple audios at once as they would overlap.
+                # so, we just play a confirmative phrase, like "Doing that now, sir" or else.
+                ttsi.say(parse_config_answers(self.config[f"answers"][self.lang]["multi"]))
+                # processing each command separately
+                for command in total:
+                    self.process_command(command, request, multi=True)
+            elif not total and self.config["gpt"]["state"]:
+                # If something was said by user after the trigger word, but no commands were recognized,
+                # then this phrase is being sent to gpt model for answering
+                answer = gpt_request(request, [*self.gpt_start, *self.gpt_history], self.gpt_client, self.gpt_provider,
+                                     self.gpt_model)
+                # update the gpt history for making long conversations possible
+                self.gpt_history.extend([{"role": "user", "content": request}, {"role": "system", "content": answer}])
+                if len(self.gpt_history) >= 10:
+                    self.gpt_history = self.gpt_history[2:]
+                ttsi.say(answer)
+
     def grammar_recognition_restricted_create(self):
+        """
+        Creates a file of words that are used in commands
+        This file is used for a vosk speech-to-text model to speed up the recognition speed and quality
+        """
         with open(f"{PARENT_DIR}/data/grammar/grammar-{self.lang}.txt", "w") as file:
             file.write('["' + " ".join(self.config['trigger'].get(f"triggers").get(self.lang)))
             file.write(self.config["speech"].get(f"restricted-add-line").get(self.lang))
             file.write(self.tree.recognizer_string + '"]')
 
     def grammar_restrict(self, **kwargs):
-        if kwargs["parameters"]["way"] == "on":
-            self.stt.create_new_recognizer()
-        if kwargs["parameters"]["way"] == "off":
-            self.stt.recognizer = self.stt.set_grammar(f"{os.path.dirname(DIR)}/data/grammar/grammar-{self.lang}.txt",
-                                                       self.stt.create_new_recognizer())
+        """
+        An action function inside an app class that enables or disables 'improved but limited' speech recognition
+        """
+        match kwargs["parameters"]["way"]:
+            case "on":
+                self.stt.create_new_recognizer()
+            case "off":
+                self.stt.recognizer = self.stt.set_grammar(
+                    f"{os.path.dirname(DIR)}/data/grammar/grammar-{self.lang}.txt",
+                    self.stt.create_new_recognizer())
 
     def repeat(self, **kwargs):
+        """
+        An action function inside an app class that repeat an action performed the last time
+        """
         self.handle(self.history[-1].get("request"))
 
     def recognition(self):
+        """
+        Voice recognition
+        """
         while True:
             if self.config["text-mode"]:
                 self.handle(input("Phrase: "))
@@ -176,7 +227,7 @@ class App:
                    "equivalents": equivalents}})
 
     def history_update(self, request):
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.now().isoformat()  # Get a timestamp
         new_event = {"timestamp": timestamp, "request": request}
 
         if len(self.history) > self.config.get("max-history-length"):
@@ -184,53 +235,23 @@ class App:
 
         self.history.append(new_event)
 
-    def handle(self, request):
-        if not request and self.config["trigger"]["trigger-mode"] != "disabled":
-            # if the request does not contain anything and the trigger word is required,
-            # it means that the user called for VA with a trigger word
-            # (that got removed by self.remove_trigger_word)
-            # and did not specify the command; therefore, we answer with a default phrase
-            ttsi.say(random.choice(self.config[f"answers"][self.lang]["default"]))
-        else:
-            self.history_update(request)
-            # checking whether the request contains multiple commands
-            total = self.multihandle(request)
-            if len(total) == 1:
-                # if there is only one command, process it
-                self.process_command(total[0], request)
-            elif len(total) > 1:
-                # if there are multiple commands, we can't play multiple audios at once as they would overlap.
-                # so, we just play a confirmative phrase, like "Doing that now, sir" or else.
-                ttsi.say(random.choice(self.config[f"answers"][self.lang]["multi"]))
-                # processing each command separately
-                for command in total:
-                    self.process_command(command, request, multi=True)
-            elif not total and self.config["gpt"]["state"]:
-                # If something was said by user after the trigger word, but no commands were recognized,
-                # then this phrase is being sent to gpt model for answering
-                answer = gpt_request(request, [*self.gpt_start, *self.gpt_history], self.gpt_client, provider=self.gpt_provider)
-                self.gpt_history.extend([{"role": "user", "content": request}, {"role": "system", "content": answer}])
-                if len(self.gpt_history) >= 8:
-                    self.gpt_history = self.gpt_history[2:]
-                ttsi.say(answer)
-
     def process_command(self, command, full, multi: bool = False):
         result = self.tree.find_command(command)
         if result:
             result = list(result)
             result.extend([command, full])
             if result[2] and not multi:
-                ttsi.say(random.choice(result[2]))
+                ttsi.say(parse_config_answers(result[2]))
             self.do(result)
 
     def do(self, request):
-        print(request)
-        thread = threading.Thread(target=getattr(self.find_arch(request[0]), request[0]),
+        thread = threading.Thread(target=getattr(self.find_module(request[0]), request[0]),
                                   kwargs={"parameters": request[1], "command": request[3],
                                           "request": request[4]})
         thread.start()
 
-    def find_arch(self, name):
+    def find_module(self, name):
+        """Find a module that has a function that corresponds to an action that has to be done"""
         for module in self.modules:
             members = inspect.getmembers(module)
             functions = [member[0] for member in members if inspect.isfunction(member[1])]

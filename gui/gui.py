@@ -11,6 +11,9 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class GUI:
+    def change_view(self, e):
+        pass
+
     def __init__(self):
         # self.app = App()
         self.page = None
@@ -70,3 +73,4 @@ def main():
     ft.app(gui.start)
 
 
+main()

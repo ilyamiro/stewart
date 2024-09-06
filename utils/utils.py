@@ -2,6 +2,7 @@ import json
 import os.path
 import subprocess
 import logging
+import random
 import sys
 import yaml
 import re
@@ -14,7 +15,18 @@ import g4f
 log = logging.getLogger("utils")
 
 
-def internet(host="https://google.com", timeout=3):
+def yaml_load(path: str):
+    if os.path.exists(path):
+        with open(path) as file:
+            return yaml.safe_load(file)
+
+
+DIR = os.path.dirname(os.path.abspath(__file__))
+
+config = yaml_load(os.path.dirname(DIR) + "/config.yaml")
+
+
+def internet(host="https://google.com", timeout=3) -> bool:
     """
     check if there is an internet connection by trying to access the specified host.
 
@@ -25,14 +37,12 @@ def internet(host="https://google.com", timeout=3):
     Returns:
     bool: True if the host is reachable, False otherwise.
     """
-    urls = [host, f"http://{host}", f"https://{host}"]  # ensure the host is typed in correctly
 
-    for url in urls:
-        try:
-            requests.get(url, timeout=timeout)
-            return True
-        except requests.ConnectionError as e:
-            log.info(f"Failed to establish internet connection with the following error: {e}")
+    try:
+        requests.get(host, timeout=timeout)
+        return True
+    except requests.ConnectionError as e:
+        log.info(f"Failed to establish internet connection with the host {host}: {e}")
 
     return False
 
@@ -48,7 +58,8 @@ def import_modules_from_directory(directory):
             module_name = filename[:-3]
             # Import the module dynamically
             try:
-                module = import_module(directory.replace("/", ".") + "." + module_name)
+                module_path = directory.replace("/", ".") + "." + module_name
+                module = import_module(module_path)
                 modules.append(module)
             except ImportError as e:
                 log.info(f"Failed to import {module_name}: {e}")
@@ -66,12 +77,6 @@ def run(*args, stdout: bool = False):
 def system_setup():
     if sys.platform == "linux":
         run("jack_control", "start")
-
-
-def yaml_load(path: str):
-    if os.path.exists(path):
-        with open(path) as file:
-            return yaml.safe_load(file)
 
 
 def json_load(path: str):
@@ -98,17 +103,36 @@ def kelvin_to_c(k):
     return int(k - 273.15)
 
 
-def gpt_request(query, messages, client, provider=g4f.Provider.You):
+def gpt_request(query, messages, client, provider, model=g4f.models.default):
+    print(query, messages, provider, model)
     return client.chat.completions.create(
         messages=[*messages, {"role": "user", "content": query}],
         provider=provider,
         stream=False,
-        model=g4f.models.default
+        model=model
     ).choices[0].message.content
 
 
+def parse_and_replace_config(string, module):
+    pattern = re.compile(r"\[(.*?)]")
+
+    matches = pattern.findall(string)
+
+    for match in matches:
+        if hasattr(module, match):
+            func = getattr(module, match)
+            if callable(func):
+                string = string.replace(f'[{match}]', func())
+
+    return string
+
+
+def parse_config_answers(answers):
+    return parse_and_replace_config(random.choice(answers), import_module(f"utils.text.{config.get('lang').get('prefix')}"))
+
+
 def get_connected_usb_devices():
-    defaults = ["linux foundation", "webcam", "network", "finger"]
+    defaults = config.get("command-spec").get("usb-default")
 
     devices = []
 
@@ -128,3 +152,19 @@ def get_connected_usb_devices():
             devices.append(device)
 
     return devices
+
+
+def import_all_from_module(module_name):
+    # Dynamically import the module
+    module = import_module(module_name)
+
+    # Get all attributes from the module
+    attributes = dir(module)
+
+    # Filter out special attributes (those starting and ending with double underscores)
+    public_attributes = [attr for attr in attributes if not attr.startswith('__')]
+
+    # Import all public attributes into the global namespace
+    for attr in public_attributes:
+        globals()[attr] = getattr(module, attr)
+

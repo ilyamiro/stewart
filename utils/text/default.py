@@ -1,6 +1,5 @@
 
 
-
 def extract_number(input_string):
     matches = re.findall(r'\d+', input_string)
 

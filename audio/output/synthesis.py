@@ -5,6 +5,7 @@ import logging
 from voicesynth import Model, Synthesizer
 
 from utils import yaml_load
+from utils import parse_and_replace_config
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 

@@ -1,25 +1,37 @@
-<br>
+# Stewart
+
 <div align="center">
     <img src="data/images/stewart_logo.png" alt="Logo" width="" height="165">
 </div>
 
+![Badge Release]
+![Badge License]
+![Badge Language] 
+![Badge Ahh]<br>
 
-[![github release version](https://img.shields.io/github/v/release/ilyamiro/Stewart.svg)](https://github.com/ilyamiro/Stewart/releases/latest) [![license](https://img.shields.io/github/license/ilyamiro/Stewart.svg)](https://github.com/ilyamiro/Stewart/master/LICENSE.md)
 
-<a id="link-wiki" href="https://github.com/ilyamiro/Stewart/wiki"><strong>📘Explore the wiki</strong></a>
+[//]: # (Stable: [v1.2.0]&#40;https://github.com/ilyamiro/Stewart/releases/tag/v1.0.0-alpha&#41; / )
+<a id="link-wiki" href="https://github.com/ilyamiro/Stewart/wiki">📘Explore the wiki</a>
+
+> [!CAUTION]
+> The project is in development and it DOES NOT work as intended</h3>
 
 ## 🚩 Table of Contents
 
-- [About project](#About)
+- [About](#about)
 - [Installation](#installation)
 - [License](#license)
 
 ### About
 
-> [!WARNING]
-> The project is in development and it DOES NOT work as intended</h3>
+A desktop based voice assistant written in python
 
-You can read more about **Stewart** on our <a href="https://github.com/ilyamiro/Stewart/wiki">**wiki!**</a>
+- A **local** vosk STT recognition model 
+- **local voice synthesis model** based on SileroTTS with a use of self-contained library [voicesynth](https://github.com/ilyamiro/voicesynth)
+- Complex **tree-based** command implementation 
+- **Improved but limited** recognition feature available (+99% voice recognition accuracy for commands)
+- Fast and efficient command **handling**
+- **Linux-based**
 
 ### Installation
 
@@ -54,3 +66,11 @@ You may obtain a copy of the License at
 Unless required by applicable law or agreed to in writing,
 software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and limitations under the License.
+
+
+<!----------------------------------{ Badges }--------------------------------->
+
+[Badge Release]: https://img.shields.io/github/v/release/ilyamiro/Stewart.svg
+[Badge Language]: https://img.shields.io/github/languages/top/ilyamiro/Stewart
+[Badge License]: https://img.shields.io/github/license/ilyamiro/Stewart
+[Badge Ahh]: https://img.shields.io/badge/Ahh-project-ff69b4
