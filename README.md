@@ -15,7 +15,6 @@
 **[<kbd> <br> Install <br> </kbd>][Install]** 
 **[<kbd> <br> License <br> </kbd>][License]** 
 
----
 
 <br>
 </div>
