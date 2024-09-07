@@ -13,10 +13,10 @@
 <br>
 ---
 
-**[<kbd> <br> About <br> </kbd>][Install]** 
-**[<kbd> <br> Roadmap <br> </kbd>][Quick Start]** 
-**[<kbd> <br> Install <br> </kbd>][Configure]** 
-**[<kbd> <br> License <br> </kbd>][Contribute]** 
+**[<kbd> <br> About <br> </kbd>][About]** 
+**[<kbd> <br> Roadmap <br> </kbd>][Roadmap]** 
+**[<kbd> <br> Install <br> </kbd>][Install]** 
+**[<kbd> <br> License <br> </kbd>][License]** 
 
 ---
 
@@ -25,12 +25,6 @@
 
 > [!CAUTION]
 > The project is in development and is not ready for usage</h3>
-
-
-- [About](#about)
-- [Roadmap](#roadmap)
-- [Installation](#installation)
-- [License](#license)
 
 ## About
 
