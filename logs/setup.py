@@ -6,8 +6,7 @@ import glob
 from vosk import SetLogLevel
 from voicesynth import disable_logging
 
-LOG_DIR = os.path.join(os.path.dirname(__file__), "app_log")
-LOG_FILENAME = os.path.join(LOG_DIR, f"log_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log")
+from data.constants import LOG_DIR, LOG_FILENAME
 
 
 def logging_setup():

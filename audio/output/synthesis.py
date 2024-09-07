@@ -7,9 +7,12 @@ from voicesynth import Model, Synthesizer
 from utils import yaml_load
 from utils import parse_and_replace_config
 
+from data.constants import CONFIG_FILE
+
+
 DIR = os.path.dirname(os.path.abspath(__file__))
 
-config = yaml_load(f"{os.path.dirname(os.path.dirname(DIR))}/config.yaml")
+config = yaml_load(CONFIG_FILE)
 
 LANG = config["lang"]["prefix"]
 SEX = config["voice"]["sex"]

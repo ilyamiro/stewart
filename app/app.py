@@ -18,11 +18,10 @@ from audio.input import STT
 from audio.output import ttsi
 from utils import *
 from tree import Tree
+from data.constants import CONFIG_FILE
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(DIR)
-
-CONFIG_FILE = f"{os.path.dirname(DIR)}/config.yaml"
 
 log = logging.getLogger("App")
 
@@ -131,22 +130,53 @@ class App:
 
     def multihandle(self, request):
         list_of_commands, current_command = [], []
-        split_request = request.split()
-        for word in split_request:
+        split_request = request.split()  # splitting the request string into a list
+        for word in split_request:  # iterating over the request list
             if word in self.tree.first_words:
+                # if a word is one of the words that commands start with,
+                # that we would count that as a start of a command
                 if current_command:
+                    # if there already is a current command being counted,
+                    # the new first words means the new command starts, so we add a last one
                     list_of_commands.append(current_command)
                 if word in self.config["command-spec"][f"no-multi-first-words"][self.lang]:
-                    current_command = split_request[split_request.index(word):]
-                    list_of_commands.append(current_command)
-                    current_command = []
-                    break
-                current_command = [word]
+                    # if a word implies any words after it, like Google search,
+                    # then everything after that word should be counted as a command itself
+                    current_command = split_request[split_request.index(word):]  # get the remaining part of the request
+                    list_of_commands.append(current_command)  # add the last command to the list
+                    # current_command = []
+                    break  # terminate the cycle as there could not be any commands after this one
+                current_command = [word]  # as this is the first words appearance,
+                # it means the new command should start.
             else:
+                # if a current command is not finished:
                 if current_command and word != self.config["command-spec"][f"connect-word"][self.lang]:
-                    current_command.append(word)
+                    # if a command is not a first word, and it is not a connecting word like "and"
+                    # than it could be both a "noise" word, that does not appear in any of the commands,
+                    # and a part of the command;
+                    last_node = current_command[
+                        -1]  # get the last word of a current command to find it's possible continuations
+                    left_request_split = split_request[split_request.index(
+                        last_node) + 1:]  # getting the remaining part of the request
+                    children_unfiltered = self.tree.find_children(
+                        last_node)  # finding all the children to the last word of the current command
+                    # TODO: if a root node is found, then the function returns a dict rather than a list -> a temporary workaround
+                    children = children_unfiltered if isinstance(children_unfiltered, list) else list(
+                        children_unfiltered.keys())
+                    for child in children:  # iterate over all the children of a last command word to find continuations
+                        if child in left_request_split:
+                            # if a child is present, and the distance between the last piece of command
+                            # and a child is not equal or greater than a max distance
+                            # set by configuration file, and if "gap" between the last part of the command
+                            # and a child does not contain any first words that would reset the command, we add this child
+                            # to a command
+                            if (split_request.index(child) - split_request.index(last_node) <= self.config["command-spec"]["max-distance-between-command-words"]+1 and
+                                    not any(word in split_request[split_request.index(last_node) + 1:split_request.index(child)] for word in self.tree.first_words)):
+                                current_command.append(child)
+
                 elif not current_command and word != self.config["command-spec"][f"connect-word"][self.lang]:
                     pass
+
         if current_command:
             list_of_commands.append(current_command)
         return list_of_commands
@@ -259,7 +289,8 @@ class App:
 
     def process_command(self, command, full, multi: bool = False):
         result = self.tree.find_command(command)
-        if result:
+
+        if not all(element is None for element in result):
             result = list(result)
             result.extend([command, full])
             if result[2] and not multi:
@@ -281,5 +312,3 @@ class App:
                 return module
         if name in dir(self):
             return self
-
-

@@ -1,5 +1,6 @@
 # standart library imports
 import logging
+import traceback
 # third-party imports
 
 # inside imports
@@ -18,4 +19,4 @@ if __name__ == "__main__":
         app = App()
         app.start()
     except Exception as e:
-        log.debug(f"App loop ended with the following error: {e} ")
+        log.debug(f"App loop ended with the following error: {e}: \n{traceback.format_exc()} ")

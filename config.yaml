@@ -33,6 +33,7 @@ command-spec:
     ru: [ "найди", "найти", "запиши", "скажи", "ответь" ]
     en: [ "find", "write", "answer"]
   usb-default: ["linux foundation", "webcam", "network", "finger"]
+  max-distance-between-command-words: 3
   connect-word:
     ru: "и"
     en: "and"

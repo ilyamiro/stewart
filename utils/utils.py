@@ -12,6 +12,8 @@ from importlib import import_module
 from num2words import num2words
 import g4f
 
+from data.constants import CONFIG_FILE
+
 log = logging.getLogger("utils")
 
 
@@ -23,7 +25,7 @@ def yaml_load(path: str):
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 
-config = yaml_load(os.path.dirname(DIR) + "/config.yaml")
+config = yaml_load(CONFIG_FILE)
 
 
 def internet(host="https://google.com", timeout=3) -> bool:

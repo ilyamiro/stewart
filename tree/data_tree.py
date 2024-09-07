@@ -151,12 +151,22 @@ class Tree:
         return node.action, node.parameters, node.synthesize
 
     def find_children(self, word):
-        expanded_word = self.expand_synonyms(word)
+        """
+        Finds all children of the specified word in the tree.
 
-        children = []
+        Parameters:
+        - word: The word to search for in the tree.
 
-        node = self.root
-        if expanded_word in node.children:
-            for child in node.children[expanded_word]:
-                children.append(child)
+        Returns:
+        - A list of all children nodes of the specified word.
+        """
 
+        def _find_children_recursive(node, sequence):
+            if sequence in node.children.keys():
+                return node.children[sequence].children
+            children_list = []
+            for child in node.children.values():
+                children_list.extend(_find_children_recursive(child, sequence))
+            return children_list
+
+        return _find_children_recursive(self.root, word)
