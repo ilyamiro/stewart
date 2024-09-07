@@ -14,7 +14,7 @@
 </div>
 
 > [!CAUTION]
-> The project is in development and DOES NOT work as intended</h3>
+> The project is in development and is not ready for usage</h3>
 
 ## 🚩 Table of Contents
 
