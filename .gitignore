@@ -2,8 +2,8 @@ logs/app_log
 .idea
 **/__pycache__
 audio/output/audio.wav
+private_config.yaml
 test.py
 audio/output/models/*
-config.yaml
 venv
 

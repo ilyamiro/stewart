@@ -1,7 +1,5 @@
-# Stewart
-
 <div align = center>
-<img src="data/images/stewart_logo.png" alt="Logo" width="" height="165">
+<img src="data/images/stewart_logo.png" alt="Logo" width="" height="280">
 
 ![Badge Release]
 ![Badge License]
