@@ -1,5 +1,5 @@
 <div align = center>
-<img src="data/images/stewart_logo.png" alt="Logo" width="" height="280">
+<img src="data/images/stewart_logo.png" alt="Logo" width="" height="220">
 
 ![Badge Release]
 ![Badge License]
