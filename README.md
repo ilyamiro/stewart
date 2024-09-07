@@ -11,12 +11,16 @@
 [//]: # (Stable: [v1.2.0]&#40;https://github.com/ilyamiro/Stewart/releases/tag/v1.0.0-alpha&#41; / )
 <a id="link-wiki" href="https://github.com/ilyamiro/Stewart/wiki">📘Explore the wiki</a>
 
+**[<kbd><br>Install<br></kbd>][Install]**
+**[<kbd><br>Quick Start<br></kbd>][Quick Start]**
+**[<kbd><br>Configure<br></kbd>][Configure]**
+**[<kbd><br>Contribute<br></kbd>][Contribute]**
+
 </div>
 
 > [!CAUTION]
 > The project is in development and is not ready for usage</h3>
 
-## 🚩 Table of Contents
 
 - [About](#about)
 - [Roadmap](#roadmap)
@@ -82,6 +86,12 @@ Unless required by applicable law or agreed to in writing,
 software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and limitations under the License.
 
+<!----------------------------------------------------------------------------->
+
+[About]: #About
+[Install]: #installation
+[Roadmap]: #roadmap
+[License]: #license
 
 <!----------------------------------{ Badges }--------------------------------->
 
