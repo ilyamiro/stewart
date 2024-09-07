@@ -10,12 +10,17 @@
 
 [//]: # (Stable: [v1.2.0]&#40;https://github.com/ilyamiro/Stewart/releases/tag/v1.0.0-alpha&#41; / )
 <a id="link-wiki" href="https://github.com/ilyamiro/Stewart/wiki">📘Explore the wiki</a>
+<br>
+---
 
-**[<kbd><br>Install<br></kbd>][Install]**
-**[<kbd><br>Quick Start<br></kbd>][Quick Start]**
-**[<kbd><br>Configure<br></kbd>][Configure]**
-**[<kbd><br>Contribute<br></kbd>][Contribute]**
+**[<kbd> <br> About <br> </kbd>][Install]** 
+**[<kbd> <br> Roadmap <br> </kbd>][Quick Start]** 
+**[<kbd> <br> Install <br> </kbd>][Configure]** 
+**[<kbd> <br> License <br> </kbd>][Contribute]** 
 
+---
+
+<br>
 </div>
 
 > [!CAUTION]
@@ -27,7 +32,7 @@
 - [Installation](#installation)
 - [License](#license)
 
-### About
+## About
 
 A desktop-based voice assistant written in python
 
@@ -52,7 +57,7 @@ A desktop-based voice assistant written in python
   - [ ] Reference
   - [ ] Plugins/Extensions
 
-### Installation
+## Installation
 
 > [!IMPORTANT]
 > Windows is not supported at the moment
@@ -89,9 +94,9 @@ See the License for the specific language governing permissions and limitations 
 <!----------------------------------------------------------------------------->
 
 [About]: #About
-[Install]: #installation
-[Roadmap]: #roadmap
-[License]: #license
+[Install]: #Installation
+[Roadmap]: #Roadmap
+[License]: #License
 
 <!----------------------------------{ Badges }--------------------------------->
 
