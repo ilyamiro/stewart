@@ -1,17 +1,17 @@
 # Stewart
 
-<div align="center">
-    <img src="data/images/stewart_logo.png" alt="Logo" width="" height="165">
-</div>
+<div align = center>
+<img src="data/images/stewart_logo.png" alt="Logo" width="" height="165">
 
 ![Badge Release]
 ![Badge License]
 ![Badge Language] 
 ![Badge Ahh]<br>
 
-
 [//]: # (Stable: [v1.2.0]&#40;https://github.com/ilyamiro/Stewart/releases/tag/v1.0.0-alpha&#41; / )
 <a id="link-wiki" href="https://github.com/ilyamiro/Stewart/wiki">📘Explore the wiki</a>
+
+</div>
 
 > [!CAUTION]
 > The project is in development and DOES NOT work as intended</h3>
