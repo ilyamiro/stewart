@@ -5,10 +5,10 @@ text-mode: off # experimental
 max-history-length: 4
 trigger:
   triggers:
-    ru: [стюарт, стюард]
-    en: [stewart, stuart]
+    ru: []
+    en: []
   trigger-mode: enabled # timed, disabled, enabled
-  trigger-time: 25 # if trigger mode is timed, the amount of time it takes for VA to forget it was called
+  trigger-time: 25 # if trigger mode is timed, the amount of time in second it takes for VA to forget it was called
 voice:
   sex: m
   ru:
@@ -30,8 +30,8 @@ module:
   dir: modules
 command-spec:
   no-multi-first-words:
-    ru: ["найди", "найти", "запиши", "скажи", "ответь"]
-    en: ["find", "write", "answer"]
+    ru: [ "найди", "найти", "запиши", "скажи", "ответь" ]
+    en: [ "find", "write", "answer"]
   usb-default: ["linux foundation", "webcam", "network", "finger"]
   connect-word:
     ru: "и"
@@ -49,284 +49,66 @@ gpt:
       - {"role": "system", "content":  "How can i help you, sir?"}
 answers:
   ru:
-    startup:
-      - "Конфигурация ядра завершена. Голосовой ассистент готов к работе"
-      - "Загрузка успешно завершена. Чем могу быть полезен, сэр?"
-    default:
-      - "Я здесь, чтобы помочь вам, сэр"
-      - "Чем могу быть полезен, сэр?"
-    multi:
-      - "Конечно, сэр"
-      - "Уже выполняю, сэр"
-      - "Безусловно, сэр"
+    startup: []
+    default: []
+    multi: []
   en:
-    startup:
-      - "Core configuration process has been completed. How can I assist you today?"
-      - "I am fully operational and ready for today, sir. What can I do for you?"
-      - "Startup process ended successfully. Is there something specific you need help with, sir?"
-      - "Initialization complete. How may I assist you today, sir?"
-      - "Systems are online and ready. What can I do for you, sir?"
-      - "Startup sequence finished. How can I be of service today, sir?"
-      - "All systems are ready to go. What do you need assistance with, sir?"
-      - "Boot process completed successfully. How may I help you today, sir?"
-      - "Ready for operation. What tasks do you have for me, sir?"
-      - "Startup routine finished. How can I assist you today, sir?"
-      - "All systems are up and running. How can I be of help today, sir?"
-      - "Initialization sequence complete. What do you need assistance with, sir?"
-      - "Systems are fully operational. How may I assist you today, sir?"
-      - "Startup procedures are complete. What can I do for you, sir?"
-      - "All checks are green. How can I be of service today, sir?"
-      - "Startup protocols executed successfully. What tasks do you have for me, sir?"
-      - "Systems are ready for action. How may I help you today, sir?"
-      - "Initialization finished successfully. What can I assist you with, sir?"
-      - "All systems are online and ready. How can I be of help today, sir?"
-      - "Startup sequence completed. What do you need assistance with, sir?"
-    default:
-      - "I am at your service, sir. How can I assist you today?"
-      - "I am here to help, sir. What do you need assistance with?"
-      - "At your command, sir. How may I assist you?"
-      - "Ready to serve, sir. What do you need help with?"
-      - "I am here for you, sir. What can I do for you today?"
-      - "How may I be of assistance, sir?"
-      - "I am available to help, sir. What do you need?"
-
-    multi:
-      - "Processing your commands, sir. Please stand by."
-      - "Yes, sir. I am ready to execute your instructions."
-      - "Of course, sir. I will proceed with your requests."
-      - "Executing your commands, sir. One moment please."
-      - "Affirmative, sir. I will carry out your instructions."
-      - "Understood, sir. Proceeding with your requests."
-      - "Acknowledged, sir. I will handle your commands."
-      - "Yes, sir. I am on it."
-      - "Certainly, sir. I will take care of that for you."
-
+    startup: []
+    default: []
+    multi: []
 commands:
-# Template:
-#  - command: [ ]
-#    action:
-#    parameters:
-#    responses:
-#    synonyms:
-#    equivalents:
   ru:
-    - command: [открой, проводник]
-      action: subprocess
-      parameters:
-        command: [xdg-open, /home/ilyamiro]
-      responses: ["Cистемные файлы открыты, сэр", "Открыл проводник, сэр", "Проводник запущен"]
-      synonyms:
-        "запусти": "открой"
-      equivalents:
-        - [открой, системные, файлы]
-
-    - command: [ включи, свободный, режим ]
-      action: grammar_restrict
-      parameters:
-        way: "on"
-      responses: [ "Свободный режим активирован", "Вы свободны говорить, сэр", "Вы можете говорить, сэр" ]
-      synonyms:
-      equivalents: [ ]
-
-    - command: [ выключи, свободный, режим ]
-      action: grammar_restrict
-      parameters:
-        way: "off"
-      responses: [ ]
-      synonyms:
-        отключи: выключи
-      equivalents: [ ]
-
-    - command: [ закрой, окно ]
-      action: hotkey
-      parameters:
-        hotkey: [ alt, f4 ]
-      responses: [ "Закрыл окно, сэр", "Закрыл, сэр", "Приложение закрыто, сэр" ]
-      synonyms:
-      equivalents:
-        - [ закрой, приложение ]
-
-    - command: [ повтори ]
-      action: repeat
-      parameters: { }
-      responses: [ ]
-      synonyms: { }
-      equivalents:
-        - [ сделай, это, снова ]
-        - [ сделай, это, опять ]
-
-    - command: [ страница, вниз ]
-      action: scroll
-      parameters:
-        way: down
-      responses: [ "Пролистнул вниз, сэр", "Опустил страницу, сэр" ]
-      synonyms:
-        "сайт": "страница"
+    - command: []
+      action:
+      parameters: {}
+      responses: []
+      synonyms: {}
       equivalents: []
 
-    - command: [ страница, вверх ]
-      action: scroll
-      parameters:
-        way: up
-      responses: [ ]
-      synonyms:
-        верх: вверх
-      equivalents:
-        - [ колесо, вверх ]
-        - [ листай, вниз ]
-
-  en:
-    - command: [open, files]
-      action: subprocess
-      parameters:
-        command: [ xdg-open, /home/ilyamiro ]
-      responses: ["Opened files, sir", "Opened the file system for you, sir", "Files are opened"]
-      synonyms:
-        "start": "open"
-      equivalents:
-        - [ open, system, files ]
-
-    - command: [ enable, free, mode ]
-      action: grammar_restrict
-      parameters:
-        way: "on"
-      responses: [ "You are now free to speak, sir", "Speak freely, sir", "I have enabled unrestricted speech recognition mode, sir", "Word recognition is set to free mode, sir", "Voice recognition systems were unrestrained", "Restrains were turned off, sir" ]
-      synonyms:
-      equivalents:
-        - [ turn, "on", free, mode ]
-        - [ enable, free, speech, mode ]
-
-    - command: [ disable, free, mode ]
-      action: grammar_restrict
-      parameters:
-        way: "off"
-      responses: [ ]
-      synonyms:
-        disabled: disable
-      equivalents:
-        - [ turn, "off", free, mode ]
-        - [ disable, free, speech, mode ]
-
-    - command: [ close, window ]
-      action: hotkey
-      parameters:
-        hotkey: [ alt, f4 ]
-      responses: [ "Closed it, sir", "Closed the window, sir", "Killed an application, sir" ]
-      synonyms:
-        "end": "close"
-        "kill": close
-      equivalents:
-        - [ close, the, window ]
-        - [ close, an, app ]
-        - [ close, the, app ]
-
-    - command: [ repeat ]
-      action: repeat
+    - command: [ ]
+      action:
       parameters: { }
       responses: [ ]
       synonyms: { }
-      equivalents:
-        - [ do, it, again ]
+      equivalents: [ ]
 
-    - command: [ scroll, down ]
-      action: scroll
-      parameters:
-        way: down
-      responses: [ "Scrolled down, sir", "Page down, sir" ]
-      synonyms: { }
-      equivalents:
-        - [ page, down ]
+  en:
+    - command: []
+      action:
+      parameters: {}
+      responses: []
+      synonyms: {}
+      equivalents: []
 
-    - command: [ scroll, up ]
-      action: scroll
-      parameters:
-        way: up
+    - command: [ ]
+      action:
+      parameters: { }
       responses: [ ]
       synonyms: { }
-      equivalents:
-        - [ page, up ]
-
+      equivalents: [ ]
 
 commands-repeat:
   ru:
-    - command: [открой, ]
-      action: subprocess
-      parameter: command
-      links:
-        обсидиан: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=obsidian.sh", "--file-forwarding", "md.obsidian.Obsidian", "@@u", "%U", "@@", "/dev/null 2>&1" ]
-        телеграм: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=telegram-desktop", "--file-forwarding", "org.telegram.desktop", "@@u", "%u", "@@", "/dev/null 2>&1" ]
-        терминал: [ "kitty" ]
-        среду разработки: [ "bash", "/home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh" ]
-        запись экрана: [ "obs" ]
-        игры: [ "steam" ]
-        ворд: [ "libreoffice", "--writer" ]
-        простое сообщество: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=com.discordapp.Discord", "com.discordapp.Discord", "/dev/null 2>&1" ]
-        центр приложений: [ "gnome-software" ]
-        браузер: [ "xdg-open", "https://" ]
-        документы: [ xdg-open, "/home/ilyamiro/Документы" ]
-        музыку: [ xdg-open, "/home/ilyamiro/Музыка" ]
-        загрузки: [ xdg-open, "/home/ilyamiro/Загрузки" ]
-        видео: [ xdg-open, "/home/ilyamiro/Видео" ]
-        изображения: [ xdg-open, "/home/ilyamiro/Изображения" ]
-        блокнот: [ gedit ]
+    - command: []
+      action:
+      parameter:
+      links: {}
       synonyms: {}
 
-    - command: [ "закрой" ]
-      action: "subprocess"
-      parameter: "command"
-      links:
-        обсидиан: [ "sudo", "killall", "obsidian" ]
-        телеграм: [ "sudo", "killall", "telegram-desktop" ]
-        терминал: [ "sudo", "killall", "kitty" ]
-        запись экрана: [ "sudo", "killall", "obs" ]
-        игры: [ "sudo", "killall", "steam" ]
-        простое сообщество: [ "sudo", "killall", "Discord" ]
-        центр приложений: [ "sudo", "killall", "gnome-software" ]
-        прокси: [ "sudo", "killall", "openvpn" ]
-        браузер: [ "sudo", "killall", "firefox" ]
+    - command: [ ]
+      action:
+      parameter:
+      links: { }
       synonyms: { }
-
   en:
-    - command: [open, ]
-      action: subprocess
-      parameter: command
-      links:
-        obsidian: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=obsidian.sh", "--file-forwarding", "md.obsidian.Obsidian", "@@u", "%U", "@@", "/dev/null 2>&1" ]
-        telegram: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=telegram-desktop", "--file-forwarding", "org.telegram.desktop", "@@u", "%u", "@@", "/dev/null 2>&1" ]
-        terminal: [ "kitty" ]
-        code editor: [ "bash", "/home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh" ]
-        screen recorder: [ "obs" ]
-        steam: [ "steam" ]
-        libra office: [ "libreoffice", "--writer" ]
-        discord: [ "/usr/bin/flatpak", "run", "--branch=stable", "--arch=x86_64", "--command=com.discordapp.Discord", "com.discordapp.Discord", "/dev/null 2>&1" ]
-        software center: [ "gnome-software" ]
-        browser: [ "xdg-open", "https://" ]
-        documents: [ xdg-open, "/home/ilyamiro/Документы" ]
-        music: [ xdg-open, "/home/ilyamiro/Музыка" ]
-        downloads: [ xdg-open, "/home/ilyamiro/Загрузки" ]
-        video: [ xdg-open, "/home/ilyamiro/Видео" ]
-        pictures: [ xdg-open, "/home/ilyamiro/Изображения" ]
-        notes: [gedit]
-      synonyms:
-        console: terminal
-        downloads: download
-        videos: video
-        images: pictures
-        picture: pictures
-        image: pictures
+    - command: []
+      action:
+      parameter:
+      links: {}
+      synonyms: {}
 
-    - command: [ "close" ]
-      action: "subprocess"
-      parameter: "command"
-      links:
-        obsidian: [ "sudo", "killall", "obsidian" ]
-        telegram: [ "sudo", "killall", "telegram-desktop" ]
-        terminal: [ "sudo", "killall", "kitty" ]
-        screen recorder: [ "sudo", "killall", "obs" ]
-        steam: [ "sudo", "killall", "steam" ]
-        discord: [ "sudo", "killall", "Discord" ]
-        software center: [ "sudo", "killall", "gnome-software" ]
-        proxy: [ "sudo", "killall", "openvpn" ]
-        browser: [ "sudo", "killall", "firefox" ]
+    - command: [ ]
+      action:
+      parameter:
+      links: { }
       synonyms: { }
-

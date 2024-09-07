@@ -149,3 +149,14 @@ class Tree:
                 return None  # Command not found
 
         return node.action, node.parameters, node.synthesize
+
+    def find_children(self, word):
+        expanded_word = self.expand_synonyms(word)
+
+        children = []
+
+        node = self.root
+        if expanded_word in node.children:
+            for child in node.children[expanded_word]:
+                children.append(child)
+

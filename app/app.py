@@ -129,6 +129,28 @@ class App:
                     self.gpt_history = self.gpt_history[2:]
                 ttsi.say(answer)
 
+    def multihandle(self, request):
+        list_of_commands, current_command = [], []
+        split_request = request.split()
+        for word in split_request:
+            if word in self.tree.first_words:
+                if current_command:
+                    list_of_commands.append(current_command)
+                if word in self.config["command-spec"][f"no-multi-first-words"][self.lang]:
+                    current_command = split_request[split_request.index(word):]
+                    list_of_commands.append(current_command)
+                    current_command = []
+                    break
+                current_command = [word]
+            else:
+                if current_command and word != self.config["command-spec"][f"connect-word"][self.lang]:
+                    current_command.append(word)
+                elif not current_command and word != self.config["command-spec"][f"connect-word"][self.lang]:
+                    pass
+        if current_command:
+            list_of_commands.append(current_command)
+        return list_of_commands
+
     def grammar_recognition_restricted_create(self):
         """
         Creates a file of words that are used in commands
@@ -163,7 +185,7 @@ class App:
         """
         while True:
             if self.config["text-mode"]:
-                self.handle(input("Phrase: "))
+                self.handle(input("Input: "))
             else:
                 for word in self.stt.listen():
                     if self.trigger_timed_needed:
@@ -260,24 +282,4 @@ class App:
         if name in dir(self):
             return self
 
-    def multihandle(self, request):
-        list_of_commands, current_command = [], []
-        split_request = request.split()
-        for word in split_request:
-            if word in self.tree.first_words:
-                if current_command:
-                    list_of_commands.append(current_command)
-                if word in self.config["command-spec"][f"no-multi-first-words"][self.lang]:
-                    current_command = split_request[split_request.index(word):]
-                    list_of_commands.append(current_command)
-                    current_command = []
-                    break
-                current_command = [word]
-            else:
-                if current_command and word != self.config["command-spec"][f"connect-word"][self.lang]:
-                    current_command.append(word)
-                elif not current_command and word != self.config["command-spec"][f"connect-word"][self.lang]:
-                    pass
-        if current_command:
-            list_of_commands.append(current_command)
-        return list_of_commands
+

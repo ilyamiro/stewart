@@ -11,7 +11,6 @@
 [//]: # (Stable: [v1.2.0]&#40;https://github.com/ilyamiro/Stewart/releases/tag/v1.0.0-alpha&#41; / )
 <a id="link-wiki" href="https://github.com/ilyamiro/Stewart/wiki">📘Explore the wiki</a>
 <br>
----
 
 **[<kbd> <br> About <br> </kbd>][About]** 
 **[<kbd> <br> Roadmap <br> </kbd>][Roadmap]** 
