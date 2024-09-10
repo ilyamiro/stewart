@@ -41,9 +41,13 @@ class App:
             self.lang = self.config["lang"]["prefix"]
             log.info("Configuration file loaded")
 
-            playsound(f"{os.path.dirname(DIR)}/data/sounds/startup.wav", block=False)
+            if self.config["startup"]["sound-enable"]:
+                playsound(self.config["startup"]["sound-path"], block=False)
+
             func(self, *args, **kwargs)
-            ttsi.say(parse_config_answers(self.config[f"answers"][self.lang]["startup"]))
+
+            if self.config["startup"]["voice-enable"]:
+                ttsi.say(parse_config_answers(self.config[f"startup"]["answers"][self.lang]))
 
         return wrapper
 
@@ -113,7 +117,12 @@ class App:
             elif len(total) > 1:
                 # if there are multiple commands, we can't play multiple audios at once as they would overlap.
                 # so, we just play a confirmative phrase, like "Doing that now, sir" or else.
-                ttsi.say(parse_config_answers(self.config[f"answers"][self.lang]["multi"]))
+                if all(command not in self.tree.inside_tts_list for command in total):
+                    # if one of the commands itself produces some sound,
+                    # then it could interfere with the confirmation phrase,
+                    # so we check for this flag "inside_tts" to decide whether
+                    # it would interfere and whether the multi confirmation sound should be played
+                    ttsi.say(parse_config_answers(self.config[f"answers"][self.lang]["multi"]))
                 # processing each command separately
                 for command in total:
                     self.process_command(command, request, multi=True)
@@ -150,36 +159,28 @@ class App:
                 # it means the new command should start.
             else:
                 # if a current command is not finished:
-                if current_command and word != self.config["command-spec"][f"connect-word"][self.lang]:
-                    # if a command is not a first word, and it is not a connecting word like "and"
-                    # than it could be both a "noise" word, that does not appear in any of the commands,
-                    # and a part of the command;
-                    last_node = current_command[
-                        -1]  # get the last word of a current command to find it's possible continuations
-                    left_request_split = split_request[split_request.index(
-                        last_node) + 1:]  # getting the remaining part of the request
-                    children_unfiltered = self.tree.find_children(
-                        last_node)  # finding all the children to the last word of the current command
-                    # TODO: if a root node is found, then the function returns a dict rather than a list -> a temporary workaround
-                    children = children_unfiltered if isinstance(children_unfiltered, list) else list(
-                        children_unfiltered.keys())
-                    for child in children:  # iterate over all the children of a last command word to find continuations
-                        if child in left_request_split:
-                            # if a child is present, and the distance between the last piece of command
-                            # and a child is not equal or greater than a max distance
-                            # set by configuration file, and if "gap" between the last part of the command
-                            # and a child does not contain any first words that would reset the command, we add this child
-                            # to a command
-                            if (split_request.index(child) - split_request.index(last_node) <= self.config["command-spec"]["max-distance-between-command-words"]+1 and
-                                    not any(word in split_request[split_request.index(last_node) + 1:split_request.index(child)] for word in self.tree.first_words)):
-                                current_command.append(child)
+                if current_command:
+                    current_command.append(word)  # add the next word
 
-                elif not current_command and word != self.config["command-spec"][f"connect-word"][self.lang]:
-                    pass
-
-        if current_command:
+        if current_command:  # add the last command as there is no next command that could end it.
             list_of_commands.append(current_command)
+
         return list_of_commands
+
+    def process_command(self, command, full, multi: bool = False):
+        # process the input command and find the corresponding parameters
+        result = self.tree.find_command(command)
+        if result and not all(element is None for element in result):  # if the command was found, process it
+            result = list(result)  # find_command returns a tuple which is immutable
+            result.extend([command, full])  # a list can be extended
+            if result[2] and not multi:
+                # if the command specifies an answer and only one command is being processed, use the TTS engine.
+                ttsi.say(parse_config_answers(result[2]))
+
+            with open(PARENT_DIR + f"/dev/NED/annotations-{self.lang}.txt", "a", encoding="utf-8") as file:
+                file.write(f"{' '.join(command)}\n")
+
+            self.do(result)
 
     def grammar_recognition_restricted_create(self):
         """
@@ -259,7 +260,8 @@ class App:
                 command.get("parameters", {}),
                 command.get(f"responses", {}),
                 command.get(f"synonyms", {}),
-                equiv
+                equiv,
+                command.get("inside_tts", False)
             )
 
         for repeat in commands_repeat:
@@ -273,12 +275,15 @@ class App:
                 )
 
     def add_command(self, com: tuple, action: str, parameters: dict = None, synthesize: list = None,
-                    synonyms: dict = None, equivalents: list = None):
+                    synonyms: dict = None, equivalents: list = None, inside_tts: bool = False):
         self.tree.add_commands(
             {com: {"action": action, "parameters": parameters, "synthesize": synthesize, "synonyms": synonyms,
-                   "equivalents": equivalents}})
+                   "equivalents": equivalents, "inside_tts": inside_tts}})
 
     def history_update(self, request):
+        """
+        Update history of requests
+        """
         timestamp = datetime.now().isoformat()  # Get a timestamp
         new_event = {"timestamp": timestamp, "request": request}
 
@@ -286,16 +291,6 @@ class App:
             self.history.pop(0)
 
         self.history.append(new_event)
-
-    def process_command(self, command, full, multi: bool = False):
-        result = self.tree.find_command(command)
-
-        if not all(element is None for element in result):
-            result = list(result)
-            result.extend([command, full])
-            if result[2] and not multi:
-                ttsi.say(parse_config_answers(result[2]))
-            self.do(result)
 
     def do(self, request):
         thread = threading.Thread(target=getattr(self.find_module(request[0]), request[0]),

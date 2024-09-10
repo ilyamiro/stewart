@@ -1,6 +1,7 @@
 import threading
 import os
 import logging
+import inspect
 
 from voicesynth import Model, Synthesizer
 
@@ -39,5 +40,8 @@ class TTS:
         if self.active:
             thread = threading.Thread(target=self.synthesizer.say, kwargs={"text": text, "path": f"{DIR}/audio.wav", "prosody_rate": prosody, "module": "playsound"})
             thread.start()
+
+            # caller_frane = inspect.currentframe().f_back
+            # caller_name = caller_frane.f_code.co_name
 
             log.debug(f"TTS thread started: {text}")

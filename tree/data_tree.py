@@ -34,9 +34,12 @@ class Tree:
         Initializes a CommandTree with a root CommandNode.
         """
         self.root = CommandNode()
+
         self.recognizer_string = ""
-        self.synonym_map = {}  # Synonym mapping for words with the same meaning
         self.first_words = set()
+        self.inside_tts_list = []
+
+        self.synonym_map = {}  # Synonym mapping for words with the same meaning
 
     def add_synonym(self, synonym, canonical):
         """
@@ -73,6 +76,8 @@ class Tree:
         for command, details in commands.items():
             self.first_words.add(command[0])
             self.recognizer_string += f" {' '.join(command)}"
+            if details.get("inside_tts"):
+                self.inside_tts_list.append(command)
             synonyms = details.get("synonyms")
             if synonyms:
                 for synonim in synonyms.keys():
@@ -85,7 +90,8 @@ class Tree:
                 for equal in equal_commands:
                     self.add_commands({equal: {"action": details.get("action"),
                                                "parameters": details.get("parameters"),
-                                               "synthesize": details.get("synthesize")}})
+                                               "synthesize": details.get("synthesize"),
+                                               "inside_tts": details.get("inside_tts")}})
             expanded_command = self.expand_synonyms(command)
             for words in command:
                 if words.split()[0] != words:
@@ -169,4 +175,6 @@ class Tree:
                 children_list.extend(_find_children_recursive(child, sequence))
             return children_list
 
-        return _find_children_recursive(self.root, word)
+        children = _find_children_recursive(self.root, word)
+
+        return children if isinstance(children, list) else list(children.keys())

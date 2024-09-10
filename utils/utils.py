@@ -151,7 +151,7 @@ def get_connected_usb_devices():
     for device in device_names_output:
         if not any(spec in device for spec in defaults):
             # If no word is found, add the phrase to the filtered list
-            devices.append(device)
+            devices.append(device.replace(".", " "))
 
     return devices
 
@@ -169,4 +169,6 @@ def import_all_from_module(module_name):
     # Import all public attributes into the global namespace
     for attr in public_attributes:
         globals()[attr] = getattr(module, attr)
+
+
 

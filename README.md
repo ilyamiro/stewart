@@ -24,7 +24,9 @@
 
 ## About
 
-A desktop-based voice assistant written in python
+Lines of code: **1669**
+
+A desktop-based voice assistant build with python.
 
 - A **local** vosk STT recognition model 
 - **local voice synthesis model** based on SileroTTS with a use of self-contained library [voicesynth](https://github.com/ilyamiro/voicesynth)

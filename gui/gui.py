@@ -23,18 +23,18 @@ class GUI:
         ])
 
         self.navigation = ft.AppBar(
-            leading=ft.Image(f"{os.path.dirname(DIR)}/data/images/stewart.png"),
-            leading_width=55,
-            title=ft.Text("Stewart", size=20),
+            leading=ft.Image(f"{os.path.dirname(DIR)}/data/images/stewart_logo.png"),
+            leading_width=210,
             actions=[
                 ft.IconButton(ft.icons.HOME, on_click=self.change_view, tooltip="Home page", data="home"),
                 ft.IconButton(ft.icons.CREATE, tooltip="Create new commands", data="create"),
-                ft.IconButton(ft.icons.ACCOUNT_TREE),
+                ft.IconButton(ft.icons.ACCOUNT_TREE, tooltip="Command tree"),
                 ft.PopupMenuButton(
                     icon=ft.icons.SETTINGS,
                     items=[
-                        ft.PopupMenuItem(icon=ft.icons.MIC, text="Voice"),
-                        ft.PopupMenuItem(icon=ft.icons.APPS, text="App"),
+                        ft.PopupMenuItem(icon=ft.icons.APPS, text="Configuration"),
+                        ft.PopupMenuItem(icon=ft.icons.MIC, text="Audio"),
+                        ft.PopupMenuItem(icon=ft.icons.COMPUTER, text="App"),
                         ft.PopupMenuItem(icon=ft.icons.ADD_BOX, text="Plugins"),
                         ft.PopupMenuItem(),
                         ft.PopupMenuItem(icon=ft.icons.CODE, text="For developers"),
@@ -43,7 +43,7 @@ class GUI:
                     ]
                 )
             ],
-            toolbar_height=70
+            toolbar_height=80
 
 
         )

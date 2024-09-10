@@ -20,7 +20,12 @@ voice:
     m: en_73
     f: en_76
 startup:
-  sound: data/sounds/startup.wav
+  voice-enable: true
+  sound-enable: true
+  sound-path: $HOME/Stewart/data/sounds/startup.wav
+  answers:
+    ru: []
+    en: []
 speech:
   speech-mode-restricted: false
   restricted-add-line:
@@ -33,7 +38,6 @@ command-spec:
     ru: [ "найди", "найти", "запиши", "скажи", "ответь" ]
     en: [ "find", "write", "answer"]
   usb-default: ["linux foundation", "webcam", "network", "finger"]
-  max-distance-between-command-words: 3
   connect-word:
     ru: "и"
     en: "and"
