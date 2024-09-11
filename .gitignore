@@ -1,10 +1,20 @@
+# .gitignore file
+
+# Ignore log files
 logs/app_log
+
+# Ignore IDE and python specific files and directories
 .idea
 **/__pycache__
+venv
+
+# Ignore specific audio output files
 audio/output/audio.wav
+audio/output/models/*
+
+# local files
 private_config.yaml
 test.py
-CHANGELOG.md
-audio/output/models/*
-venv
+commit-msg.txt
+
 

@@ -177,8 +177,8 @@ class App:
                 # if the command specifies an answer and only one command is being processed, use the TTS engine.
                 ttsi.say(parse_config_answers(result[2]))
 
-            with open(PARENT_DIR + f"/dev/NED/annotations-{self.lang}.txt", "a", encoding="utf-8") as file:
-                file.write(f"{' '.join(command)}\n")
+            # with open(PARENT_DIR + f"/dev/NED/annotations-{self.lang}.txt", "a", encoding="utf-8") as file:
+            #     file.write(f"{' '.join(command)}\n")
 
             self.do(result)
 
