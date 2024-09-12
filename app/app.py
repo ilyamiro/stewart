@@ -12,6 +12,8 @@ from datetime import datetime
 from playsound import playsound
 import g4f.Provider
 from g4f.client import Client as GPTClient
+from sentence_transformers import SentenceTransformer
+import numpy as np
 
 # Local imports
 from audio.input import STT
@@ -89,6 +91,15 @@ class App:
         self.recognition_thread = None
 
         log.debug("Speech to text instance initialized")
+
+        # if self.config["ssm"]["enable"]:
+        #     self.ssm = SentenceTransformer("ssm")
+        #     self.ssm_dict = {}
+        #
+        #     for command in self.tree.ssm_list:
+        #         self.ssm_dict[command] = self.ssm.encode([command])
+        #
+        #     log.debug("Sentence transform model for similarity detection loaded from pretrained")
 
         log.debug("Finished app initialization")
 
@@ -169,6 +180,8 @@ class App:
 
     def process_command(self, command, full, multi: bool = False):
         # process the input command and find the corresponding parameters
+        if self.config["ssm"]["enable"]:
+            command = self.get_similar_command(command)
         result = self.tree.find_command(command)
         if result and not all(element is None for element in result):  # if the command was found, process it
             result = list(result)  # find_command returns a tuple which is immutable
@@ -177,38 +190,17 @@ class App:
                 # if the command specifies an answer and only one command is being processed, use the TTS engine.
                 ttsi.say(parse_config_answers(result[2]))
 
-            # with open(PARENT_DIR + f"/dev/NED/annotations-{self.lang}.txt", "a", encoding="utf-8") as file:
-            #     file.write(f"{' '.join(command)}\n")
-
             self.do(result)
 
-    def grammar_recognition_restricted_create(self):
-        """
-        Creates a file of words that are used in commands
-        This file is used for a vosk speech-to-text model to speed up the recognition speed and quality
-        """
-        with open(f"{PARENT_DIR}/data/grammar/grammar-{self.lang}.txt", "w") as file:
-            file.write('["' + " ".join(self.config['trigger'].get(f"triggers").get(self.lang)))
-            file.write(self.config["speech"].get(f"restricted-add-line").get(self.lang))
-            file.write(self.tree.recognizer_string + '"]')
+    def get_similar_command(self, command):
+        embedding = self.ssm.encode([" ".join(command)])
 
-    def grammar_restrict(self, **kwargs):
-        """
-        An action function inside an app class that enables or disables 'improved but limited' speech recognition
-        """
-        match kwargs["parameters"]["way"]:
-            case "on":
-                self.stt.create_new_recognizer()
-            case "off":
-                self.stt.recognizer = self.stt.set_grammar(
-                    f"{os.path.dirname(DIR)}/data/grammar/grammar-{self.lang}.txt",
-                    self.stt.create_new_recognizer())
+        for e in self.ssm_dict.keys():
+            similarity = float(self.ssm.similarity(embedding, self.ssm_dict[e]))
+            if similarity > self.config["ssm"]["similarity-value"]:
+                return e.split(" ")
 
-    def repeat(self, **kwargs):
-        """
-        An action function inside an app class that repeat an action performed the last time
-        """
-        self.handle(self.history[-1].get("request"))
+        return command
 
     def recognition(self):
         """
@@ -293,13 +285,18 @@ class App:
         self.history.append(new_event)
 
     def do(self, request):
+        """
+        Start the action thread
+        """
         thread = threading.Thread(target=getattr(self.find_module(request[0]), request[0]),
                                   kwargs={"parameters": request[1], "command": request[3],
                                           "request": request[4]})
         thread.start()
 
     def find_module(self, name):
-        """Find a module that has a function that corresponds to an action that has to be done"""
+        """
+        Find a module that has a function that corresponds to an action that has to be done
+        """
         for module in self.modules:
             members = inspect.getmembers(module)
             functions = [member[0] for member in members if inspect.isfunction(member[1])]
@@ -307,3 +304,34 @@ class App:
                 return module
         if name in dir(self):
             return self
+
+    # below methods are actions that need access to the main app instance
+    # <!--------------------------------------------------------------------!>
+
+    def grammar_recognition_restricted_create(self):
+        """
+        Creates a file of words that are used in commands
+        This file is used for a vosk speech-to-text model to speed up the recognition speed and quality
+        """
+        with open(f"{PARENT_DIR}/data/grammar/grammar-{self.lang}.txt", "w") as file:
+            file.write('["' + " ".join(self.config['trigger'].get(f"triggers").get(self.lang)))
+            file.write(self.config["speech"].get(f"restricted-add-line").get(self.lang))
+            file.write(self.tree.recognizer_string + '"]')
+
+    def grammar_restrict(self, **kwargs):
+        """
+        An action function inside an app class that enables or disables 'improved but limited' speech recognition
+        """
+        match kwargs["parameters"]["way"]:
+            case "on":
+                self.stt.create_new_recognizer()
+            case "off":
+                self.stt.recognizer = self.stt.set_grammar(
+                    f"{os.path.dirname(DIR)}/data/grammar/grammar-{self.lang}.txt",
+                    self.stt.create_new_recognizer())
+
+    def repeat(self, **kwargs):
+        """
+        An action function inside an app class that repeat an action performed the last time
+        """
+        self.handle(self.history[-1].get("request"))

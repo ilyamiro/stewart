@@ -37,6 +37,7 @@ class Tree:
 
         self.recognizer_string = ""
         self.first_words = set()
+        # self.ssm_list = []
         self.inside_tts_list = []
 
         self.synonym_map = {}  # Synonym mapping for words with the same meaning
@@ -74,6 +75,7 @@ class Tree:
         - commands: A dictionary where keys are command parts (as tuples) and values are command details.
         """
         for command, details in commands.items():
+            # self.ssm_list.append(" ".join(command))
             self.first_words.add(command[0])
             self.recognizer_string += f" {' '.join(command)}"
             if details.get("inside_tts"):

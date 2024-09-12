@@ -115,7 +115,10 @@ def gpt_request(query, messages, client, provider, model=g4f.models.default):
     ).choices[0].message.content
 
 
-def parse_and_replace_config(string, module):
+def parse_and_replace_config(string, module=None):
+    if not module:
+        module = import_module(f"utils.{config.get('lang').get('prefix')}.text")
+
     pattern = re.compile(r"\[(.*?)]")
 
     matches = pattern.findall(string)
@@ -130,7 +133,7 @@ def parse_and_replace_config(string, module):
 
 
 def parse_config_answers(answers):
-    return parse_and_replace_config(random.choice(answers), import_module(f"utils.text.{config.get('lang').get('prefix')}"))
+    return parse_and_replace_config(random.choice(answers))
 
 
 def get_connected_usb_devices():
@@ -181,6 +184,3 @@ def extract_number(input_string):
             return tuple(map(int, matches))
     else:
         return None
-
-
-

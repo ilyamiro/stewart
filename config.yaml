@@ -2,6 +2,8 @@ lang:
   prefix: en
   name: english
 text-mode: off # experimental
+call:
+  name: sir
 max-history-length: 4
 trigger:
   triggers:
@@ -19,6 +21,10 @@ voice:
     model: v3_en
     m: en_73
     f: en_76
+include:
+  ssm:
+    enable: false
+    similarity-value: 0.94
 startup:
   voice-enable: true
   sound-enable: true
