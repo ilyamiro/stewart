@@ -15,6 +15,5 @@ audio/output/models/*
 # local files
 private_config.yaml
 test.py
-commit-msg.txt
-
-
+commit.txt
+include
