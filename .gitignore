@@ -18,6 +18,5 @@ test.py
 commit.txt
 include
 data/grammar/*
-post_commit.py
-post_commit.session
+scripts/py/post_commit.session
 post_commit.session-journal

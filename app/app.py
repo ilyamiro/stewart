@@ -178,8 +178,8 @@ class App:
 
     def process_command(self, command, full, multi: bool = False):
         # process the input command and find the corresponding parameters
-        if self.config["ssm"]["enable"]:
-            command = self.get_similar_command(command)
+        # if self.config["ssm"]["enable"]:
+        #     command = self.get_similar_command(command)
         result = self.tree.find_command(command)
         if result and not all(element is None for element in result):  # if the command was found, process it
             result = list(result)  # find_command returns a tuple which is immutable
