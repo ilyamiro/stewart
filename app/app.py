@@ -12,8 +12,6 @@ from datetime import datetime
 from playsound import playsound
 import g4f.Provider
 from g4f.client import Client as GPTClient
-from sentence_transformers import SentenceTransformer
-import numpy as np
 
 # Local imports
 from audio.input import STT
@@ -25,7 +23,7 @@ from data.constants import CONFIG_FILE
 DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(DIR)
 
-log = logging.getLogger("App")
+log = logging.getLogger("app")
 
 
 class App:

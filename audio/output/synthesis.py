@@ -20,7 +20,7 @@ SEX = config["voice"]["sex"]
 SPEAKER = config["voice"][LANG][SEX]
 MODEL = config["voice"][LANG]["model"]
 
-log = logging.getLogger("TTS")
+log = logging.getLogger("tts")
 
 
 class TTS:

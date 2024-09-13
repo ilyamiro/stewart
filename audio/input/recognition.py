@@ -9,7 +9,7 @@ import pyaudio
 # file directory
 DIR = os.path.dirname(os.path.abspath(__file__))
 
-log = logging.getLogger("STT")
+log = logging.getLogger("stt")
 
 
 class STT:

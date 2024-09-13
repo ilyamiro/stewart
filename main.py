@@ -10,9 +10,10 @@ from utils import system_setup
 from app import App
 # from gui import main
 
-log = logging.getLogger("execute file")
+log = logging.getLogger("main")
 
-if __name__ == "__main__":
+
+def main():
     # noinspection PyBroadException
     try:
         system_setup()
@@ -20,3 +21,7 @@ if __name__ == "__main__":
         app.start()
     except Exception as e:
         log.debug(f"App loop ended with the following error: {e}: \n{traceback.format_exc()} ")
+
+
+if __name__ == "__main__":
+    main()
