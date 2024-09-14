@@ -7,6 +7,7 @@ import os
 import json
 import inspect
 from datetime import datetime
+from pathlib import Path
 
 # Third-party imports
 from playsound import playsound
@@ -18,10 +19,8 @@ from audio.input import STT
 from audio.output import ttsi
 from utils import *
 from tree import Tree
-from data.constants import CONFIG_FILE
+from data.constants import CONFIG_FILE, PROJECT_FOLDER
 
-DIR = os.path.dirname(os.path.abspath(__file__))
-PARENT_DIR = os.path.dirname(DIR)
 
 log = logging.getLogger("app")
 
@@ -84,7 +83,7 @@ class App:
 
         # restricting recognition by adding grammar made of commands
         self.grammar_recognition_restricted_create()
-        self.stt.recognizer = self.stt.set_grammar(f"{os.path.dirname(DIR)}/data/grammar/grammar-{self.lang}.txt",
+        self.stt.recognizer = self.stt.set_grammar(f"{os.path.dirname(PROJECT_FOLDER)}/data/grammar/grammar-{self.lang}.txt",
                                                    self.stt.create_new_recognizer())
         self.recognition_thread = None
 
@@ -135,16 +134,19 @@ class App:
                 # processing each command separately
                 for command in total:
                     self.process_command(command, request, multi=True)
-            elif not total and self.config["gpt"]["state"]:
+            elif not total:
                 # If something was said by user after the trigger word, but no commands were recognized,
-                # then this phrase is being sent to gpt model for answering
-                answer = gpt_request(request, [*self.gpt_start, *self.gpt_history], self.gpt_client, self.gpt_provider,
-                                     self.gpt_model)
-                # update the gpt history for making long conversations possible
-                self.gpt_history.extend([{"role": "user", "content": request}, {"role": "system", "content": answer}])
-                if len(self.gpt_history) >= 10:
-                    self.gpt_history = self.gpt_history[2:]
-                ttsi.say(answer)
+                # then this phrase is being sent to gpt model for answering if it's enabled
+                if self.config["gpt"]["state"]:
+                    answer = gpt_request(request, [*self.gpt_start, *self.gpt_history], self.gpt_client, self.gpt_provider,
+                                         self.gpt_model)
+                    # update the gpt history for making long conversations possible
+                    self.gpt_history.extend([{"role": "user", "content": request}, {"role": "system", "content": answer}])
+                    if len(self.gpt_history) >= 10:
+                        self.gpt_history = self.gpt_history[2:]
+                    ttsi.say(answer)
+                else:
+                    ttsi.say(parse_config_answers(self.config[f"answers"][self.lang]["default"]))
 
     def multihandle(self, request):
         list_of_commands, current_command = [], []
@@ -190,15 +192,15 @@ class App:
 
             self.do(result)
 
-    def get_similar_command(self, command):
-        embedding = self.ssm.encode([" ".join(command)])
-
-        for e in self.ssm_dict.keys():
-            similarity = float(self.ssm.similarity(embedding, self.ssm_dict[e]))
-            if similarity > self.config["ssm"]["similarity-value"]:
-                return e.split(" ")
-
-        return command
+    # def get_similar_command(self, command):
+    #     embedding = self.ssm.encode([" ".join(command)])
+    #
+    #     for e in self.ssm_dict.keys():
+    #         similarity = float(self.ssm.similarity(embedding, self.ssm_dict[e]))
+    #         if similarity > self.config["ssm"]["similarity-value"]:
+    #             return e.split(" ")
+    #
+    #     return command
 
     def recognition(self):
         """
@@ -303,18 +305,18 @@ class App:
         if name in dir(self):
             return self
 
-    # below methods are actions that need access to the main app instance
-    # <!--------------------------------------------------------------------!>
-
     def grammar_recognition_restricted_create(self):
         """
         Creates a file of words that are used in commands
         This file is used for a vosk speech-to-text model to speed up the recognition speed and quality
         """
-        with open(f"{PARENT_DIR}/data/grammar/grammar-{self.lang}.txt", "w") as file:
+        with open(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt", "w") as file:
             file.write('["' + " ".join(self.config['trigger'].get(f"triggers").get(self.lang)))
             file.write(self.config["speech"].get(f"restricted-add-line").get(self.lang))
             file.write(self.tree.recognizer_string + '"]')
+
+    # below methods are actions that need access to the main app instance
+    # <!--------------------------------------------------------------------!>
 
     def grammar_restrict(self, **kwargs):
         """
@@ -325,7 +327,7 @@ class App:
                 self.stt.create_new_recognizer()
             case "off":
                 self.stt.recognizer = self.stt.set_grammar(
-                    f"{os.path.dirname(DIR)}/data/grammar/grammar-{self.lang}.txt",
+                    f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
                     self.stt.create_new_recognizer())
 
     def repeat(self, **kwargs):

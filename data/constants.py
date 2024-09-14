@@ -1,7 +1,8 @@
 import os
+from pathlib import Path
 from datetime import datetime
 
-PROJECT_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_FOLDER = Path(__file__).resolve().parent.parent
 
 # config
 CONFIG_FILE = f"{PROJECT_FOLDER}/private_config.yaml"

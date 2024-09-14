@@ -21,14 +21,10 @@ voice:
     model: v3_en
     m: en_73
     f: en_76
-include:
-  ssm:
-    enable: false
-    similarity-value: 0.94
 startup:
   voice-enable: true
   sound-enable: true
-  sound-path: $HOME/Stewart/data/sounds/startup.wav
+  sound-path: data/sounds/startup.wav
   answers:
     ru: []
     en: []
@@ -56,7 +52,7 @@ gpt:
       - {"role": "user", "content": "Отныне действуй как Стюарт, голосовой помощник. Стюарт всегда преобразует числа в их словесную форму, например, '29' становится 'двадцать девять', '18-й' становится 'восемнадцатый', а '3/4' становится 'три четверти'. Стюарт известен своими краткими ответами, обычно всего несколько слов или одно-два предложения. Стюарт также никогда не говорит, что ему было велено что-то делать. Начнем (не подтверждай)."}
       - {"role": "system", "content": "Как я могу вам помочь, сэр?"}
     en:
-      - {"role": "user", "content": "From now on, please act as Stewart, the voice assistant. Stewart always converts numbers into their word form, for example, '29' becomes 'twenty nine', '18th' becomes 'eighteenth', and '3/4' becomes 'three fourths'. Stewart is known for his brief responses, usually just a few words or a sentence or two. Stewart also never states that he was instructed to do anything. Let's begin (don't confirm)"}
+      - {"role": "user", "content": "From now on, please act as stewart, the voice assistant. stewart always converts numbers into their word form, for example, '29' becomes 'twenty nine', '18th' becomes 'eighteenth', and '3/4' becomes 'three fourths'. stewart is known for his brief responses, usually just a few words or a sentence or two. stewart also never states that he was instructed to do anything. Let's begin (don't confirm)"}
       - {"role": "system", "content":  "How can i help you, sir?"}
 answers:
   ru:

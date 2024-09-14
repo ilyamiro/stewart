@@ -2,12 +2,12 @@ import logging
 import os
 import sys
 import json
+from pathlib import Path
+from data.constants import PROJECT_FOLDER
+
 
 from vosk import KaldiRecognizer, Model
 import pyaudio
-
-# file directory
-DIR = os.path.dirname(os.path.abspath(__file__))
 
 log = logging.getLogger("stt")
 
@@ -21,7 +21,7 @@ class STT:
                                                  frames_per_buffer=8000)
         log.debug("PyAudio stream instance successfully opened for input")
 
-        self.model = Model(f"{DIR}/models/vosk-model-{size}-{lang}")
+        self.model = Model(f"{PROJECT_FOLDER}/audio/input/models/vosk-model-{size}-{lang}")
         self.recognizer = KaldiRecognizer(self.model, 16000)
 
         log.debug("Vosk recognition system initialized")

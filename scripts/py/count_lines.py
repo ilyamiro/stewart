@@ -1,15 +1,12 @@
 """
-A script that counts a number of lines of code in a project
+A script that counts the number of lines of code in a project
 """
 
 import os
-import logging
 import re
 from pathlib import Path
 
 DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-logging.debug(f"Running post-commit script: count_lines.py")
 
 
 def count_lines_in_python_files(directory, skip_files=None, skip_dirs=None, add_files=None):
@@ -45,9 +42,8 @@ with open(f"{DIR}/README.md", "r", encoding="utf-8") as f:
     readme = f.read()
 
 pattern = r'Lines of code: \*\*\d+\*\*'
-new_content = re.sub(pattern, f'Lines of code: **{count_lines_in_python_files(DIR, skip_files_list, skip_dirs_list, add_files_list)}**', readme)
+lines_of_code = count_lines_in_python_files(DIR, skip_files_list, skip_dirs_list, add_files_list)
+new_content = re.sub(pattern, f'Lines of code: **{lines_of_code}**', readme)
 
 with open(f"{DIR}/README.md", "w", encoding="utf-8") as f:
     f.write(new_content)
-
-logging.debug(f"Finished post-commit script: count_lines.py")

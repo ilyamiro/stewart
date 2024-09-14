@@ -24,7 +24,7 @@
 
 ## About
 
-Lines of code: **1902** 
+Lines of code: **1915** 
 
 A desktop-based voice assistant build with python.
 
@@ -39,11 +39,10 @@ A desktop-based voice assistant build with python.
 
 - [ ] Wake word detection
 - [ ] Speaker diarization and recognition for vosk speech-to-text
-- [ ] GUI written with **flet** (Flutter port for python)
+- [ ] GUI written with **flet** (Flutter port for python) / **PyQt5** (PySide6)
 - [ ] Improve extensibility (Plugin support) and create API
 - [ ] Switch to C++
   - [ ] Write command tree search system in C++
-  - [ ] Migrate voice recognition to C++ 
 - [ ] Wiki
   - [ ] Command editor
   - [ ] Reference
@@ -52,7 +51,7 @@ A desktop-based voice assistant build with python.
 ## Installation
 
 > [!IMPORTANT]
-> Windows is not supported at the moment
+> Windows 10/11 is not supported at the moment
 
 1. Clone repository and install dependencies:
   ```commandline
@@ -65,7 +64,6 @@ A desktop-based voice assistant build with python.
 ```commandline
 python3.11 main.py
 ```
-
 
 ### License
 

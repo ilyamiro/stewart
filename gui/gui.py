@@ -1,13 +1,13 @@
 import logging
 import os
+from pathlib import Path
 
 import flet as ft
 
 from app import App
+from data.constants import PROJECT_FOLDER
 
 logger = logging.getLogger("GUI")
-
-DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class GUI:
@@ -23,7 +23,7 @@ class GUI:
         ])
 
         self.navigation = ft.AppBar(
-            leading=ft.Image(f"{os.path.dirname(DIR)}/data/images/stewart_logo.png"),
+            leading=ft.Image(f"{PROJECT_FOLDER}/data/images/stewart_logo.png"),
             leading_width=210,
             actions=[
                 ft.IconButton(ft.icons.HOME, on_click=self.change_view, tooltip="Home page", data="home"),
@@ -45,13 +45,12 @@ class GUI:
             ],
             toolbar_height=80
 
-
         )
 
     def start(self, page: ft.Page):
         # initializing a page instance
         self.page = page
-        self.page.title = "Stewart"
+        self.page.title = "stewart"
 
         # setting an unresizable window
         self.page.window.width = 1024

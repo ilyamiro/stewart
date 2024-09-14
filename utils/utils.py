@@ -8,11 +8,12 @@ import yaml
 import re
 import requests
 from importlib import import_module
+from pathlib import Path
 
 from num2words import num2words
 import g4f
 
-from data.constants import CONFIG_FILE
+from data.constants import CONFIG_FILE, PROJECT_FOLDER
 
 log = logging.getLogger("utils")
 
@@ -22,8 +23,6 @@ def yaml_load(path: str):
         with open(path) as file:
             return yaml.safe_load(file)
 
-
-DIR = os.path.dirname(os.path.abspath(__file__))
 
 config = yaml_load(CONFIG_FILE)
 
