@@ -6,7 +6,7 @@ import os
 import re
 from pathlib import Path
 
-DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_FOLDER = Path(__file__).resolve().parent.parent.parent
 
 
 def count_lines_in_python_files(directory, skip_files=None, skip_dirs=None, add_files=None):
@@ -38,12 +38,12 @@ skip_files_list = ['test.py']
 add_files_list = ["README.md", "config.yaml", "requirements.txt"]
 skip_dirs_list = ['venv', 'models',  "__pycache__", ".git", ".idea", "app_log", "sounds", "images", "grammar"]
 
-with open(f"{DIR}/README.md", "r", encoding="utf-8") as f:
+with open(f"{PROJECT_FOLDER}/README.md", "r", encoding="utf-8") as f:
     readme = f.read()
 
 pattern = r'Lines of code: \*\*\d+\*\*'
-lines_of_code = count_lines_in_python_files(DIR, skip_files_list, skip_dirs_list, add_files_list)
+lines_of_code = count_lines_in_python_files(PROJECT_FOLDER, skip_files_list, skip_dirs_list, add_files_list)
 new_content = re.sub(pattern, f'Lines of code: **{lines_of_code}**', readme)
 
-with open(f"{DIR}/README.md", "w", encoding="utf-8") as f:
+with open(f"{PROJECT_FOLDER}/README.md", "w", encoding="utf-8") as f:
     f.write(new_content)

@@ -83,7 +83,7 @@ class App:
 
         # restricting recognition by adding grammar made of commands
         self.grammar_recognition_restricted_create()
-        self.stt.recognizer = self.stt.set_grammar(f"{os.path.dirname(PROJECT_FOLDER)}/data/grammar/grammar-{self.lang}.txt",
+        self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
                                                    self.stt.create_new_recognizer())
         self.recognition_thread = None
 
