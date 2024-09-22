@@ -192,16 +192,6 @@ class App:
 
             self.do(result)
 
-    # def get_similar_command(self, command):
-    #     embedding = self.ssm.encode([" ".join(command)])
-    #
-    #     for e in self.ssm_dict.keys():
-    #         similarity = float(self.ssm.similarity(embedding, self.ssm_dict[e]))
-    #         if similarity > self.config["ssm"]["similarity-value"]:
-    #             return e.split(" ")
-    #
-    #     return command
-
     def recognition(self):
         """
         Voice recognition
@@ -222,6 +212,9 @@ class App:
                         self.handle(word)
 
     def remove_trigger_word(self, request):
+        """
+        Removes trigger words from the input
+        """
         for trigger in self.config["trigger"][f"triggers"][self.lang]:
             if trigger in request:
                 request = " ".join(request.split(trigger)[1:])[1:]
@@ -229,7 +222,7 @@ class App:
         return "blank"
 
     def trigger_counter(self, times):
-        trigger_word_countdown_thread = threading.Timer(times, self.trigger_change)
+        trigger_word_countdown_thread = threading.Timer(times, self.trigger_timed_needed)
         trigger_word_countdown_thread.start()
         log.info("Trigger countdown started")
 

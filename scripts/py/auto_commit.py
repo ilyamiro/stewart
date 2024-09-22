@@ -46,7 +46,7 @@ change_lines = raw_changes.strip().split("\n")
 formatted_changes = "\n".join([f"• {line.strip()}" for line in change_lines if line.strip()])
 
 # Apply character replacement if needed (optional step)
-COMMIT_CHANGES = replace_repeated_chars(replace_repeated_chars(formatted_changes, "+"), "-")
+COMMIT_CHANGES = replace_repeated_chars(replace_repeated_chars(replace_repeated_chars(formatted_changes, "+"), "-"), " ")
 
 
 TELEGRAM_MSG = f"""

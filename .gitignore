@@ -20,3 +20,5 @@ include
 data/grammar/*
 scripts/py/post_commit.session
 post_commit.session-journal
+dev/voice activity.py
+api

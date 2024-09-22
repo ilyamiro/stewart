@@ -1,5 +1,7 @@
 import logging
 
+from api.commands import TreeAPI
+
 
 class CommandNode:
     """
@@ -24,12 +26,13 @@ class CommandNode:
         self.equivalents = equivalents
 
 
-class Tree:
+class Tree(TreeAPI):
     """
     Represents a trie structure for storing and retrieving voice assistant commands.
     """
 
     def __init__(self):
+        super().__init__()
         """
         Initializes a CommandTree with a root CommandNode.
         """
@@ -39,18 +42,6 @@ class Tree:
         self.first_words = set()
         # self.ssm_list = []
         self.inside_tts_list = []
-
-        self.synonym_map = {}  # Synonym mapping for words with the same meaning
-
-    def add_synonym(self, synonym, canonical):
-        """
-        Adds a synonym to the synonym map.
-
-        Parameters:
-        - synonym: The synonym word.
-        - canonical: The canonical form of the word.
-        """
-        self.synonym_map[synonym] = canonical
 
     def expand_synonyms(self, words):
         """
