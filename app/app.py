@@ -89,15 +89,6 @@ class App:
 
         log.debug("Speech to text instance initialized")
 
-        # if self.config["ssm"]["enable"]:
-        #     self.ssm = SentenceTransformer("ssm")
-        #     self.ssm_dict = {}
-        #
-        #     for command in self.tree.ssm_list:
-        #         self.ssm_dict[command] = self.ssm.encode([command])
-        #
-        #     log.debug("Sentence transform model for similarity detection loaded from pretrained")
-
         log.debug("Finished app initialization")
 
     def start(self):

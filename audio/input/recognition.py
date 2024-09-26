@@ -74,40 +74,44 @@ class STT:
 
         log.debug("Vosk recognition system initialized")
 
-        self.audio_chunk = b""
+        self.voice_activity = False
 
     def listen(self):
-        data = self.stream.read(4000, exception_on_overflow=False)
+        if self.voice_activity:
+            data = self.stream.read(4000, exception_on_overflow=False)
+            if self.recognizer.AcceptWaveform(data):
+                answer = json.loads(self.recognizer.Result())
+                # TODO make the cosine distance boundary a config parameter
+                if "spk" in answer:
+                    distance = cosine_dist(spk_sig, answer["spk"])
+                    if distance < 0.6 and answer["text"]:
+                        log.info(f"Text recognized: {answer['text']}, speaker distance: {distance}")
+                        yield answer["text"]
+                    elif distance > 0.6:
+                        log.info(
+                            f"Speaker distance is greater than a boundary: {distance} > 0.6. result will not be processed")
 
-        # audio_int16 = np.frombuffer(data, np.int16)
-        # audio_float32 = int2float(audio_int16)
-        # vad_confidence = self.vad_model(torch.from_numpy(audio_float32), 16000).item()
-        # if vad_confidence > 0.85:
-        #     self.audio_chunk += data
-        #     if len(self.audio_chunk) >= 4096 * 2:
-        if self.recognizer.AcceptWaveform(data):
-            answer = json.loads(self.recognizer.Result())
-            # TODO make the cosine distance boundary a config parameter
-            if "spk" in answer:
-                distance = cosine_dist(spk_sig, answer["spk"])
-                if distance < 0.65 and answer["text"]:
-                    log.info(f"Text recognized: {answer['text']}, speaker distance: {distance}")
-                    yield answer["text"]
-                elif distance > 0.45:
-                    log.info(
-                        f"Speaker distance is greater than a boundary: {distance} > 0.45. result will not be processed")
+        else:
+            data = self.stream.read(512, exception_on_overflow=False)
+            if self.voice_activity_detected(data):
+                self.count_voice_activity(15)
 
-            # self.audio_chunk = b""
-        #
-        # else:
-        #     self.audio_chunk = b""
+    def voice_activity_detected(self, data):
+        audio_int16 = np.frombuffer(data, np.int16)
+        audio_float32 = int2float(audio_int16)
+        vad_confidence = self.vad_model(torch.from_numpy(audio_float32), 16000).item()
+        if vad_confidence > 0.85:
+            log.info("Detected voice activity")
+            return True
+        return False
 
-    # def count_voice_activity(self, times):
-    #     thread = threading.Timer(times, self.voice_activity_set)
-    #     thread.start()
-    #
-    # def voice_activity_set(self):
-    #     self.voice_detected = False
+    def count_voice_activity(self, times):
+        self.voice_activity = True
+        thread = threading.Timer(times, self.voice_activity_set)
+        thread.start()
+
+    def voice_activity_set(self):
+        self.voice_activity = False
 
     def create_new_recognizer(self):
         recognizer = KaldiRecognizer(self.model, 16000)

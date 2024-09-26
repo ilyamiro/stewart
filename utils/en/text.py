@@ -32,7 +32,6 @@ def find_num_in_list(lst):
             return words2num(num)
 
 
-
 def get_part_of_day():
     hour = datetime.now().hour
     if 0 < hour <= 3:
