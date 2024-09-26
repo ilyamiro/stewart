@@ -37,6 +37,7 @@ COMMIT_DATE = subprocess.run(['git', 'log', "-1", "--pretty=%ad", "--date=iso"],
 COMMIT_AUTHOR = subprocess.run(['git', 'log', "-1", "--pretty=%an"], capture_output=True, text=True).stdout.replace("\n", "")
 
 COMMIT_LINK = f"**[Link to the commit](https://github.com/ilyamiro/stewart/commit/{COMMIT_HASH})**"
+COMMIT_BRANCH = subprocess.run(["git", "rev-parse", "--abbrev-ref" "HEAD"], capture_output=True, text=True).stdout.replace("\n", "")
 
 # Get the changes using 'git show' and process it line by line
 raw_changes = subprocess.run(['git', 'show', "--stat", "--pretty=", f"{COMMIT_HASH}"], capture_output=True, text=True).stdout
@@ -50,7 +51,9 @@ COMMIT_CHANGES = replace_repeated_chars(replace_repeated_chars(replace_repeated_
 
 
 TELEGRAM_MSG = f"""
-**New commit**  
+**New commit** 
+
+Branch: **{COMMIT_BRANCH}**
 
 Author: **{COMMIT_AUTHOR}**
 Date: **{COMMIT_DATE}**
