@@ -6,6 +6,7 @@ import logging
 from pyrogram import Client, filters
 
 PROJECT_FOLDER = Path(__file__).resolve().parent.parent.parent
+CHANNEL = "@stewart_github"
 
 
 def replace_repeated_chars(input_string, char):
@@ -24,11 +25,7 @@ def find_semantic(text):
             return "v" + file.read()
 
 
-API_ID = 12345678
-API_HASH = "<placeholder>"
-CHANNEL = "@stewart_github"
-
-app = Client("post_commit", API_ID, API_HASH)
+app = Client("post_commit")
 app.start()
 
 COMMIT_MSG = subprocess.run(['git', 'log', "-1", "--pretty=%B"], capture_output=True, text=True).stdout

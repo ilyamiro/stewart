@@ -54,6 +54,8 @@ class App:
     def __init__(self):
         log.debug("App initialization started")
 
+        self.running = True
+
         self.trigger_timed_needed = self.config["trigger"]["trigger-mode"] != "disabled"
 
         # data tree initializing
@@ -78,16 +80,18 @@ class App:
 
         log.info("Initialized GPT settings and a GPT client")
 
-        # voice recognition
-        self.stt = STT(self.lang)
+        if not self.config["text-mode"]:
+            # voice recognition
+            self.stt = STT(self.lang)
 
-        # restricting recognition by adding grammar made of commands
-        self.grammar_recognition_restricted_create()
-        self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
-                                                   self.stt.create_new_recognizer())
-        self.recognition_thread = None
+            # restricting recognition by adding grammar made of commands
+            if self.config["speech"]["speech-mode-restricted"]:
+                self.grammar_recognition_restricted_create()
+                self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
+                                                           self.stt.create_new_recognizer())
+            self.recognition_thread = None
 
-        log.debug("Speech to text instance initialized")
+            log.debug("Speech to text instance initialized")
 
         log.debug("Finished app initialization")
 
@@ -155,7 +159,7 @@ class App:
                     # then everything after that word should be counted as a command itself
                     current_command = split_request[split_request.index(word):]  # get the remaining part of the request
                     list_of_commands.append(current_command)  # add the last command to the list
-                    # current_command = []
+                    current_command = []
                     break  # terminate the cycle as there could not be any commands after this one
                 current_command = [word]  # as this is the first words appearance,
                 # it means the new command should start.
@@ -167,6 +171,8 @@ class App:
         if current_command:  # add the last command as there is no next command that could end it.
             list_of_commands.append(current_command)
 
+        log.info(f"Processed commands: {list_of_commands}")
+
         return list_of_commands
 
     def process_command(self, command, full, multi: bool = False):
@@ -174,6 +180,7 @@ class App:
         # if self.config["ssm"]["enable"]:
         #     command = self.get_similar_command(command)
         result = self.tree.find_command(command)
+        log.info(f"Execution parameters: {result}")
         if result and not all(element is None for element in result):  # if the command was found, process it
             result = list(result)  # find_command returns a tuple which is immutable
             result.extend([command, full])  # a list can be extended
@@ -187,7 +194,7 @@ class App:
         """
         Voice recognition
         """
-        while True:
+        while self.running:
             if self.config["text-mode"]:
                 self.handle(input("Input: "))
             else:
@@ -272,7 +279,9 @@ class App:
         """
         Start the action thread
         """
-        thread = threading.Thread(target=getattr(self.find_module(request[0]), request[0]),
+        module = self.find_module(request[0])
+        log.info(f"Action found in module: {module}")
+        thread = threading.Thread(target=getattr(module, request[0]),
                                   kwargs={"parameters": request[1], "command": request[3],
                                           "request": request[4]})
         thread.start()
@@ -308,7 +317,7 @@ class App:
         """
         match kwargs["parameters"]["way"]:
             case "on":
-                self.stt.create_new_recognizer()
+                self.stt.recognizer = self.stt.create_new_recognizer()
             case "off":
                 self.stt.recognizer = self.stt.set_grammar(
                     f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
@@ -319,3 +328,6 @@ class App:
         An action function inside an app class that repeat an action performed the last time
         """
         self.handle(self.history[-1].get("request"))
+
+    def stop(self, **kwargs):
+        self.running = False

@@ -14,6 +14,7 @@ trigger:
 module:
   dir: plugins
 voice:
+  activity-detection: false # EXPERIMENTAL
   sex: m
   ru:
     model: v4_ru
@@ -31,15 +32,16 @@ startup:
     ru: []
     en: []
 speech:
-  speech-mode-restricted: false
+  speech-mode-restricted: true
   restricted-add-line:
     ru: " один два три четыре пять шесть семь восемь девять десять одиннадцать двенадцать тринадцать четырнадцать пятнадцать шестнадцать семнадцать восемнадцать девятнадцать двадцать тридцать сорок пятьдесят шестьдесят семьдесят восемьдесят девяносто сто первый второй третий четвертый пятый шестой седьмой восьмой девятый десятый одиннадцатый двенадцатый тринадцатый четырнадцатый пятнадцатый шестнадцатый семнадцатый восемнадцатый девятнадцатый двадцатый тридцатый сороковой пятидесятый шестидесятый семидесятый восьмидесятый девяностый сотый минута минут минуты минута час часов часа"
     en: " one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety a hundred an the on around all over first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth thirtieth fortieth fiftieth sixtieth seventieth eightieth ninetieth hour minute minutes hours"
 command-spec:
   no-multi-first-words:
     ru: [ "найди", "найти", "запиши", "скажи", "ответь" ]
-    en: [ "find", "write", "answer"]
+    en: [ "find", "write", "answer", "play"]
   usb-default: ["linux foundation", "webcam", "network", "finger"]
+  music-download: true
   connect-word:
     ru: "и"
     en: "and"

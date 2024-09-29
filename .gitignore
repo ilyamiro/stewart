@@ -18,7 +18,8 @@ test.py
 commit.txt
 include
 data/grammar/*
+data/music/*
 scripts/py/post_commit.session
 post_commit.session-journal
 dev/voice activity.py
-api
+api/audio.py

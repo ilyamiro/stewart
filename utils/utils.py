@@ -1,24 +1,44 @@
+# Standard Library Imports
 import json
-import os.path
+import os
 import subprocess
 import logging
 import random
 import sys
-import yaml
 import re
-import requests
-from importlib import import_module
 from pathlib import Path
+from importlib import import_module
 
+# Third-Party Imports
+import requests
+import yaml
 from num2words import num2words
 import g4f
+import gi
 
+# Initialize Notification Module
+gi.require_version('Notify', '0.7')
+from gi.repository import Notify
+
+# Project Imports
 from data.constants import CONFIG_FILE, PROJECT_FOLDER
 
+# Initialize logging and notifications
 log = logging.getLogger("utils")
+Notify.init("Stewart")
 
 
+# --------------- Configuration Functions ---------------
 def yaml_load(path: str):
+    """
+    Load YAML configuration from a file.
+
+    Parameters:
+    - path (str): The path to the YAML file.
+
+    Returns:
+    dict: Parsed YAML data.
+    """
     if os.path.exists(path):
         with open(path) as file:
             return yaml.safe_load(file)
@@ -27,47 +47,30 @@ def yaml_load(path: str):
 config = yaml_load(CONFIG_FILE)
 
 
-def internet(host="https://google.com", timeout=3) -> bool:
+def json_load(path: str):
     """
-    check if there is an internet connection by trying to access the specified host.
+    Load JSON configuration from a file.
 
-    parameters:
-    - host (str): The domain to check (default is "google.com").
-    - timeout (int): The timeout for the request (default is 3 seconds).
+    Parameters:
+    - path (str): The path to the JSON file.
 
     Returns:
-    bool: True if the host is reachable, False otherwise.
+    dict: Parsed JSON data.
     """
-
-    try:
-        requests.get(host, timeout=timeout)
-        return True
-    except requests.ConnectionError as e:
-        log.info(f"Failed to establish internet connection with the host {host}: {e}")
-
-    return False
+    if os.path.exists(path):
+        with open(path) as file:
+            return json.load(file)
 
 
-def import_modules_from_directory(directory):
-    modules = []
-
-    # List all files in the directory
-    for filename in os.listdir(directory):
-        # Check if the file is a Python file
-        if filename.endswith('.py'):
-            # Remove the .py extension to get the module name
-            module_name = filename[:-3]
-            # Import the module dynamically
-            try:
-                module_path = directory.replace("/", ".") + "." + module_name
-                module = import_module(module_path)
-                modules.append(module)
-            except ImportError as e:
-                log.info(f"Failed to import {module_name}: {e}")
-    return modules
-
-
+# --------------- System & Subprocess Functions ---------------
 def run(*args, stdout: bool = False):
+    """
+    Run a system command using subprocess.
+
+    Parameters:
+    - args: Command-line arguments for subprocess.
+    - stdout (bool): If True, output is shown. Otherwise, it's suppressed.
+    """
     subprocess.run(
         args,
         stdout=subprocess.DEVNULL if not stdout else None,
@@ -76,21 +79,46 @@ def run(*args, stdout: bool = False):
 
 
 def system_setup():
+    """
+    Perform platform-specific system setup.
+    Currently configured for Linux systems to start 'jack_control'.
+    """
     if sys.platform == "linux":
         run("jack_control", "start")
 
 
-def json_load(path: str):
-    if os.path.exists(path):
-        with open(path) as file:
-            return json.load(file)
+# --------------- Internet & Network Functions ---------------
+def internet(host="https://google.com", timeout=3) -> bool:
+    """
+    Check if the system has an active internet connection by attempting to reach a host.
+
+    Parameters:
+    - host (str): The URL to test connectivity (default is Google).
+    - timeout (int): Timeout in seconds for the request.
+
+    Returns:
+    bool: True if the host is reachable, otherwise False.
+    """
+    try:
+        requests.get(host, timeout=timeout)
+        return True
+    except requests.ConnectionError as e:
+        log.info(f"Failed to establish internet connection with the host {host}: {e}")
+    return False
 
 
+# --------------- Text Processing & Utility Functions ---------------
 def numbers_to_strings(text: str):
-    # Using regular expression to find all numbers in the string
-    all_numbers = re.findall(r"[-+]?\d*\.\d+|\d+", text)
+    """
+    Convert numbers found in the given text to their word representations.
 
-    # Converting the numbers from string to their respective data types
+    Parameters:
+    - text (str): Input text containing numbers.
+
+    Returns:
+    str: Text with numbers converted to words.
+    """
+    all_numbers = re.findall(r"[-+]?\d*\.\d+|\d+", text)
     all_numbers = [int(num) if num.isdigit() else float(num) for num in all_numbers]
 
     for number in all_numbers:
@@ -101,10 +129,89 @@ def numbers_to_strings(text: str):
 
 
 def kelvin_to_c(k):
+    """
+    Convert the temperature from Kelvin to Celsius.
+
+    Parameters:
+    - k (float): Temperature in Kelvin.
+
+    Returns:
+    int: Temperature in Celsius.
+    """
     return int(k - 273.15)
 
 
+def extract_number(input_string: str):
+    """
+    Extract the first number (or numbers) found in a string.
+
+    Parameters:
+    - input_string (str): The input string.
+
+    Returns:
+    int or tuple: Extracted number(s) from the string, or None if not found.
+    """
+    matches = re.findall(r'\d+', input_string)
+    if matches:
+        if len(matches) == 1:
+            return int(matches[0])
+        return tuple(map(int, matches))
+    return None
+
+
+# --------------- Module Management Functions ---------------
+def import_modules_from_directory(directory):
+    """
+    Dynamically import all Python modules from a given directory.
+
+    Parameters:
+    - directory (str): The directory to search for modules.
+
+    Returns:
+    list: List of imported modules.
+    """
+    modules = []
+    for filename in os.listdir(directory):
+        if filename.endswith('.py'):
+            module_name = filename[:-3]
+            try:
+                module_path = directory.replace("/", ".") + "." + module_name
+                module = import_module(module_path)
+                modules.append(module)
+            except ImportError as e:
+                log.info(f"Failed to import {module_name}: {e}")
+    return modules
+
+
+def import_all_from_module(module_name):
+    """
+    Import all public attributes from a given module into the global namespace.
+
+    Parameters:
+    - module_name (str): The module from which to import.
+    """
+    module = import_module(module_name)
+    public_attributes = [attr for attr in dir(module) if not attr.startswith('__')]
+
+    for attr in public_attributes:
+        globals()[attr] = getattr(module, attr)
+
+
+# --------------- GPT & AI Request Functions ---------------
 def gpt_request(query, messages, client, provider, model=g4f.models.default):
+    """
+    Make a GPT-3 or GPT-4 request via a specified client and provider.
+
+    Parameters:
+    - query (str): The user's query.
+    - messages (list): List of previous messages in the conversation.
+    - client: The client to use for making the request.
+    - provider: The provider to be used for the request.
+    - model: Model to use for the request (default is g4f.models.default).
+
+    Returns:
+    str: The generated response from GPT.
+    """
     print(query, messages, provider, model)
     return client.chat.completions.create(
         messages=[*messages, {"role": "user", "content": query}],
@@ -114,12 +221,22 @@ def gpt_request(query, messages, client, provider, model=g4f.models.default):
     ).choices[0].message.content
 
 
+# --------------- Config Parsing & Handling Functions ---------------
 def parse_and_replace_config(string, module=None):
+    """
+    Parse placeholders in a string and replace them with data from the configuration module.
+
+    Parameters:
+    - string (str): The input string containing placeholders.
+    - module: The module containing replacement functions. If not provided, default to language-specific module.
+
+    Returns:
+    str: The modified string with placeholders replaced.
+    """
     if not module:
         module = import_module(f"utils.{config.get('lang').get('prefix')}.text")
 
     pattern = re.compile(r"\[(.*?)]")
-
     matches = pattern.findall(string)
 
     for match in matches:
@@ -132,54 +249,13 @@ def parse_and_replace_config(string, module=None):
 
 
 def parse_config_answers(answers):
+    """
+    Randomly select an answer and parse it to replace placeholders.
+
+    Parameters:
+    - answers (list): List of possible answers.
+
+    Returns:
+    str: Parsed answer with placeholders replaced.
+    """
     return parse_and_replace_config(random.choice(answers))
-
-
-def get_connected_usb_devices():
-    defaults = config.get("command-spec").get("usb-default")
-
-    devices = []
-
-    # Run the lsusb command and capture its output
-    result = subprocess.run(['lsusb'], capture_output=True, text=True)
-
-    # Extract the device names using sed
-    device_names = subprocess.run(['sed', '-E', 's/^.*ID [0-9a-fA-F:]+ +//'], input=result.stdout, capture_output=True,
-                                  text=True)
-
-    # Store the output in a variable
-    device_names_output = numbers_to_strings(device_names.stdout.strip().lower()).split("\n")
-
-    for device in device_names_output:
-        if not any(spec in device for spec in defaults):
-            # If no word is found, add the phrase to the filtered list
-            devices.append(device.replace(".", " "))
-
-    return devices
-
-
-def import_all_from_module(module_name):
-    # Dynamically import the module
-    module = import_module(module_name)
-
-    # Get all attributes from the module
-    attributes = dir(module)
-
-    # Filter out special attributes (those starting and ending with double underscores)
-    public_attributes = [attr for attr in attributes if not attr.startswith('__')]
-
-    # Import all public attributes into the global namespace
-    for attr in public_attributes:
-        globals()[attr] = getattr(module, attr)
-
-
-def extract_number(input_string):
-    matches = re.findall(r'\d+', input_string)
-
-    if matches:
-        if len(matches) == 1:
-            return int(matches[0])
-        else:
-            return tuple(map(int, matches))
-    else:
-        return None

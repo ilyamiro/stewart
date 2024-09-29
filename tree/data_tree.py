@@ -2,6 +2,8 @@ import logging
 
 from api.commands import TreeAPI
 
+log = logging.getLogger("tree")
+
 
 class CommandNode:
     """
@@ -43,7 +45,7 @@ class Tree(TreeAPI):
         # self.ssm_list = []
         self.inside_tts_list = []
 
-    def expand_synonyms(self, words):
+    def expand_synonyms(self, command, words):
         """
         Expands synonyms in a list of words based on the synonym map.
 
@@ -53,8 +55,11 @@ class Tree(TreeAPI):
         Returns:
         - A list of expanded words.
         """
-
-        expanded_words = [self.synonym_map.get(word, word) for word in words]
+        mapping = self.synonym_map.get(command, None)
+        if mapping:
+            expanded_words = [mapping.get(word, word) for word in words]
+        else:
+            expanded_words = command
 
         return expanded_words
 
@@ -74,7 +79,7 @@ class Tree(TreeAPI):
             synonyms = details.get("synonyms")
             if synonyms:
                 for synonim in synonyms.keys():
-                    self.add_synonym(synonim, synonyms[synonim])
+                    self.add_synonym(command, synonim, synonyms[synonim])
                     self.recognizer_string += f" {synonim}"
                     if synonyms[synonim] in self.first_words:
                         self.first_words.add(synonim)
@@ -85,7 +90,7 @@ class Tree(TreeAPI):
                                                "parameters": details.get("parameters"),
                                                "synthesize": details.get("synthesize"),
                                                "inside_tts": details.get("inside_tts")}})
-            expanded_command = self.expand_synonyms(command)
+            expanded_command = self.expand_synonyms(tuple(command), command)
             for words in command:
                 if words.split()[0] != words:
                     redone_command = (word for word in words.split())
@@ -135,7 +140,8 @@ class Tree(TreeAPI):
         Returns:
         - A tuple containing the action, parameters, synthesize information, and the full command string.
         """
-        expanded_command = self.expand_synonyms(command)
+        expanded_command = self.expand_synonyms(tuple(command), command)
+        log.info(f"command for searching: {expanded_command}")
         node = self.root
         found_one = 0
         for part in expanded_command:
@@ -171,3 +177,4 @@ class Tree(TreeAPI):
         children = _find_children_recursive(self.root, word)
 
         return children if isinstance(children, list) else list(children.keys())
+

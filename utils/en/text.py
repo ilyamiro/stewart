@@ -21,7 +21,7 @@ number_dict = {
     "eighty one": 81, "eighty two": 82, "eighty three": 83, "eighty four": 84, "eighty five": 85,
     "eighty six": 86, "eighty seven": 87, "eighty eight": 88, "eighty nine": 89, "ninety": 90,
     "ninety one": 91, "ninety two": 92, "ninety three": 93, "ninety four": 94, "ninety five": 95,
-    "ninety six": 96, "ninety seven": 97, "ninety eight": 98, "ninety nine": 99, "one hundred": 100
+    "ninety six": 96, "ninety seven": 97, "ninety eight": 98, "ninety nine": 99, "one hundred": 100, "hundred": 100
 }
 
 

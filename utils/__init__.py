@@ -1,3 +1,4 @@
 from .utils import *
 
-import_all_from_module("utils." + config.get("lang").get("prefix"))
+module_name = "utils." + config.get("lang").get("prefix") + ".text"
+import_all_from_module(module_name)

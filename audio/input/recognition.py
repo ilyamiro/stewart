@@ -9,7 +9,6 @@ from pathlib import Path
 import numpy as np
 from vosk import KaldiRecognizer, Model, SpkModel
 import pyaudio
-from mutagen import File
 import torch
 
 from data.constants import PROJECT_FOLDER, CONFIG_FILE
@@ -29,13 +28,6 @@ utils = torch.load(f"{PROJECT_FOLDER}/audio/input/models/silero_utils.pth")
  read_audio,
  VADIterator,
  collect_chunks) = utils
-
-
-def get_audio_format_from_mutagen(byte_data):
-    audio_file = File(byte_data)
-    if audio_file:
-        return audio_file.mime[0]  # MIME type provides format information
-    return 'Unknown format'
 
 
 def int2float(sound):
@@ -74,27 +66,42 @@ class STT:
 
         log.debug("Vosk recognition system initialized")
 
-        self.voice_activity = False
+        self.listen = self.listen_vad if config["voice"]["activity-detection"] else self.listen_no_vad
 
-    def listen(self):
+        self.voice_activity = not config["voice"]["activity-detection"]
+        self.add_data = b""
+
+    def listen_vad(self):
         if self.voice_activity:
-            data = self.stream.read(4000, exception_on_overflow=False)
-            if self.recognizer.AcceptWaveform(data):
-                answer = json.loads(self.recognizer.Result())
-                # TODO make the cosine distance boundary a config parameter
-                if "spk" in answer:
-                    distance = cosine_dist(spk_sig, answer["spk"])
-                    if distance < 0.6 and answer["text"]:
-                        log.info(f"Text recognized: {answer['text']}, speaker distance: {distance}")
-                        yield answer["text"]
-                    elif distance > 0.6:
-                        log.info(
-                            f"Speaker distance is greater than a boundary: {distance} > 0.6. result will not be processed")
-
+            data = self.add_data + self.stream.read(4000, exception_on_overflow=False)
+            self.add_data = b""
+            result = self.process(data)
+            if result:
+                yield result
         else:
             data = self.stream.read(512, exception_on_overflow=False)
             if self.voice_activity_detected(data):
+                self.add_data = data
                 self.count_voice_activity(15)
+
+    def listen_no_vad(self):
+        data = self.stream.read(4000, exception_on_overflow=False)
+        result = self.process(data)
+        if result:
+            yield result
+
+    def process(self, data):
+        if self.recognizer.AcceptWaveform(data):
+            answer = json.loads(self.recognizer.Result())
+            # TODO make the cosine distance boundary a config parameter
+            if "spk" in answer:
+                distance = cosine_dist(spk_sig, answer["spk"])
+                if distance < 0.65 and answer["text"]:
+                    log.info(f"Text recognized: {answer['text']}, speaker distance: {distance}")
+                    return answer["text"]
+                elif distance > 0.65:
+                    log.info(
+                        f"Speaker distance is greater than a threshold: {distance} > 0.65. result will not be processed")
 
     def voice_activity_detected(self, data):
         audio_int16 = np.frombuffer(data, np.int16)
