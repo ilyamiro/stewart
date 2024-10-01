@@ -1,6 +1,5 @@
 import logging
-
-from api.commands import TreeAPI
+from api import tree
 
 log = logging.getLogger("tree")
 
@@ -28,16 +27,14 @@ class CommandNode:
         self.equivalents = equivalents
 
 
-class Tree(TreeAPI):
+class Tree:
     """
     Represents a trie structure for storing and retrieving voice assistant commands.
     """
 
     def __init__(self):
-        super().__init__()
-        """
-        Initializes a CommandTree with a root CommandNode.
-        """
+        self.api = tree
+
         self.root = CommandNode()
 
         self.recognizer_string = ""
@@ -55,7 +52,7 @@ class Tree(TreeAPI):
         Returns:
         - A list of expanded words.
         """
-        mapping = self.synonym_map.get(command, None)
+        mapping = self.api.synonym_map.get(command, None)
         if mapping:
             expanded_words = [mapping.get(word, word) for word in words]
         else:
@@ -79,7 +76,7 @@ class Tree(TreeAPI):
             synonyms = details.get("synonyms")
             if synonyms:
                 for synonim in synonyms.keys():
-                    self.add_synonym(command, synonim, synonyms[synonim])
+                    self.api.add_synonym(command, synonim, synonyms[synonim])
                     self.recognizer_string += f" {synonim}"
                     if synonyms[synonim] in self.first_words:
                         self.first_words.add(synonim)

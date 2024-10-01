@@ -15,3 +15,6 @@ class TreeAPI:
         self.synonym_map[tuple(command)] = {synonym: canonical}
 
 
+tree = TreeAPI()
+
+

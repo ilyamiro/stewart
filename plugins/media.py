@@ -23,12 +23,10 @@ api = YTMusic()
 log = logging.getLogger("module: " + __file__)
 
 from data.constants import CONFIG_FILE, PROJECT_FOLDER
-from utils.utils import yaml_load, import_all_from_module, internet, Notify
+from utils import yaml_load, import_all_from_module, internet, Notify, find_num_in_list
 from audio.output import ttsi
 
 config = yaml_load(CONFIG_FILE)
-
-from utils.en.text import find_num_in_list
 
 
 def play_audio(**kwargs):

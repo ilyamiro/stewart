@@ -5,6 +5,7 @@ import subprocess
 import logging
 import random
 import sys
+import inspect
 import re
 from pathlib import Path
 from importlib import import_module
@@ -85,9 +86,28 @@ def system_setup():
     """
     if sys.platform == "linux":
         run("jack_control", "start")
+        run("xhost", "+local:$USER")
 
 
-# --------------- Internet & Network Functions ---------------
+def cleanup(directory, limit: int):
+    if not os.path.isdir(directory):
+        log.info(f"Failed to cleanup a directory: {directory}. It's not a directory")
+        return
+
+    files = [os.path.join(directory, file) for file in os.listdir(directory) if
+             os.path.isfile(os.path.join(directory, file))]
+
+    if len(files) > limit:
+        files.sort(key=os.path.getctime, reverse=True)
+
+        last_created_file = files[0]
+        try:
+            os.remove(last_created_file)
+        except Exception as e:
+            print(f"Error deleting file (cleanup) {last_created_file} in a {directory}: {e}")
+
+
+# --------------- Internet & System Functions ---------------
 def internet(host="https://google.com", timeout=3) -> bool:
     """
     Check if the system has an active internet connection by attempting to reach a host.
@@ -101,10 +121,34 @@ def internet(host="https://google.com", timeout=3) -> bool:
     """
     try:
         requests.get(host, timeout=timeout)
+        log.info("Network connection check: successful")
         return True
     except requests.ConnectionError as e:
         log.info(f"Failed to establish internet connection with the host {host}: {e}")
     return False
+
+
+def get_capslock_state():
+    """
+    Get capslock state: ON/OFF
+    :return:
+    """
+    if sys.platform.startswith("win"):
+        import ctypes
+        hllDll = ctypes.WinDLL("User32.dll")
+        VK_CAPITAL = 0x14
+        return hllDll.GetKeyState(VK_CAPITAL)
+    elif sys.platform == "linux":
+        capslock_state = subprocess.check_output("xset q | awk '/LED/{ print $10 }' | grep -o '.$'", shell=True).decode(
+            "ascii")
+        return True if capslock_state[0] == "1" else False
+
+
+def clear():
+    if sys.platform.startswith("win"):
+        os.system("cls")
+    else:
+        print("\033c")
 
 
 # --------------- Text Processing & Utility Functions ---------------
@@ -183,6 +227,12 @@ def import_modules_from_directory(directory):
     return modules
 
 
+def import_functions_from_a_module(module):
+    members = inspect.getmembers(module)
+    functions = [member[0] for member in members if inspect.isfunction(member[1])]
+    return functions
+
+
 def import_all_from_module(module_name):
     """
     Import all public attributes from a given module into the global namespace.
@@ -212,7 +262,6 @@ def gpt_request(query, messages, client, provider, model=g4f.models.default):
     Returns:
     str: The generated response from GPT.
     """
-    print(query, messages, provider, model)
     return client.chat.completions.create(
         messages=[*messages, {"role": "user", "content": query}],
         provider=provider,
@@ -234,7 +283,7 @@ def parse_and_replace_config(string, module=None):
     str: The modified string with placeholders replaced.
     """
     if not module:
-        module = import_module(f"utils.{config.get('lang').get('prefix')}.text")
+        module = import_module(f"utils.lang.{config.get('lang').get('prefix')}")
 
     pattern = re.compile(r"\[(.*?)]")
     matches = pattern.findall(string)

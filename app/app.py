@@ -21,6 +21,8 @@ from utils import *
 from tree import Tree
 from data.constants import CONFIG_FILE, PROJECT_FOLDER
 
+from api.app import AppAPI
+
 
 log = logging.getLogger("app")
 
@@ -31,30 +33,45 @@ class App:
     For further reference, VA = Voice Assistant
     """
 
+    def __init__(self, api: AppAPI):
+        self.api = api
+
     @staticmethod
-    def sound_effect_decorator(func):
+    def init_decorator(func):
         """Sound effect decorator for initializing"""
 
         def wrapper(self, *args, **kwargs):
+            # <!--------------- pre-init: start ---------------!>
+            self.api.__run_pre_init_callbacks__()
+
             self.config = yaml_load(CONFIG_FILE)
             self.lang = self.config["lang"]["prefix"]
+
             log.info("Configuration file loaded")
 
+            # play sounds
             if self.config["startup"]["sound-enable"]:
                 playsound(self.config["startup"]["sound-path"], block=False)
-
-            func(self, *args, **kwargs)
-
             if self.config["startup"]["voice-enable"]:
                 ttsi.say(parse_config_answers(self.config[f"startup"]["answers"][self.lang]))
 
+            cleanup(f"{PROJECT_FOLDER}/data/music", 10)
+
+            # <!--------------- pre-init: end ---------------!>
+
+            func(self, *args, **kwargs)
+
+            # <!--------------- post-init: start ---------------!>
+            self.api.__run_post_init_callbacks__()
+
+            # <!--------------- post-init: end ---------------!>
+
         return wrapper
 
-    @sound_effect_decorator
-    def __init__(self):
-        log.debug("App initialization started")
+    @init_decorator
+    def initialize(self):
 
-        self.running = True
+        log.debug("App initialization started")
 
         self.trigger_timed_needed = self.config["trigger"]["trigger-mode"] != "disabled"
 
@@ -63,9 +80,6 @@ class App:
         self.tree_init()
 
         log.info("Data tree initialized")
-
-        # import modules for command processing
-        self.modules = import_modules_from_directory(self.config['module']['dir'])
 
         # history of requests
         self.history = []
@@ -78,7 +92,7 @@ class App:
         self.gpt_model = getattr(g4f.models, self.config["gpt"]["model"])
         self.gpt_start = self.config["gpt"]["start-prompt"][self.lang]
 
-        log.info("Initialized GPT settings and a GPT client")
+        log.info(f"Initialized gpt model")
 
         if not self.config["text-mode"]:
             # voice recognition
@@ -89,11 +103,16 @@ class App:
                 self.grammar_recognition_restricted_create()
                 self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
                                                            self.stt.create_new_recognizer())
-            self.recognition_thread = None
 
             log.debug("Speech to text instance initialized")
 
+        self.recognition_thread = None
+
+        self.running = True
+
         log.debug("Finished app initialization")
+
+        print(self.api.__search_functions__.get("subprocess"))
 
     def start(self):
         self.recognition_thread = threading.Thread(target=self.recognition)
@@ -139,6 +158,9 @@ class App:
                     self.gpt_history.extend([{"role": "user", "content": request}, {"role": "system", "content": answer}])
                     if len(self.gpt_history) >= 10:
                         self.gpt_history = self.gpt_history[2:]
+
+                    log.info(f"GPT model answer: {answer}")
+
                     ttsi.say(answer)
                 else:
                     ttsi.say(parse_config_answers(self.config[f"answers"][self.lang]["default"]))
@@ -196,6 +218,7 @@ class App:
         """
         while self.running:
             if self.config["text-mode"]:
+                # clear()
                 self.handle(input("Input: "))
             else:
                 for word in self.stt.listen():
@@ -279,24 +302,21 @@ class App:
         """
         Start the action thread
         """
-        module = self.find_module(request[0])
-        log.info(f"Action found in module: {module}")
-        thread = threading.Thread(target=getattr(module, request[0]),
+        func = self.find_exec(request[0])
+        thread = threading.Thread(target=func,
                                   kwargs={"parameters": request[1], "command": request[3],
                                           "request": request[4]})
         thread.start()
 
-    def find_module(self, name):
+    def find_exec(self, name):
         """
         Find a module that has a function that corresponds to an action that has to be done
         """
-        for module in self.modules:
-            members = inspect.getmembers(module)
-            functions = [member[0] for member in members if inspect.isfunction(member[1])]
-            if name in functions:
-                return module
-        if name in dir(self):
-            return self
+        if name in self.api.__search_functions__.keys():
+            log.info(f"Action found: {name}")
+            return self.api.__search_functions__.get(name)
+        elif name in dir(self):
+            return getattr(self, name)
 
     def grammar_recognition_restricted_create(self):
         """

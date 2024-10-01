@@ -29,7 +29,8 @@ def find_num_in_list(lst):
     string = " ".join(lst)
     for num in number_dict.keys().__reversed__():
         if num in string:
-            return words2num(num)
+            return number_dict.get(num)
+    return None
 
 
 def get_part_of_day():

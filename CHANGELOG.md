@@ -1,6 +1,21 @@
 # CHANGELOG
 
-### v.1.3.2
+### v1.4.0
+
+- Created a basis for plugin system
+- Created plugin loader utils `plugins/importer.py`
+- Created a basis for API for main App
+- Renamed some directories and minor fixes
+
+
+### v1.3.3
+
+- Added `logging_disable` and `logging_enable` functions, broke down `logging_setup` into parts.
+- Refactored language-specific utilities and created a `utils/lang` directory
+  for python files. (`utils/lang/en.py` instead of `utils/en/text.py`)
+- Refactored pre-init and post-init procedures in `app.py` 
+
+### v1.3.2
 
 - Fixed import inconsistency of language-specific utils
 - Added music playing by name in media plugin with **YouTube Music**

@@ -17,6 +17,7 @@ LANG = config["lang"]["prefix"]
 SEX = config["voice"]["sex"]
 SPEAKER = config["voice"][LANG][SEX]
 MODEL = config["voice"][LANG]["model"]
+ENABLE = config["voice"]["enable"]
 
 log = logging.getLogger("tts")
 
@@ -32,7 +33,7 @@ class TTS:
 
         log.debug(f"Synthesizer configured")
 
-        self.active = True
+        self.active = ENABLE
 
     def say(self, text, prosody=94):
         if self.active:
@@ -42,4 +43,4 @@ class TTS:
             # caller_frane = inspect.currentframe().f_back
             # caller_name = caller_frane.f_code.co_name
 
-            log.debug(f"TTS thread started: {text}")
+            log.debug(f"TTS: {text}")
