@@ -24,5 +24,3 @@ post_commit.session-journal
 dev/voice activity.py
 api/audio.py
 api/app.py
-plugins/core
-plugins/importer.py
