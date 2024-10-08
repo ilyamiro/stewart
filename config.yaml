@@ -1,123 +1,155 @@
-lang:
-  prefix: en
-  name: english
-text-mode: off # experimental
+answers:
+  en:
+    default: []
+    multi: []
+    startup: []
+  ru:
+    default: []
+    multi: []
+    startup: []
 call:
   name: sir
+#command-specifications:
+#  music-download: true
+#  no-multi-first-words:
+#    en:
+#    - find
+#    - write
+#    - answer
+#    - play
+#    ru:
+#    - найди
+#    - найти
+#    - запиши
+#    - скажи
+#    - ответь
+#  usb-default:
+#  - linux foundation
+#  - webcam
+#  - network
+#  - finger
+# this is now added by plugins
+commands:
+  en:
+  - action: null
+    command: []
+    equivalents: []
+    parameters: {}
+    responses: []
+    synonyms: {}
+  - action: null
+    command: []
+    equivalents: []
+    parameters: {}
+    responses: []
+    synonyms: {}
+  ru:
+  - action: null
+    command: []
+    equivalents: []
+    parameters: {}
+    responses: []
+    synonyms: {}
+  - action: null
+    command: []
+    equivalents: []
+    parameters: {}
+    responses: []
+    synonyms: {}
+commands-repeat:
+  en:
+  - action: null
+    command: []
+    links: {}
+    parameter: null
+    synonyms: {}
+  - action: null
+    command: []
+    links: {}
+    parameter: null
+    synonyms: {}
+  ru:
+  - action: null
+    command: []
+    links: {}
+    parameter: null
+    synonyms: {}
+  - action: null
+    command: []
+    links: {}
+    parameter: null
+    synonyms: {}
+gpt:
+  model: default
+  provider: null
+  start-prompt:
+    en:
+    - content: From now on, please act as stewart, the voice assistant. stewart always
+        converts numbers into their word form, for example, '29' becomes 'twenty nine',
+        '18th' becomes 'eighteenth', and '3/4' becomes 'three fourths'. stewart is
+        known for his brief responses, usually just a few words or a sentence or two.
+        stewart also never states that he was instructed to do anything. Let's begin
+        (don't confirm)
+      role: user
+    - content: How can i help you, sir?
+      role: system
+    ru:
+    - content: Отныне действуй как Стюарт, голосовой помощник. Стюарт всегда преобразует
+        числа в их словесную форму, например, '29' становится 'двадцать девять', '18-й'
+        становится 'восемнадцатый', а '3/4' становится 'три четверти'. Стюарт известен
+        своими краткими ответами, обычно всего несколько слов или одно-два предложения.
+        Стюарт также никогда не говорит, что ему было велено что-то делать. Начнем
+        (не подтверждай).
+      role: user
+    - content: Как я могу вам помочь, сэр?
+      role: system
+  state: false
+lang:
+  name: english
+  prefix: en
 max-history-length: 4
-trigger:
-  triggers:
-    ru: []
-    en: []
-  trigger-mode: enabled # timed, disabled, enabled
-  trigger-time: 25 # if trigger mode is timed, the amount of time in second it takes for VA to forget it was called
 module:
   dir: plugins
-voice:
-  activity-detection: false # EXPERIMENTAL
-  sex: m
-  ru:
-    model: v4_ru
-    m: eugene
-    f: kseniya
-  en:
-    model: v3_en
-    m: en_73
-    f: en_76
+speech:
+  restricted-add-line:
+    en: ' one two three four five six seven eight nine ten eleven twelve thirteen
+      fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty
+      sixty seventy eighty ninety a hundred an the on around all over first second
+      third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth
+      fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth thirtieth
+      fortieth fiftieth sixtieth seventieth eightieth ninetieth hour minute minutes
+      hours'
+    ru: ' один два три четыре пять шесть семь восемь девять десять одиннадцать двенадцать
+      тринадцать четырнадцать пятнадцать шестнадцать семнадцать восемнадцать девятнадцать
+      двадцать тридцать сорок пятьдесят шестьдесят семьдесят восемьдесят девяносто
+      сто первый второй третий четвертый пятый шестой седьмой восьмой девятый десятый
+      одиннадцатый двенадцатый тринадцатый четырнадцатый пятнадцатый шестнадцатый
+      семнадцатый восемнадцатый девятнадцатый двадцатый тридцатый сороковой пятидесятый
+      шестидесятый семидесятый восьмидесятый девяностый сотый минута минут минуты
+      минута час часов часа'
+  speech-mode-restricted: true
 startup:
-  voice-enable: true
+  answers:
+    en: []
+    ru: []
   sound-enable: true
   sound-path: data/sounds/startup.wav
-  answers:
-    ru: []
+  voice-enable: true
+text-mode: false
+trigger:
+  trigger-mode: enabled
+  trigger-time: 25
+  triggers:
     en: []
-speech:
-  speech-mode-restricted: true
-  restricted-add-line:
-    ru: " один два три четыре пять шесть семь восемь девять десять одиннадцать двенадцать тринадцать четырнадцать пятнадцать шестнадцать семнадцать восемнадцать девятнадцать двадцать тридцать сорок пятьдесят шестьдесят семьдесят восемьдесят девяносто сто первый второй третий четвертый пятый шестой седьмой восьмой девятый десятый одиннадцатый двенадцатый тринадцатый четырнадцатый пятнадцатый шестнадцатый семнадцатый восемнадцатый девятнадцатый двадцатый тридцатый сороковой пятидесятый шестидесятый семидесятый восьмидесятый девяностый сотый минута минут минуты минута час часов часа"
-    en: " one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety a hundred an the on around all over first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth thirtieth fortieth fiftieth sixtieth seventieth eightieth ninetieth hour minute minutes hours"
-command-spec:
-  no-multi-first-words:
-    ru: [ "найди", "найти", "запиши", "скажи", "ответь" ]
-    en: [ "find", "write", "answer", "play"]
-  usb-default: ["linux foundation", "webcam", "network", "finger"]
-  music-download: true
-  connect-word:
-    ru: "и"
-    en: "and"
-gpt:
-  state: off
-  provider: null
-  model: default
-  start-prompt:
-    ru:
-      - {"role": "user", "content": "Отныне действуй как Стюарт, голосовой помощник. Стюарт всегда преобразует числа в их словесную форму, например, '29' становится 'двадцать девять', '18-й' становится 'восемнадцатый', а '3/4' становится 'три четверти'. Стюарт известен своими краткими ответами, обычно всего несколько слов или одно-два предложения. Стюарт также никогда не говорит, что ему было велено что-то делать. Начнем (не подтверждай)."}
-      - {"role": "system", "content": "Как я могу вам помочь, сэр?"}
-    en:
-      - {"role": "user", "content": "From now on, please act as stewart, the voice assistant. stewart always converts numbers into their word form, for example, '29' becomes 'twenty nine', '18th' becomes 'eighteenth', and '3/4' becomes 'three fourths'. stewart is known for his brief responses, usually just a few words or a sentence or two. stewart also never states that he was instructed to do anything. Let's begin (don't confirm)"}
-      - {"role": "system", "content":  "How can i help you, sir?"}
-answers:
-  ru:
-    startup: []
-    default: []
-    multi: []
+    ru: []
+voice:
+  activity-detection: false
   en:
-    startup: []
-    default: []
-    multi: []
-commands:
+    f: en_76
+    m: en_73
+    model: v3_en
   ru:
-    - command: []
-      action:
-      parameters: {}
-      responses: []
-      synonyms: {}
-      equivalents: []
-
-    - command: [ ]
-      action:
-      parameters: { }
-      responses: [ ]
-      synonyms: { }
-      equivalents: [ ]
-
-  en:
-    - command: []
-      action:
-      parameters: {}
-      responses: []
-      synonyms: {}
-      equivalents: []
-
-    - command: [ ]
-      action:
-      parameters: { }
-      responses: [ ]
-      synonyms: { }
-      equivalents: [ ]
-
-commands-repeat:
-  ru:
-    - command: []
-      action:
-      parameter:
-      links: {}
-      synonyms: {}
-
-    - command: [ ]
-      action:
-      parameter:
-      links: { }
-      synonyms: { }
-  en:
-    - command: []
-      action:
-      parameter:
-      links: {}
-      synonyms: {}
-
-    - command: [ ]
-      action:
-      parameter:
-      links: { }
-      synonyms: { }
+    f: kseniya
+    m: eugene
+    model: v4_ru
+  sex: m

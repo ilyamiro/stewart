@@ -23,10 +23,10 @@ api = YTMusic()
 log = logging.getLogger("module: " + __file__)
 
 from data.constants import CONFIG_FILE, PROJECT_FOLDER
-from utils import yaml_load, import_all_from_module, internet, Notify, find_num_in_list
+from utils import load_yaml, import_all_from_module, internet, Notify, find_num_in_list
 from audio.output import ttsi
 
-config = yaml_load(CONFIG_FILE)
+config = load_yaml(CONFIG_FILE)
 
 
 def play_audio(**kwargs):
@@ -39,6 +39,16 @@ def play_audio(**kwargs):
 def kill_audio(**kwargs):
     if player.get_state() == vlc.State.Playing:
         player.stop()
+
+
+def pause_audio(**kwargs):
+    if player.get_state() == vlc.State.Playing:
+        player.pause()
+
+
+def resume_audio(**kwargs):
+    if player.get_state() in [vlc.State.Paused, vlc.State.Stopped]:
+        player.play()
 
 
 def mute_volume(**kwargs):
@@ -65,7 +75,7 @@ def save_song(href, title):
     log.info(f"searching for song named {title}")
 
     music_folder = f'{PROJECT_FOLDER}/data/music'
-    download = config["command-spec"]["music-download"]
+    download = config["command-specifications"]["music-download"]
 
     filename = os.path.join(music_folder, title)
 

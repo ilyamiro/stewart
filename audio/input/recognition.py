@@ -12,10 +12,10 @@ import pyaudio
 import torch
 
 from data.constants import PROJECT_FOLDER, CONFIG_FILE
-from utils.utils import yaml_load
+from utils.utils import load_yaml
 
 log = logging.getLogger("stt")
-config = yaml_load(CONFIG_FILE)
+config = load_yaml(CONFIG_FILE)
 
 with open(f"{PROJECT_FOLDER}/audio/input/vector.txt", "r", encoding="utf-8") as f:
     spk_sig = ast.literal_eval(f.read().replace("\n", ""))

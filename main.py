@@ -5,10 +5,9 @@ import traceback
 
 # inside imports
 from logs import logging_setup, set_logging
-from utils import system_setup
+from utils import system_setup, import_plugins, find_plugins
 from app import App
 from api import app as app_api
-from plugins.importer import import_plugins, find_plugins
 
 from data.constants import PLUGINS_FOLDER
 # from gui import main

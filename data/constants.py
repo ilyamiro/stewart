@@ -13,3 +13,5 @@ PLUGINS_FOLDER = f"{PROJECT_FOLDER}/plugins"
 # logs
 LOG_DIR = f"{PROJECT_FOLDER}/logs/app_log"
 LOG_FILENAME = os.path.join(LOG_DIR, f"log_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log")
+
+

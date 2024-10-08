@@ -30,7 +30,11 @@ Notify.init("Stewart")
 
 
 # --------------- Configuration Functions ---------------
-def yaml_load(path: str):
+def get_caller_dir():
+    return os.path.dirname(inspect.stack()[1].filename)
+
+
+def load_yaml(path: str):
     """
     Load YAML configuration from a file.
 
@@ -40,15 +44,21 @@ def yaml_load(path: str):
     Returns:
     dict: Parsed YAML data.
     """
-    if os.path.exists(path):
-        with open(path) as file:
+    caller = get_caller_dir()
+
+    full_path = path if os.path.exists(path) else os.path.join(caller, path)
+
+    if os.path.exists(full_path):
+        with open(path, "r", encoding="utf-8") as file:
             return yaml.safe_load(file)
+    else:
+        log.warning("Yaml file")
 
 
-config = yaml_load(CONFIG_FILE)
+config = load_yaml(CONFIG_FILE)
 
 
-def json_load(path: str):
+def load_json(path: str):
     """
     Load JSON configuration from a file.
 
@@ -59,8 +69,40 @@ def json_load(path: str):
     dict: Parsed JSON data.
     """
     if os.path.exists(path):
-        with open(path) as file:
+        with open(path, "r", encoding="utf-8") as file:
             return json.load(file)
+
+
+def filter_lang_config(file, lang_prefix):
+    """
+    Filters the configuration for a specific language prefix. If a key contains a nested language dictionary,
+    it returns the values associated with the specified language prefix directly under the key.
+
+    :param file: The full config loaded from the YAML file
+    :param lang_prefix: The language prefix to filter (e.g. 'ru', 'en')
+    :return: Filtered config with values from the specified language prefix
+    """
+    lang_config = {}
+
+    def filter_recursive(data):
+        filtered = {}
+        for key, value in data.items():
+            if isinstance(value, dict):
+                # Check if the dict contains language-specific values
+                if lang_prefix in value:
+                    # If it's a language-specific dict, return the value for the given prefix
+                    filtered[key] = value[lang_prefix]
+                else:
+                    # Recursively process the nested dictionary
+                    nested_filtered = filter_recursive(value)
+                    if nested_filtered:  # Only add if there are valid results
+                        filtered[key] = nested_filtered
+            else:
+                filtered[key] = value
+        return filtered
+
+    lang_config = filter_recursive(file)
+    return lang_config
 
 
 # --------------- System & Subprocess Functions ---------------
@@ -204,6 +246,22 @@ def extract_number(input_string: str):
 
 
 # --------------- Module Management Functions ---------------
+def find_plugins(directory):
+    """
+    Find all plugin directories under the main plugin folder.
+    """
+    skip_dirs = ["__pycache__"]
+    subdirectories = []
+    base_directory = Path(directory)  # Convert to a Path object
+
+    for path in base_directory.rglob('*'):
+        if path.is_dir() and path.name not in skip_dirs:
+            # Append the relative path to the base directory
+            subdirectories.append(str(path.relative_to(Path(PROJECT_FOLDER))))
+
+    return subdirectories
+
+
 def import_modules_from_directory(directory):
     """
     Dynamically import all Python modules from a given directory.
@@ -227,6 +285,12 @@ def import_modules_from_directory(directory):
     return modules
 
 
+def import_plugins(directory):
+    for plugin_dir in directory:
+        # Import all modules from the plugin directory
+        modules = import_modules_from_directory(plugin_dir)
+
+
 def import_functions_from_a_module(module):
     members = inspect.getmembers(module)
     functions = [member[0] for member in members if inspect.isfunction(member[1])]
@@ -245,29 +309,6 @@ def import_all_from_module(module_name):
 
     for attr in public_attributes:
         globals()[attr] = getattr(module, attr)
-
-
-# --------------- GPT & AI Request Functions ---------------
-def gpt_request(query, messages, client, provider, model=g4f.models.default):
-    """
-    Make a GPT-3 or GPT-4 request via a specified client and provider.
-
-    Parameters:
-    - query (str): The user's query.
-    - messages (list): List of previous messages in the conversation.
-    - client: The client to use for making the request.
-    - provider: The provider to be used for the request.
-    - model: Model to use for the request (default is g4f.models.default).
-
-    Returns:
-    str: The generated response from GPT.
-    """
-    return client.chat.completions.create(
-        messages=[*messages, {"role": "user", "content": query}],
-        provider=provider,
-        stream=False,
-        model=model
-    ).choices[0].message.content
 
 
 # --------------- Config Parsing & Handling Functions ---------------
@@ -308,3 +349,5 @@ def parse_config_answers(answers):
     str: Parsed answer with placeholders replaced.
     """
     return parse_and_replace_config(random.choice(answers))
+
+

@@ -6,12 +6,12 @@ from pathlib import Path
 
 from voicesynth import Model, Synthesizer
 
-from utils import yaml_load
+from utils import load_yaml
 from utils import parse_and_replace_config
 
 from data.constants import CONFIG_FILE, PROJECT_FOLDER
 
-config = yaml_load(CONFIG_FILE)
+config = load_yaml(CONFIG_FILE)
 
 LANG = config["lang"]["prefix"]
 SEX = config["voice"]["sex"]

@@ -15,7 +15,6 @@ import g4f.Provider
 from g4f.client import Client as GPTClient
 
 # Local imports
-from audio.input import STT
 from audio.output import ttsi
 from utils import *
 from tree import Tree
@@ -44,8 +43,8 @@ class App:
             # <!--------------- pre-init: start ---------------!>
             self.api.__run_pre_init_callbacks__()
 
-            self.config = yaml_load(CONFIG_FILE)
-            self.lang = self.config["lang"]["prefix"]
+            self.config = filter_lang_config(load_yaml(CONFIG_FILE), self.api.lang)
+            self.lang = self.api.lang
 
             log.info("Configuration file loaded")
 
@@ -53,7 +52,7 @@ class App:
             if self.config["startup"]["sound-enable"]:
                 playsound(self.config["startup"]["sound-path"], block=False)
             if self.config["startup"]["voice-enable"]:
-                ttsi.say(parse_config_answers(self.config[f"startup"]["answers"][self.lang]))
+                ttsi.say(parse_config_answers(self.config[f"startup"]["answers"]))
 
             cleanup(f"{PROJECT_FOLDER}/data/music", 10)
 
@@ -70,7 +69,6 @@ class App:
 
     @init_decorator
     def initialize(self):
-
         log.debug("App initialization started")
 
         self.trigger_timed_needed = self.config["trigger"]["trigger-mode"] != "disabled"
@@ -84,19 +82,11 @@ class App:
         # history of requests
         self.history = []
 
-        # gpt settings
-        self.gpt_history = []
-        self.gpt_client = GPTClient()
-        self.gpt_provider = getattr(g4f.Provider, self.config["gpt"]["provider"]) if self.config["gpt"][
-            "provider"] else None
-        self.gpt_model = getattr(g4f.models, self.config["gpt"]["model"])
-        self.gpt_start = self.config["gpt"]["start-prompt"][self.lang]
-
-        log.info(f"Initialized gpt model")
-
         if not self.config["text-mode"]:
+            from audio.input import STT
+
             # voice recognition
-            self.stt = STT(self.lang)
+            self.stt = STT(self.api.lang)
 
             # restricting recognition by adding grammar made of commands
             if self.config["speech"]["speech-mode-restricted"]:
@@ -107,12 +97,11 @@ class App:
             log.debug("Speech to text instance initialized")
 
         self.recognition_thread = None
-
         self.running = True
 
-        log.debug("Finished app initialization")
+        self.api.__save_config__()
 
-        print(self.api.__search_functions__.get("subprocess"))
+        log.debug("Finished app initialization")
 
     def start(self):
         self.recognition_thread = threading.Thread(target=self.recognition)
@@ -127,81 +116,37 @@ class App:
             # it means that the user called for VA with a trigger word
             # (that got removed by self.remove_trigger_word)
             # and did not specify the command; therefore, we answer with a default phrase
-            ttsi.say(parse_config_answers(self.config[f"answers"][self.lang]["default"]))
+            self.api.say(parse_config_answers(self.config[f"answers"]["default"]))
         else:
             # update the history of requests to base some commands on the previous requests
             self.history_update(request)
             # checking whether the request contains multiple commands
-            total = self.multihandle(request)
+            total = self.api.__command_processor__(request)
             if len(total) == 1:
                 # if there is only one command, process it
                 self.process_command(total[0], request)
             elif len(total) > 1:
                 # if there are multiple commands, we can't play multiple audios at once as they would overlap.
                 # so, we just play a confirmative phrase, like "Doing that now, sir" or else.
-                if all(command not in self.tree.inside_tts_list for command in total):
+                if all(command not in self.tree.api.inside_tts_list for command in total):
                     # if one of the commands itself produces some sound,
                     # then it could interfere with the confirmation phrase,
                     # so we check for this flag "inside_tts" to decide whether
                     # it would interfere and whether the multi confirmation sound should be played
-                    ttsi.say(parse_config_answers(self.config[f"answers"][self.lang]["multi"]))
+                    ttsi.say(parse_config_answers(self.config[f"answers"]["multi"]))
                 # processing each command separately
                 for command in total:
                     self.process_command(command, request, multi=True)
             elif not total:
+                self.api.__no_command_callback__(request)
                 # If something was said by user after the trigger word, but no commands were recognized,
                 # then this phrase is being sent to gpt model for answering if it's enabled
-                if self.config["gpt"]["state"]:
-                    answer = gpt_request(request, [*self.gpt_start, *self.gpt_history], self.gpt_client, self.gpt_provider,
-                                         self.gpt_model)
-                    # update the gpt history for making long conversations possible
-                    self.gpt_history.extend([{"role": "user", "content": request}, {"role": "system", "content": answer}])
-                    if len(self.gpt_history) >= 10:
-                        self.gpt_history = self.gpt_history[2:]
-
-                    log.info(f"GPT model answer: {answer}")
-
-                    ttsi.say(answer)
-                else:
-                    ttsi.say(parse_config_answers(self.config[f"answers"][self.lang]["default"]))
-
-    def multihandle(self, request):
-        list_of_commands, current_command = [], []
-        split_request = request.split()  # splitting the request string into a list
-        for word in split_request:  # iterating over the request list
-            if word in self.tree.first_words:
-                # if a word is one of the words that commands start with,
-                # that we would count that as a start of a command
-                if current_command:
-                    # if there already is a current command being counted,
-                    # the new first words means the new command starts, so we add a last one
-                    list_of_commands.append(current_command)
-                if word in self.config["command-spec"][f"no-multi-first-words"][self.lang]:
-                    # if a word implies any words after it, like Google search,
-                    # then everything after that word should be counted as a command itself
-                    current_command = split_request[split_request.index(word):]  # get the remaining part of the request
-                    list_of_commands.append(current_command)  # add the last command to the list
-                    current_command = []
-                    break  # terminate the cycle as there could not be any commands after this one
-                current_command = [word]  # as this is the first words appearance,
-                # it means the new command should start.
-            else:
-                # if a current command is not finished:
-                if current_command:
-                    current_command.append(word)  # add the next word
-
-        if current_command:  # add the last command as there is no next command that could end it.
-            list_of_commands.append(current_command)
-
-        log.info(f"Processed commands: {list_of_commands}")
-
-        return list_of_commands
 
     def process_command(self, command, full, multi: bool = False):
         # process the input command and find the corresponding parameters
         # if self.config["ssm"]["enable"]:
         #     command = self.get_similar_command(command)
-        result = self.tree.find_command(command)
+        result = self.tree.api.find_command(command)
         log.info(f"Execution parameters: {result}")
         if result and not all(element is None for element in result):  # if the command was found, process it
             result = list(result)  # find_command returns a tuple which is immutable
@@ -236,7 +181,7 @@ class App:
         """
         Removes trigger words from the input
         """
-        for trigger in self.config["trigger"][f"triggers"][self.lang]:
+        for trigger in self.config["trigger"][f"triggers"]:
             if trigger in request:
                 request = " ".join(request.split(trigger)[1:])[1:]
                 return request
@@ -252,8 +197,8 @@ class App:
         log.info("Trigger countdown ended")
 
     def tree_init(self):
-        commands = self.config["commands"][self.lang]
-        commands_repeat = self.config["commands-repeat"][self.lang]
+        commands = self.config["commands"]
+        commands_repeat = self.config["commands-repeat"]
 
         for command in commands:
             equiv = command.get(f'equivalents', [])
@@ -282,7 +227,7 @@ class App:
 
     def add_command(self, com: tuple, action: str, parameters: dict = None, synthesize: list = None,
                     synonyms: dict = None, equivalents: list = None, inside_tts: bool = False):
-        self.tree.add_commands(
+        self.tree.api.add_commands(
             {com: {"action": action, "parameters": parameters, "synthesize": synthesize, "synonyms": synonyms,
                    "equivalents": equivalents, "inside_tts": inside_tts}})
 
@@ -326,7 +271,7 @@ class App:
         with open(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt", "w") as file:
             file.write('["' + " ".join(self.config['trigger'].get(f"triggers").get(self.lang)))
             file.write(self.config["speech"].get(f"restricted-add-line").get(self.lang))
-            file.write(self.tree.recognizer_string + '"]')
+            file.write(self.tree.api.recognizer_string + '"]')
 
     # below methods are actions that need access to the main app instance
     # <!--------------------------------------------------------------------!>

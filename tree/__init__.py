@@ -1,1 +1,1 @@
-from .data_tree import Tree, CommandNode
+from .data_tree import Tree

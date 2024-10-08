@@ -18,7 +18,7 @@ log = logging.getLogger("module: " + __file__)
 from data.constants import CONFIG_FILE
 from utils.utils import *
 
-config = yaml_load(CONFIG_FILE)
+config = load_yaml(CONFIG_FILE)
 
 
 def subprocess(**kwargs):
