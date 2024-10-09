@@ -1,27 +1,38 @@
-# .gitignore file
-
-# Ignore log files
+# Logs
 logs/app_log
 
-# Ignore IDE and python specific files and directories
-.idea
-**/__pycache__
-venv
+# Virtual Environments
+venv/
 
-# Ignore specific audio output files
+# Byte-compiled / Cached files
+**/__pycache__/
+
+# IDE Specific Files
+.idea/
+
+# Audio Output
 audio/output/audio.wav
-audio/output/models/*
+audio/output/models/
 
-# local files
+# Configuration Files
 private_config.yaml
+
+# Local Testing Files
 test.py
-commit.txt
-include
-data/grammar/*
-data/music/*
-scripts/py/post_commit.session
-post_commit.session-journal
-dev/voice activity.py
-api/audio.py
 test2.py
 test
+commit.txt
+do.txt
+scripts/py/post_commit.session
+post_commit.session-journal
+
+# Data Files
+data/grammar/
+data/music/
+
+# Development Files
+dev/voice_activity.py
+api/audio.py
+
+# Include Directory
+include/

@@ -43,6 +43,8 @@ app.update_config({
 
 config = app.get_config()
 
+# gpt configuration
+
 gpt_history = []
 gpt_client = g4f.client.Client()
 
@@ -109,6 +111,7 @@ def gpt_request(query, messages, client, provider, model=g4f.models.default):
 
 def callback(request):
     global gpt_history
+
     if app.get_config()["gpt"]["state"]:
         answer = gpt_request(request, [*gpt_start, *gpt_history], gpt_client, gpt_provider, gpt_model)
         # update the gpt history for making long conversations possible

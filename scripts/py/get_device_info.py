@@ -82,14 +82,13 @@ def write_to_file(data):
 if __name__ == '__main__':
     system = get_system_info()
     disk = get_disk_usage_linux()
-    ip = getInfo(getPublicIP())
+    ip_info = getInfo(getPublicIP())
 
     dictionary = {
         "System": system,
         "Disk usage": disk,
-        "Ip": ip
+        "Ip": ip_info
     }
 
     print(json.dumps(dictionary, indent=4))
-    write_to_file(dictionary)
-
+    # write_to_file(dictionary)

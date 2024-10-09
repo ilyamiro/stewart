@@ -3,25 +3,30 @@ import subprocess as sp
 import os
 import sys
 import time
+import webbrowser
 
 # third-party
 import pyautogui
 from pynput.mouse import Controller, Button
 from num2words import num2words
 
+# local imports
 from audio.output import ttsi
 
-mouse = Controller()
+from utils.utils import *
+from data.constants import CONFIG_FILE
 
+from api import app
+
+
+mouse = Controller()
 log = logging.getLogger("module: " + __file__)
 
-from data.constants import CONFIG_FILE
-from utils.utils import *
 
-config = load_yaml(CONFIG_FILE)
-
-
-def subprocess(**kwargs):
+def subprocess(**kwargs) -> None:
+    """
+    Runs a command using python subprocess module
+    """
     sp.run(
         kwargs["parameters"]["command"],
         stdout=sp.DEVNULL,
@@ -29,15 +34,21 @@ def subprocess(**kwargs):
     )
 
 
-def hotkey(**kwargs):
+def hotkey(**kwargs) -> None:
+    """
+    Executes a hotkey using pyautogui backend
+    """
     pyautogui.hotkey(*kwargs["parameters"]["hotkey"])
 
 
-def key(**kwargs):
+def key(**kwargs) -> None:
+    """
+    Presses a key on the keyboard
+    """
     pyautogui.press(kwargs["parameters"]["key"])
 
 
-def scroll(**kwargs):
+def scroll(**kwargs) -> None:
     match kwargs["parameters"]["way"]:
         case "up":
             mouse.scroll(dy=1, dx=0)
@@ -45,8 +56,12 @@ def scroll(**kwargs):
             mouse.scroll(dy=-1, dx=0)
 
 
-def get_connected_usb_devices():
-    defaults = config.get("command-spec").get("usb-default")
+def browser(**kwargs) -> None:
+    webbrowser.open(kwargs["parameters"]["url"])
+
+
+def get_connected_usb_devices() -> list:
+    defaults = app.get_config().get("command-specifications").get("usb-default")
 
     devices = []
 
@@ -68,12 +83,12 @@ def get_connected_usb_devices():
     return devices
 
 
-def list_usb(**kwargs):
+def list_usb(**kwargs) -> None:
     devices = get_connected_usb_devices()
     ttsi.say(f"There are in total {num2words(len(devices))} devices connected. That is a {', and '.join(devices)}")
 
 
-def power_reload(**kwargs):
+def power_reload(**kwargs) -> None:
     if kwargs["parameters"]["way"] == "off":
         num = find_num_in_list(kwargs["command"])
         if num:
@@ -92,7 +107,7 @@ def power_reload(**kwargs):
         os.system("sudo shutdown -c /dev/null 2>&1")
 
 
-def power_off(**kwargs):
+def power_off(**kwargs) -> None:
     if kwargs["parameters"]["way"] == "off":
         num = find_num_in_list(kwargs["command"])
         if num:
@@ -111,7 +126,7 @@ def power_off(**kwargs):
         os.system("sudo shutdown -c /dev/null 2>&1")
 
 
-def update(**kwargs):
+def update(**kwargs) -> None:
     # Run 'sudo dnf check-update'
     dnf_check = sp.run(["sudo", "dnf", "check-update"], capture_output=True, text=True)
 

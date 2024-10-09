@@ -7,26 +7,32 @@ import re
 import urllib
 from importlib import import_module
 
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-
-from ytmusicapi import YTMusic
+# third-party imports
 import vlc
 import yt_dlp
+from ytmusicapi import YTMusic
 
+# local imports
+from audio.output import ttsi
+
+from data.constants import CONFIG_FILE, PROJECT_FOLDER
+from utils import load_yaml, import_all_from_module, internet, Notify, find_num_in_list
+
+
+config = load_yaml(CONFIG_FILE)
+
+# vlc media player
 instance = vlc.Instance()
 player = instance.media_player_new()
 equalizer = vlc.AudioEqualizer()
 player.set_equalizer(equalizer)
 
+
+# YouTube Music search
 api = YTMusic()
 
+
 log = logging.getLogger("module: " + __file__)
-
-from data.constants import CONFIG_FILE, PROJECT_FOLDER
-from utils import load_yaml, import_all_from_module, internet, Notify, find_num_in_list
-from audio.output import ttsi
-
-config = load_yaml(CONFIG_FILE)
 
 
 def play_audio(**kwargs):

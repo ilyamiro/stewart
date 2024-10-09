@@ -52,7 +52,7 @@ def load_yaml(path: str):
         with open(path, "r", encoding="utf-8") as file:
             return yaml.safe_load(file)
     else:
-        log.warning("Yaml file")
+        log.warning("Yaml file is non existent")
 
 
 config = load_yaml(CONFIG_FILE)

@@ -5,17 +5,6 @@ from typing import Dict, Tuple, Literal, TypedDict, NotRequired, List, Callable
 
 log = logging.getLogger("tree")
 
-
-class InnerDictType(TypedDict):
-    action: str
-    parameters: NotRequired[dict]
-    synonyms: NotRequired[Dict[str, str]]
-    synthesize: NotRequired[List[str]]
-    equivalents: NotRequired[List[List[str]]]
-    inside_tts: NotRequired[bool]
-
-
-COMMAND_TYPE = Dict[Tuple[str], InnerDictType]
 COMMAND_CALLBACK = Callable[[tuple, dict], None]
 
 
@@ -53,7 +42,7 @@ class TreeAPI:
         self.recognizer_string = ""
         # self.__first_words__ = set()
 
-        # self.__inside_tts_list__ = []
+        self.__inside_tts_list__ = []
 
     def add_commands_addition_callback(self, func: COMMAND_CALLBACK):
         self.__add_command_callbacks__.append(func)
@@ -84,9 +73,9 @@ class TreeAPI:
         else:
             expanded_words = command
 
-        return expanded_words
+        return tuple(expanded_words)
 
-    def add_commands(self, commands: COMMAND_TYPE):
+    def add_commands(self, commands):
         """
         Adds multiple commands to the CommandTree.
 
@@ -94,38 +83,46 @@ class TreeAPI:
         - commands: A dictionary where keys are command parts (as tuples) and values are command details.
         """
         for definition, details in commands.items():
+            # execute command callback
             for hook in self.__add_command_callbacks__:
                 try:
                     hook(definition, details)
                 except Exception as e:
                     log.warning(f"Add command hook {hook.__name__} threw an error: {e}")
 
-            # self.first_words.add(command[0])
+            # recognizer string creation
             self.recognizer_string += f" {' '.join(definition)}"
-            # if details.get("inside_tts"):
-            #     self.inside_tts_list.append(command)
 
-            equal_commands = details.get("equivalents")
-            if equal_commands:
-                for equal in equal_commands:
-                    self.add_commands({equal: {"action": details.get("action"),
-                                               "parameters": details.get("parameters"),
-                                               "synthesize": details.get("synthesize"),
-                                               "inside_tts": details.get("inside_tts")}})
-            expanded_command = self.__expand_synonyms__(tuple(definition), definition)
-            for words in definition:
-                if words.split()[0] != words:
-                    redone_command = (word for word in words.split())
-                    definition = list(definition)
-                    for element in redone_command:
-                        definition.insert(definition.index(words), element)
-                    definition.pop(definition.index(words))
-                    self.add_commands({tuple(definition): details})
-                    break
-            self._add_command_recursive(self.root, tuple(expanded_command), details.get("action"),
-                                        details.get("parameters"), details.get("synthesize"))
+            # inside tts procession
+            if details.get("inside_tts"):
+                self.__inside_tts_list__.append(definition)
 
-    def _add_command_recursive(self, node, command, action, parameters=None, synthesize=None):
+            # process equal commands
+            self.__process_equal_commands__(details)
+
+            # process commands to ensure stability
+            self.__process_multi_word__(definition)
+
+            self.__add_command_recursive__(self.root, self.__expand_synonyms__(tuple(definition), definition), details.get("action"),
+                                           details.get("parameters"), details.get("synthesize"))
+
+    @staticmethod
+    def __process_multi_word__(definition):
+        result = []
+        for item in definition:
+            result.extend(item.split())
+        return result
+
+    def __process_equal_commands__(self, details):
+        equivalents = details.get("equivalents")
+        if equivalents:
+            for equal in equivalents:
+                self.add_commands({equal: {"action": details.get("action"),
+                                           "parameters": details.get("parameters"),
+                                           "synthesize": details.get("synthesize"),
+                                           "inside_tts": details.get("inside_tts")}})
+
+    def __add_command_recursive__(self, node, command, action, parameters=None, synthesize=None):
         """
         Recursive method to add a command to the CommandTree.
 
@@ -150,7 +147,7 @@ class TreeAPI:
         if part not in node.children:
             node.children[part] = CommandNode()
 
-        return self._add_command_recursive(node.children[part], command[1:], action, parameters, synthesize)
+        return self.__add_command_recursive__(node.children[part], command[1:], action, parameters, synthesize)
 
     def find_command(self, command):
         """

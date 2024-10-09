@@ -1,5 +1,12 @@
 # CHANGELOG
 
+### v1.5.1 - Data tree command processing improvements
+
+- Made plugin files more structured
+- Improved tree api by splitting main `add_commands` method into parts
+- Reworked `__process_multi_word__` and sped it up by x4 times.
+
+
 ### v1.5.0 - API improvements
 
 - improved app API methods by adding callbacks

@@ -15,6 +15,7 @@ import g4f.Provider
 from g4f.client import Client as GPTClient
 
 # Local imports
+from audio.input import STT
 from audio.output import ttsi
 from utils import *
 from tree import Tree
@@ -51,8 +52,10 @@ class App:
             # play sounds
             if self.config["startup"]["sound-enable"]:
                 playsound(self.config["startup"]["sound-path"], block=False)
+                log.info("Played startup sound")
             if self.config["startup"]["voice-enable"]:
                 ttsi.say(parse_config_answers(self.config[f"startup"]["answers"]))
+                log.info("Played startup voice synthesis")
 
             cleanup(f"{PROJECT_FOLDER}/data/music", 10)
 
@@ -83,7 +86,6 @@ class App:
         self.history = []
 
         if not self.config["text-mode"]:
-            from audio.input import STT
 
             # voice recognition
             self.stt = STT(self.api.lang)
@@ -128,7 +130,7 @@ class App:
             elif len(total) > 1:
                 # if there are multiple commands, we can't play multiple audios at once as they would overlap.
                 # so, we just play a confirmative phrase, like "Doing that now, sir" or else.
-                if all(command not in self.tree.api.inside_tts_list for command in total):
+                if all(command not in self.tree.api.__inside_tts_list__ for command in total):
                     # if one of the commands itself produces some sound,
                     # then it could interfere with the confirmation phrase,
                     # so we check for this flag "inside_tts" to decide whether
@@ -146,6 +148,7 @@ class App:
         # process the input command and find the corresponding parameters
         # if self.config["ssm"]["enable"]:
         #     command = self.get_similar_command(command)
+        print(command)
         result = self.tree.api.find_command(command)
         log.info(f"Execution parameters: {result}")
         if result and not all(element is None for element in result):  # if the command was found, process it
@@ -269,8 +272,8 @@ class App:
         This file is used for a vosk speech-to-text model to speed up the recognition speed and quality
         """
         with open(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt", "w") as file:
-            file.write('["' + " ".join(self.config['trigger'].get(f"triggers").get(self.lang)))
-            file.write(self.config["speech"].get(f"restricted-add-line").get(self.lang))
+            file.write('["' + " ".join(self.config['trigger'].get(f"triggers")))
+            file.write(self.config["speech"].get(f"restricted-add-line"))
             file.write(self.tree.api.recognizer_string + '"]')
 
     # below methods are actions that need access to the main app instance

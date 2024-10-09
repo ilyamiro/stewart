@@ -1,9 +1,12 @@
-from api import app, tree
 from data.constants import CONFIG_FILE
-
 from utils import load_yaml
 
-# config = yaml_load("config.yaml")
+from api import app, tree
+
+# api usage
+
+app.add_module_for_search("plugins/core/core.py")
+app.add_module_for_search("plugins/core/media.py")
 
 app.update_config({
     "command-specifications": {
@@ -15,10 +18,6 @@ app.update_config({
         "music-download": True
     }
 })
-
-
-app.add_module_for_search("plugins/core/core.py")
-app.add_module_for_search("plugins/core/media.py")
 
 first_words = []
 
@@ -52,7 +51,6 @@ def handle_commands(request):
                 # if there already is a current command being counted,
                 # the new first words means the new command starts, so we add a last one
                 list_of_commands.append(current_command)
-            # TODO create custom config creation
             if word in app.get_config()["command-specifications"][f"no-multi-first-words"]:
                 # if a word implies any words after it, like Google search,
                 # then everything after that word should be counted as a command itself
