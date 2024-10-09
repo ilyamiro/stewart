@@ -24,7 +24,7 @@
 
 ## About
 
-Lines of code: **3387** 
+Lines of code: **3385** 
 
 A desktop-based voice assistant build with python.
 
@@ -37,12 +37,10 @@ A desktop-based voice assistant build with python.
 
 ### Roadmap
 
-- [ ] Wake word detection
-- [ ] Speaker diarization and recognition for vosk speech-to-text
+- [x] Wake word detection
+- [x] Speaker diarization and recognition for vosk speech-to-text
 - [ ] GUI written with **flet** (Flutter port for python) / **PyQt5** (PySide6)
 - [ ] Improve extensibility (Plugin support) and create API
-- [ ] Switch to C++
-  - [ ] Write command tree search system in C++
 - [ ] Wiki
   - [ ] Command editor
   - [ ] Reference

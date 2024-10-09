@@ -1,5 +1,17 @@
 # CHANGELOG
 
+### v1.5.0 - API improvements
+
+- improved app API methods by adding callbacks
+- added `lang.txt`.
+- moved media plugin into a core plugin directory.
+- deleted `history.json`.
+- modified the way config files are created. Now they are managed with `api.app` and `app.get_config()`, `app.update_config()`.
+- moved gpt model to plugins as `__no_command_callback__` was added.
+- deleted `plugins/importer.py` as it was moved mostly to utils.
+- removed `lang` variable from inside implementation and moved it to `app.lang` in api. Might be moved to constants in the future.
+
+
 ### v1.4.0
 
 - Created a basis for plugin system
