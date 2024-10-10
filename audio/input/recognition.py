@@ -21,13 +21,13 @@ with open(f"{PROJECT_FOLDER}/audio/input/vector.txt", "r", encoding="utf-8") as 
     spk_sig = ast.literal_eval(f.read().replace("\n", ""))
 
 SPK_MODEL_PATH = f"{PROJECT_FOLDER}/audio/input/models/vosk-model-speaker-recognition"
-utils = torch.load(f"{PROJECT_FOLDER}/audio/input/models/silero_utils.pth")
+# utils = torch.load(f"{PROJECT_FOLDER}/audio/input/models/silero_utils.pth")
 
-(get_speech_timestamps,
- save_audio,
- read_audio,
- VADIterator,
- collect_chunks) = utils
+# (get_speech_timestamps,
+#  save_audio,
+#  read_audio,
+#  VADIterator,
+#  collect_chunks) = utils
 
 
 def int2float(sound):

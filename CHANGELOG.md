@@ -1,5 +1,12 @@
 # CHANGELOG
 
+### v1.5.2 - Data tree command processing improvements
+
+- `list_usb_devices` action reworked to match 0 devices connected
+- added `admin` function to check whether the program is run with admin privileges
+- added try-except structure to run plugin hooks `pre_init` and `post_init`.
+- United `__run_pre_init_hooks__` and `__run_post_init_hooks__` into `__run_hooks__`
+
 ### v1.5.1 - Data tree command processing improvements
 
 - Made plugin files more structured

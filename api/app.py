@@ -55,13 +55,13 @@ class AppAPI:
     def __set_hook__(func: types.FunctionType, callback_list, index: int = -1):
         callback_list.insert(index, func)
 
-    def __run_pre_init_callbacks__(self):
-        for callback in self.__pre_init_callbacks__:
-            callback()
-
-    def __run_post_init_callbacks__(self):
-        for callback in self.__post_init_callbacks__:
-            callback()
+    @staticmethod
+    def __run_hooks__(collection: list):
+        for hook in collection:
+            try:
+                hook()
+            except Exception as e:
+                log.warning(f"Add command hook {hook.__name__} threw an error: {e}")
 
     # < ------------------- Modules ------------------- >
 

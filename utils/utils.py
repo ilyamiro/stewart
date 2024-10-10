@@ -4,9 +4,11 @@ import os
 import subprocess
 import logging
 import random
+import platform
 import sys
 import inspect
 import re
+import time
 from pathlib import Path
 from importlib import import_module
 
@@ -82,8 +84,6 @@ def filter_lang_config(file, lang_prefix):
     :param lang_prefix: The language prefix to filter (e.g. 'ru', 'en')
     :return: Filtered config with values from the specified language prefix
     """
-    lang_config = {}
-
     def filter_recursive(data):
         filtered = {}
         for key, value in data.items():
@@ -106,6 +106,24 @@ def filter_lang_config(file, lang_prefix):
 
 
 # --------------- System & Subprocess Functions ---------------
+
+def admin():
+    current_platform = platform.system()
+
+    if current_platform == "Windows":
+        # Import ctypes only on Windows
+        import ctypes
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        except (AttributeError, OSError, ctypes.WinError):
+            return False
+    elif current_platform in ["Linux", "Darwin"]:  # 'Darwin' is the identifier for macOS
+        # Linux and macOS (root) check
+        return os.geteuid() == 0
+    else:
+        raise NotImplementedError(f"Unsupported platform: {current_platform}")
+
+
 def run(*args, stdout: bool = False):
     """
     Run a system command using subprocess.
@@ -126,7 +144,9 @@ def system_setup():
     Perform platform-specific system setup.
     Currently configured for Linux systems to start 'jack_control'.
     """
-    if sys.platform == "linux":
+    current = platform.system()
+
+    if current == "Linux":
         run("jack_control", "start")
         run("xhost", "+local:$USER")
 
@@ -142,11 +162,12 @@ def cleanup(directory, limit: int):
     if len(files) > limit:
         files.sort(key=os.path.getctime, reverse=True)
 
-        last_created_file = files[0]
-        try:
-            os.remove(last_created_file)
-        except Exception as e:
-            print(f"Error deleting file (cleanup) {last_created_file} in a {directory}: {e}")
+        while len(files) > limit:
+            try:
+                os.remove(files[0])
+                files.pop(0)
+            except Exception as e:
+                print(f"Error deleting file (cleanup) {last_created_file} in a {directory}: {e}")
 
 
 # --------------- Internet & System Functions ---------------
@@ -262,7 +283,7 @@ def find_plugins(directory):
     return subdirectories
 
 
-def import_modules_from_directory(directory):
+def import_modules_from_directory(directory) -> None:
     """
     Dynamically import all Python modules from a given directory.
 
@@ -282,13 +303,12 @@ def import_modules_from_directory(directory):
                 modules.append(module)
             except ImportError as e:
                 log.info(f"Failed to import {module_name}: {e}")
-    return modules
 
 
 def import_plugins(directory):
     for plugin_dir in directory:
         # Import all modules from the plugin directory
-        modules = import_modules_from_directory(plugin_dir)
+        import_modules_from_directory(plugin_dir)
 
 
 def import_functions_from_a_module(module):

@@ -21,8 +21,6 @@ from utils import *
 from tree import Tree
 from data.constants import CONFIG_FILE, PROJECT_FOLDER
 
-from api.app import AppAPI
-
 
 log = logging.getLogger("app")
 
@@ -33,16 +31,14 @@ class App:
     For further reference, VA = Voice Assistant
     """
 
-    def __init__(self, api: AppAPI):
+    def __init__(self, api):
         self.api = api
 
     @staticmethod
-    def init_decorator(func):
-        """Sound effect decorator for initializing"""
-
+    def decorator(func):
         def wrapper(self, *args, **kwargs):
             # <!--------------- pre-init: start ---------------!>
-            self.api.__run_pre_init_callbacks__()
+            self.api.__run_hooks__(self.api.__pre_init_callbacks__)
 
             self.config = filter_lang_config(load_yaml(CONFIG_FILE), self.api.lang)
             self.lang = self.api.lang
@@ -57,6 +53,8 @@ class App:
                 ttsi.say(parse_config_answers(self.config[f"startup"]["answers"]))
                 log.info("Played startup voice synthesis")
 
+            # <!--------------- cleanup directories ---------------!>
+
             cleanup(f"{PROJECT_FOLDER}/data/music", 10)
 
             # <!--------------- pre-init: end ---------------!>
@@ -64,13 +62,13 @@ class App:
             func(self, *args, **kwargs)
 
             # <!--------------- post-init: start ---------------!>
-            self.api.__run_post_init_callbacks__()
+            self.api.__run_hooks__(self.api.__post_init_callbacks__)
 
             # <!--------------- post-init: end ---------------!>
 
         return wrapper
 
-    @init_decorator
+    @decorator
     def initialize(self):
         log.debug("App initialization started")
 
@@ -105,12 +103,15 @@ class App:
 
         log.debug("Finished app initialization")
 
-    def start(self):
+    def start(self, start_time):
         self.recognition_thread = threading.Thread(target=self.recognition)
         # starting the voice recognition
         self.recognition_thread.start()
 
         log.debug(f"Recognition thread started with name: {self.recognition_thread.name}")
+
+        end_time = time.time()
+        log.debug(f"Startup time: {end_time - start_time:.6f}")
 
     def handle(self, request):
         if not request and self.config["trigger"]["trigger-mode"] != "disabled":

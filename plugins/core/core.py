@@ -85,7 +85,10 @@ def get_connected_usb_devices() -> list:
 
 def list_usb(**kwargs) -> None:
     devices = get_connected_usb_devices()
-    ttsi.say(f"There are in total {num2words(len(devices))} devices connected. That is a {', and '.join(devices)}")
+    if len(devices) != 0:
+        ttsi.say(f"There are in total {num2words(len(devices))} devices connected. That is a {', and '.join(devices)}")
+    else:
+        ttsi.say("There aren't any devices connected, sir")
 
 
 def power_reload(**kwargs) -> None:
