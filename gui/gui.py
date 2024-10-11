@@ -72,4 +72,4 @@ def main():
     ft.app(gui.start)
 
 
-main()
+# main()

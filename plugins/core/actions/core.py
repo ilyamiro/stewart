@@ -11,8 +11,6 @@ from pynput.mouse import Controller, Button
 from num2words import num2words
 
 # local imports
-from audio.output import ttsi
-
 from utils.utils import *
 from data.constants import CONFIG_FILE
 
@@ -86,9 +84,9 @@ def get_connected_usb_devices() -> list:
 def list_usb(**kwargs) -> None:
     devices = get_connected_usb_devices()
     if len(devices) != 0:
-        ttsi.say(f"There are in total {num2words(len(devices))} devices connected. That is a {', and '.join(devices)}")
+        app.say(f"There are in total {num2words(len(devices))} devices connected. That is a {', and '.join(devices)}")
     else:
-        ttsi.say("There aren't any devices connected, sir")
+        app.say("There aren't any devices connected, sir")
 
 
 def power_reload(**kwargs) -> None:
@@ -142,8 +140,8 @@ def update(**kwargs) -> None:
     # The final output is the line count
     number_of_lines = wc_output.stdout.strip()
 
-    ttsi.say(f"Updating {num2words(number_of_lines)} packages, sir")
+    app.say(f"Updating {num2words(number_of_lines)} packages, sir")
 
     sp.run(["sudo", "dnf", "update", "--refresh", "--best", "--allowerasing", "-y"])
 
-    ttsi.say("The system was successfully updated")
+    app.say("The system was successfully updated")

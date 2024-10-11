@@ -371,3 +371,21 @@ def parse_config_answers(answers):
     return parse_and_replace_config(random.choice(answers))
 
 
+def track_time(func, *args, **kwargs):
+    """
+    This function tracks the execution time of a given function.
+
+    Parameters:
+        func: The function to track.
+        *args: Positional arguments to pass to the function.
+        **kwargs: Keyword arguments to pass to the function.
+
+    Returns:
+        The result of the function execution and the time taken.
+    """
+    start_time = time.time()  # Record the start time
+    result = func(*args, **kwargs)  # Execute the function
+    end_time = time.time()  # Record the end time
+
+    execution_time = end_time - start_time  # Calculate execution time
+    return result, execution_time

@@ -1,5 +1,17 @@
 # CHANGELOG
 
+### v1.5.3 - Stream audio and dir improvements
+
+- Arranged plugin search modules into `actions` as in `core/actions/core.py` or `core/actions/media.py`
+- added `stream` function into `core/actions/media.py` to stream audio from url using `mpv`
+- improved `stop_audio` action by adding mpv to it.
+- added `handle_simple` way of processing commands which is 2 times faster, but works in much more simpler way
+- added `add_dir_for_search` function in app api to add all python files in a directory into a search path for commands
+- added `include_private` boolean parameter for `add_dir_for_search` and `add_module_for_search` api functions.
+  Includes functions that start with `__` or does not.
+- Replaced direct ttsi (text-to-speech-instance) import from audio directory in plugins: instead using `api.app.say`.
+- Added calendar module into core plugin that helps get events from `.ics` file (gnome-calendar)
+
 ### v1.5.2 - Data tree command processing improvements
 
 - `list_usb_devices` action reworked to match 0 devices connected

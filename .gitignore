@@ -24,7 +24,8 @@ test
 commit.txt
 do.txt
 scripts/py/post_commit.session
-post_commit.session-journal
+#scripts/py/add_command.py
+#post_commit.session-journal
 
 # Data Files
 data/grammar/

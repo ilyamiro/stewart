@@ -1,12 +1,14 @@
 from data.constants import CONFIG_FILE
 from utils import load_yaml
+import re
 
 from api import app, tree
 
 # api usage
-
-app.add_module_for_search("plugins/core/core.py")
-app.add_module_for_search("plugins/core/media.py")
+#
+# app.add_module_for_search("plugins/core/actions/core.py")
+# app.add_module_for_search("plugins/core/actions/media.py")
+app.add_dir_for_search("plugins/core/actions", include_private=False)
 
 app.update_config({
     "command-specifications": {
@@ -20,10 +22,15 @@ app.update_config({
 })
 
 first_words = []
+commands = []
 
 
 def first_words_hook(definition, details):
     first_words.append(definition[0])
+
+
+def command_list_hook(definition, details):
+    commands.append(" ".join(definition))
 
 
 def synonyms_hook(definition, details):
@@ -38,6 +45,18 @@ def synonyms_hook(definition, details):
 
 tree.add_commands_addition_callback(first_words_hook)
 tree.add_commands_addition_callback(synonyms_hook)
+tree.add_commands_addition_callback(command_list_hook)
+
+
+def handle_simple(request):
+    list_of_commands = []
+
+    for command in commands:
+        if command in request:
+            list_of_commands.append(command.split())
+            request = request.replace(command, " ")
+
+    return list_of_commands
 
 
 def handle_commands(request):

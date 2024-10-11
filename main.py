@@ -3,7 +3,7 @@ import time
 import traceback
 
 from logs import logging_setup, set_logging
-from utils import system_setup, import_plugins, find_plugins, admin
+from utils import system_setup, import_plugins, find_plugins, admin, clear
 
 log = logging.getLogger("main")
 

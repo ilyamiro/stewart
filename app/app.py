@@ -21,6 +21,8 @@ from utils import *
 from tree import Tree
 from data.constants import CONFIG_FILE, PROJECT_FOLDER
 
+# disable playsound logger
+logging.getLogger("playsound").setLevel(logging.ERROR)
 
 log = logging.getLogger("app")
 
@@ -124,14 +126,20 @@ class App:
             # update the history of requests to base some commands on the previous requests
             self.history_update(request)
             # checking whether the request contains multiple commands
-            total = self.api.__command_processor__(request)
+
+            # using processor and tracking time of it's execution
+            total, exec_time = track_time(lambda: self.api.__command_processor__(request))
+
+            log.info(f"Commands search time: {exec_time:.6f}")
+            log.debug(f"Total commands: {total}")
+
             if len(total) == 1:
                 # if there is only one command, process it
                 self.process_command(total[0], request)
             elif len(total) > 1:
                 # if there are multiple commands, we can't play multiple audios at once as they would overlap.
                 # so, we just play a confirmative phrase, like "Doing that now, sir" or else.
-                if all(command not in self.tree.api.__inside_tts_list__ for command in total):
+                if all(tuple(command) not in self.tree.api.__inside_tts_list__ for command in total):
                     # if one of the commands itself produces some sound,
                     # then it could interfere with the confirmation phrase,
                     # so we check for this flag "inside_tts" to decide whether
@@ -146,10 +154,6 @@ class App:
                 # then this phrase is being sent to gpt model for answering if it's enabled
 
     def process_command(self, command, full, multi: bool = False):
-        # process the input command and find the corresponding parameters
-        # if self.config["ssm"]["enable"]:
-        #     command = self.get_similar_command(command)
-        print(command)
         result = self.tree.api.find_command(command)
         log.info(f"Execution parameters: {result}")
         if result and not all(element is None for element in result):  # if the command was found, process it
@@ -300,3 +304,9 @@ class App:
 
     def stop(self, **kwargs):
         self.running = False
+
+    def protocol(self, **kwargs):
+        for command in kwargs["parameters"]["protocol"]:
+            self.find_exec(command["action"])(parameters=command["parameters"])
+
+

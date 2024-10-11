@@ -13,11 +13,10 @@ import yt_dlp
 from ytmusicapi import YTMusic
 
 # local imports
-from audio.output import ttsi
-
 from data.constants import CONFIG_FILE, PROJECT_FOLDER
-from utils import load_yaml, import_all_from_module, internet, Notify, find_num_in_list
+from utils import *
 
+from api import app
 
 config = load_yaml(CONFIG_FILE)
 
@@ -27,12 +26,17 @@ player = instance.media_player_new()
 equalizer = vlc.AudioEqualizer()
 player.set_equalizer(equalizer)
 
-
 # YouTube Music search
 api = YTMusic()
 
-
 log = logging.getLogger("module: " + __file__)
+
+
+def mpv():
+    output = subprocess.run(["pgrep", "-a", "mpv"], capture_output=True, text=True).stdout
+    if output:
+        return True
+    return False
 
 
 def play_audio(**kwargs):
@@ -46,15 +50,24 @@ def kill_audio(**kwargs):
     if player.get_state() == vlc.State.Playing:
         player.stop()
 
+    if mpv():
+        run("pkill", "mpv")
+
 
 def pause_audio(**kwargs):
     if player.get_state() == vlc.State.Playing:
         player.pause()
 
+    if mpv():
+        app.say("The mpv player can be paused in system notifications, sir")
+
 
 def resume_audio(**kwargs):
     if player.get_state() in [vlc.State.Paused, vlc.State.Stopped]:
         player.play()
+
+    if mpv():
+        app.say("The mpv player can be resumed in system notifications, sir")
 
 
 def mute_volume(**kwargs):
@@ -103,7 +116,8 @@ def save_song(href, title):
                 ydl.download([href])
             else:
                 formats = ydl.extract_info(href, download=False)["formats"]
-                audio_formats = [f for f in formats if f.get('acodec') != 'none' and f.get('vcodec') == 'none' and f.get("abr") is not None]
+                audio_formats = [f for f in formats if
+                                 f.get('acodec') != 'none' and f.get('vcodec') == 'none' and f.get("abr") is not None]
 
                 best_audio = max(audio_formats, key=lambda f: f.get('abr', 0))
                 url = best_audio['url']
@@ -141,7 +155,7 @@ def play_song(**kwargs):
 
         player.play()
     else:
-        ttsi.say("Sorry, I have not found a matching song, sir, please try again")
+        ap.say("Sorry, I have not found a matching song, sir, please try again")
 
 
 def boost_bass(**kwargs):
@@ -179,9 +193,43 @@ def normalize_sound(**kwargs):
 
 
 def find_video(**kwargs):
-    html = urllib.request.urlopen(f"https://www.youtube.com/results?search_query={urllib.parse.quote('+'.join(kwargs['command'][2:]))}")
+    html = urllib.request.urlopen(
+        f"https://www.youtube.com/results?search_query={urllib.parse.quote('+'.join(kwargs['command'][2:]))}")
     video_ids = re.findall(r"watch\?v=(\S{11})", html.read().decode())
     if video_ids:
         webbrowser.open("https://www.youtube.com/watch?v=" + video_ids[0], autoraise=True)
     else:
-        ttsi.say("Sorry, I have not found a matching video, sir, please try again")
+        app.say("Sorry, I have not found a matching video, sir, please try again")
+
+
+def stream(**kwargs):
+    link = kwargs["parameters"]["link"]
+    process = subprocess.Popen(['mpv', '--shuffle', "--no-video", link], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    title = None
+    pattern = r'icy-title:\s*([^\n]+)'
+
+    while True:
+        # Read output line by line
+        output = process.stdout.readline()
+
+        if output == '' and process.poll() is not None:
+            break  # Exit loop if process has ended
+
+        if output:
+            # Search for the title in the current line of output
+            match = re.search(pattern, output)
+            if match:
+                title = match.group(1).strip()
+                break
+
+    notification = Notify.Notification.new(
+        "Streaming audio from a link" if not title else title,
+        link if not title else "playing a song",
+        f"{PROJECT_FOLDER}/data/images/stewart.png"
+    )
+    notification.set_timeout(5000)
+    notification.show()
+
+
+# stream(parameters={"link": "https://play.streamafrica.net/lofiradio"})

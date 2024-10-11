@@ -68,10 +68,11 @@ class AppAPI:
     def add_func_for_search(self, name: str, func: types.FunctionType):
         self.__search_functions__[name] = func
 
-    def add_module_for_search(self, path: str = None, module=None):
+    def add_module_for_search(self, path: str = None, module=None, include_private: bool = False):
         """
         :param path: a project relative path for a module that would be added to search in when looking for execution module
         :param module: a module itself as a python object
+        :param include_private: whether to include functions that start with __
         """
         if not module:
             if os.path.exists(path):
@@ -88,11 +89,37 @@ class AppAPI:
                 return
         if isinstance(module, types.ModuleType):
             members = inspect.getmembers(module)
-            functions = {member[0]: member[1] for member in members if inspect.isfunction(member[1])}
+            functions = {member[0]: member[1] for member in members if (inspect.isfunction(member[1]))}
+            if not include_private:
+                for key in my_dict.keys():
+                    if key.startswith('__'):
+                        del my_dict[key]
             self.__search_functions__.update(functions)
         else:
             log.warning(f"module: {module} is not a module object, try again")
             return
+
+    def add_dir_for_search(self, path: str, include_private: bool = False):
+        """
+        Iterates over all Python files in the given directory and calls `add_module_for_search` on each.
+
+        :param path: The directory to search for Python modules
+        :param include_private: whether to include functions that start with __
+        """
+        if not os.path.exists(path):
+            log.warning(f"The directory: {path} does not exist.")
+            return
+
+        if not os.path.isdir(path):
+            log.warning(f"The path: {path} is not a directory.")
+            return
+
+        for root, _, files in os.walk(path):
+            for file in files:
+                if file.endswith(".py"):
+                    file_path = os.path.join(root, file)
+                    # Call the existing function for each Python file
+                    self.add_module_for_search(file_path, include_private=include_private)
 
     def set_no_command_callback(self, func: types.FunctionType):
         """A function that will run if no command was recognized"""
@@ -131,6 +158,7 @@ class AppAPI:
 
             with open(CONFIG_FILE, "w", encoding="utf-8") as file:
                 yaml.dump(data, file, allow_unicode=True)
+
     # <! ----------------------- use ----------------------- !>
 
     def use_command_processor(self, request):
