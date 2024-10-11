@@ -216,7 +216,6 @@ def upcoming_events(**kwargs):
             break
 
 
-# upcoming_events(command="stewart, plans for a week")
 
 
 

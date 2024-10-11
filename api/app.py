@@ -91,7 +91,7 @@ class AppAPI:
             members = inspect.getmembers(module)
             functions = {member[0]: member[1] for member in members if (inspect.isfunction(member[1]))}
             if not include_private:
-                for key in my_dict.keys():
+                for key in functions.keys():
                     if key.startswith('__'):
                         del my_dict[key]
             self.__search_functions__.update(functions)
