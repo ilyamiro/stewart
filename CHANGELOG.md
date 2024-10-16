@@ -1,5 +1,14 @@
 # CHANGELOG
 
+### v1.6.0 - User interface added. Android device connection via ADB; Logging improvements;
+
+- Added `check_adb.sh` and `connect_adb.sh` in `scripts/bash/` directory for connection with android phone via wifi
+- Made GUI run with app at same time. EXPERIMENTAL!
+- Updated utils using 'plyer' module
+- Divided `gui` directory into components
+- Dirty code, improvements coming
+
+
 ### v1.5.3 - Stream audio and dir improvements
 
 - Arranged plugin search modules into `actions` as in `core/actions/core.py` or `core/actions/media.py`

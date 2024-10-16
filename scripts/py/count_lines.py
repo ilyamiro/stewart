@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 PROJECT_FOLDER = Path(__file__).resolve().parent.parent.parent
+README = PROJECT_FOLDER / "README.md"
 
 
 def count_lines_in_python_files(directory, skip_files=None, skip_dirs=None, add_files=None):
@@ -35,15 +36,22 @@ def count_lines_in_python_files(directory, skip_files=None, skip_dirs=None, add_
 
 
 skip_files_list = ['test.py']
-add_files_list = ["README.md", "config.yaml", "requirements.txt"]
-skip_dirs_list = ['venv', 'models',  "__pycache__", ".git", ".idea", "app_log", "sounds", "images", "grammar"]
+add_files_list = ["README.md", "config.yaml", "requirements.txt", "private_config.yaml"]
+skip_dirs_list = ['venv', 'models',  "__pycache__", ".git", ".idea", "app_log", "sounds", "images", "grammar", "animations", "include"]
 
-with open(f"{PROJECT_FOLDER}/README.md", "r", encoding="utf-8") as f:
-    readme = f.read()
-
-pattern = r'Lines of code: \*\*\d+\*\*'
 lines_of_code = count_lines_in_python_files(PROJECT_FOLDER, skip_files_list, skip_dirs_list, add_files_list)
-new_content = re.sub(pattern, f'Lines of code: **{lines_of_code}**', readme)
 
-with open(f"{PROJECT_FOLDER}/README.md", "w", encoding="utf-8") as f:
-    f.write(new_content)
+
+def replace_lines(number):
+    with open(README, "r", encoding="utf-8") as f:
+        readme = f.read()
+
+    pattern = r'Lines of code: \*\*\d+\*\*'
+    new_content = re.sub(pattern, f'Lines of code: **{number}**', readme)
+
+    with open(README, "w", encoding="utf-8") as f:
+        f.write(new_content)
+
+
+replace_lines(lines_of_code)
+
