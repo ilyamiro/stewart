@@ -9,13 +9,13 @@ log = logging.getLogger("module: " + __file__)
 
 app.update_config({
     "gpt": {
-        "state": False,  # off
+        "state": True,  # off
         "provider": None,
+        "model": "gpt_4o",
         "exceptions": {
             "if_exception_set_default_model": True,
             "if_exception_set_default_provider": False
         },
-        "model": "default",
         "start-prompt": {
             "ru": [
                 {

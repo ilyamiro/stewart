@@ -1,10 +1,12 @@
 # Standart library imports
 import logging
 import random
+import sys
 import threading
 import time
 import os
 import json
+import signal
 import inspect
 from datetime import datetime
 from pathlib import Path
@@ -16,10 +18,9 @@ from g4f.client import Client as GPTClient
 
 # Local imports
 from audio.input import STT
-from audio.output import ttsi
 from utils import *
 from tree import Tree
-from data.constants import CONFIG_FILE, PROJECT_FOLDER
+from data.constants import CONFIG_FILE, PROJECT_FOLDER, PLUGINS_FOLDER
 
 # disable playsound logger
 logging.getLogger("playsound").setLevel(logging.ERROR)
@@ -42,6 +43,8 @@ class App:
             # <!--------------- pre-init: start ---------------!>
             self.api.__run_hooks__(self.api.__pre_init_callbacks__)
 
+            import_plugins(find_plugins(PLUGINS_FOLDER))
+
             self.config = filter_lang_config(load_yaml(CONFIG_FILE), self.api.lang)
             self.lang = self.api.lang
 
@@ -52,7 +55,7 @@ class App:
                 playsound(self.config["startup"]["sound-path"], block=False)
                 log.info("Played startup sound")
             if self.config["startup"]["voice-enable"]:
-                ttsi.say(parse_config_answers(self.config[f"startup"]["answers"]))
+                self.api.say(parse_config_answers(self.config[f"startup"]["answers"]))
                 log.info("Played startup voice synthesis")
 
             # <!--------------- cleanup directories ---------------!>
@@ -66,12 +69,13 @@ class App:
             # <!--------------- post-init: start ---------------!>
             self.api.__run_hooks__(self.api.__post_init_callbacks__)
 
+            # plugins
             # <!--------------- post-init: end ---------------!>
 
         return wrapper
 
     @decorator
-    def initialize(self):
+    def start(self, start_time):
         log.debug("App initialization started")
 
         self.trigger_timed_needed = self.config["trigger"]["trigger-mode"] != "disabled"
@@ -84,9 +88,9 @@ class App:
 
         # history of requests
         self.history = []
+        self.request_monitor = MonitoredVariable()
 
         if not self.config["text-mode"]:
-
             # voice recognition
             self.stt = STT(self.api.lang)
 
@@ -95,6 +99,8 @@ class App:
                 self.grammar_recognition_restricted_create()
                 self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
                                                            self.stt.create_new_recognizer())
+
+            self.stt.stream.stop_stream()
 
             log.debug("Speech to text instance initialized")
 
@@ -105,18 +111,21 @@ class App:
 
         log.debug("Finished app initialization")
 
-    def start(self, start_time):
-        self.recognition_thread = threading.Thread(target=self.recognition)
-        # starting the voice recognition
-        self.recognition_thread.start()
+        log.debug(f"Start up time: {time.time() - start_time:.6f}")
 
-        log.debug(f"Recognition thread started with name: {self.recognition_thread.name}")
+    def run(self):
+        if not self.config["text-mode"]:
+            self.recognition_thread = threading.Thread(target=self.recognition)
+            # starting the voice recognition
+            self.recognition_thread.start()
 
-        end_time = time.time()
-        log.debug(f"Startup time: {end_time - start_time:.6f}")
+            log.debug(f"Recognition thread started with name: {self.recognition_thread.daemon}")
 
     def handle(self, request):
-        if not request and self.config["trigger"]["trigger-mode"] != "disabled":
+        tracker.reset()
+        self.request_monitor.value = request
+
+        if (not request or not self.remove_trigger_word(request)) and self.config["trigger"]["trigger-mode"] != "disabled":
             # if the request does not contain anything and the trigger word is required,
             # it means that the user called for VA with a trigger word
             # (that got removed by self.remove_trigger_word)
@@ -135,7 +144,7 @@ class App:
 
             if len(total) == 1:
                 # if there is only one command, process it
-                self.process_command(total[0], request)
+                self.find_command(total[0], request)
             elif len(total) > 1:
                 # if there are multiple commands, we can't play multiple audios at once as they would overlap.
                 # so, we just play a confirmative phrase, like "Doing that now, sir" or else.
@@ -144,36 +153,38 @@ class App:
                     # then it could interfere with the confirmation phrase,
                     # so we check for this flag "inside_tts" to decide whether
                     # it would interfere and whether the multi confirmation sound should be played
-                    ttsi.say(parse_config_answers(self.config[f"answers"]["multi"]))
+                    self.api.say(parse_config_answers(self.config[f"answers"]["multi"]))
                 # processing each command separately
                 for command in total:
-                    self.process_command(command, request, multi=True)
+                    self.find_command(command, request, multi=True)
             elif not total:
-                self.api.__no_command_callback__(request)
                 # If something was said by user after the trigger word, but no commands were recognized,
-                # then this phrase is being sent to gpt model for answering if it's enabled
+                # then this phrase is being sent to plugins command callbacks or answering
+                self.api.__no_command_callback__(request)
 
-    def process_command(self, command, full, multi: bool = False):
+    def find_command(self, command, full, multi: bool = False):
         result = self.tree.api.find_command(command)
-        log.info(f"Execution parameters: {result}")
+        log.info(f"Execution parameters: {result}")  # TODO fix that log
+
         if result and not all(element is None for element in result):  # if the command was found, process it
-            result = list(result)  # find_command returns a tuple which is immutable
+            result = list(result)
             result.extend([command, full])  # a list can be extended
             if result[2] and not multi:
                 # if the command specifies an answer and only one command is being processed, use the TTS engine.
-                ttsi.say(parse_config_answers(result[2]))
+                self.api.say(parse_config_answers(result[2]))
+            else:
+                tracker.set_value("✅ Done")
 
             self.do(result)
+        else:
+            self.api.__no_command_callback__(full)
 
     def recognition(self):
         """
         Voice recognition
         """
         while self.running:
-            if self.config["text-mode"]:
-                # clear()
-                self.handle(input("Input: "))
-            else:
+            if self.stt.stream.is_active():
                 for word in self.stt.listen():
                     if self.trigger_timed_needed:
                         result = self.remove_trigger_word(word)
@@ -304,9 +315,8 @@ class App:
 
     def stop(self, **kwargs):
         self.running = False
+        os.kill(os.getpid(), signal.SIGKILL)
 
     def protocol(self, **kwargs):
         for command in kwargs["parameters"]["protocol"]:
             self.find_exec(command["action"])(parameters=command["parameters"])
-
-

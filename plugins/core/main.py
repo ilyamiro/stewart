@@ -1,13 +1,14 @@
-from data.constants import CONFIG_FILE
-from utils import load_yaml
+import subprocess
 import re
+import os
+import logging
 
+from data.constants import CONFIG_FILE, PROJECT_FOLDER, ADB_DEVICE_IP
+from utils import load_yaml, run, run_stdout
 from api import app, tree
 
-# api usage
-#
-# app.add_module_for_search("plugins/core/actions/core.py")
-# app.add_module_for_search("plugins/core/actions/media.py")
+log = logging.getLogger("core-plugin")
+
 app.add_dir_for_search("plugins/core/actions", include_private=False)
 
 app.update_config({
@@ -91,3 +92,19 @@ def handle_commands(request):
 
 
 app.set_command_processor(handle_commands)
+
+
+def connect_adb():
+    run(f"./scripts/bash/connect_adb.sh", ADB_DEVICE_IP, "41845")
+    log.debug(f"Connected to {ADB_DEVICE_IP} via adb")
+
+
+def check_adb():
+    connection = run_stdout(f"./scripts/bash/check_adb.sh", ADB_DEVICE_IP)
+    if connection == "true":
+        return
+    else:
+        connect_adb()
+
+
+app.set_pre_init(check_adb)

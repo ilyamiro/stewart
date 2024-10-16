@@ -33,7 +33,7 @@ log = logging.getLogger("module: " + __file__)
 
 
 def mpv():
-    output = subprocess.run(["pgrep", "-a", "mpv"], capture_output=True, text=True).stdout
+    output = run_stdout("pgrep", "-a", "mpv")
     if output:
         return True
     return False
@@ -145,13 +145,11 @@ def play_song(**kwargs):
         media = instance.media_new(song)
         player.set_media(media)
 
-        notification = Notify.Notification.new(
+        notify(
             title,
             "Playing a requested song",
-            f"{PROJECT_FOLDER}/data/images/stewart.png"
+            10
         )
-        notification.set_timeout(8000)
-        notification.show()
 
         player.play()
     else:

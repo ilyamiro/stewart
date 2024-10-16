@@ -2,7 +2,13 @@ from icalendar import Calendar
 from datetime import datetime, timedelta
 from num2words import num2words
 
+from utils import tracker
+
 from api import app
+
+
+def bold(text):
+    return "**" + text + "**"
 
 
 def __parse_ics_file__(ics_file_path):
@@ -152,28 +158,20 @@ def __generate_event_summary_string__(events, filter_type='all'):
         str: A natural language summary string describing the events.
     """
     if not events:
-        return "There are no events."
+        return "There aren't any scheduled events"
 
-    # Introductory phrase based on the filter type
-    if filter_type == 'today':
-        intro = "Today, you have the following events:\n"
-    elif filter_type == 'tomorrow':
-        intro = "Tomorrow, here are your planned events:\n"
-    elif filter_type == 'week':
-        intro = "This week, your schedule includes the following events:\n"
-    else:
-        intro = "Here are your upcoming events:\n"
+    events.sort(key=lambda event: event['start_time'])
 
     now = datetime.now()
-    event_string = intro  # Initialize the event string with the introductory phrase
+    event_string = ""
 
     # Iterate through the events to create a detailed summary
     for i, event in enumerate(events):
-        event_summary = event.get("summary", "No title")
+        event_summary = bold(event.get("summary", "No title").lower().capitalize())
         start_time = event.get("start_time", "")
 
         if isinstance(start_time, datetime):
-            event_day = start_time.strftime('%A')  # Get day of the week
+            event_day = bold(start_time.strftime('%A').lower())  # Get day of the week
             time_in_words = __convert_time_to_words__(start_time)  # Convert time to words
             days_until_event = (start_time.date() - now.date()).days  # How far away is the event
 
@@ -193,12 +191,14 @@ def __generate_event_summary_string__(events, filter_type='all'):
 
             # Add "also" for additional events if applicable
             if i > 0 and i == len(events) - 1:
-                phrase = f"And finally, {phrase}"
+                phrase = f"and then {phrase}"
             elif i > 0:
-                phrase = f"Also, {phrase}"
+                phrase = f"also, {phrase}"
 
             # Add this event's string to the overall event string
             event_string += phrase + " "
+
+            tracker.set_value(event_string.strip().replace(time_in_words, str(start_time)))
         else:
             event_string += f"{event_summary} is scheduled, but the time isn't clear. "
 
@@ -211,7 +211,6 @@ def upcoming_events(**kwargs):
         if word in kwargs["command"]:
             events_filtered = __filter_events__(events, word)
             string = __generate_event_summary_string__(events_filtered, word)
-            print(string)
             app.say(string, prosody=88)
             break
 

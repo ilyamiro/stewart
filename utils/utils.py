@@ -1,5 +1,6 @@
 # Standard Library Imports
 import json
+import ast
 import os
 import subprocess
 import logging
@@ -17,25 +18,96 @@ import requests
 import yaml
 from num2words import num2words
 import g4f
-import gi
-
-# Initialize Notification Module
-gi.require_version('Notify', '0.7')
-from gi.repository import Notify
+from plyer import notification
 
 # Project Imports
 from data.constants import CONFIG_FILE, PROJECT_FOLDER
 
 # Initialize logging and notifications
 log = logging.getLogger("utils")
-Notify.init("Stewart")
+
+# --------------- Classes ---------------
 
 
-# --------------- Configuration Functions ---------------
+class FunctionCallVisitor(ast.NodeVisitor):
+    def __init__(self, target_function_name):
+        self.target_function_name = target_function_name
+        self.is_called = False
+
+    def visit_Call(self, node):
+        # Check if the function name matches
+        if isinstance(node.func, ast.Name) and node.func.id == self.target_function_name:
+            self.is_called = True
+        self.generic_visit(node)
+
+
+class MonitoredVariable:
+    def __init__(self, initial_value=None, callback=None):
+        self._value = initial_value
+        self._callback = callback  # Optional callback function
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, new_value):
+        if self._callback:
+            self._callback(new_value)  # Call the callback when value changes
+        # print(f"Value changed from {self._value} to {new_value}")
+        self._value = new_value
+
+    def set_callback(self, new_callback):
+        self._callback = new_callback
+
+
+class ValueTracker:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ValueTracker, cls).__new__(cls)
+            cls._instance.value = [None, ]
+        return cls._instance
+
+    def set_value(self, text):
+        if len(self.value) == 2:
+            self.value.pop(0)
+        self.value.append(text)
+
+    def get_value(self):
+        return self.value[-1]
+
+    def reset(self):
+        self.value = [None, ]
+
+
+tracker = ValueTracker()
+
+
+# --------------- Inspection Functions ---------------
 def get_caller_dir():
     return os.path.dirname(inspect.stack()[1].filename)
 
 
+def is_function_called_in_another(called, executed):
+    # Get the source code of function2
+    source_code = inspect.getsource(executed)
+
+    # Parse the source code into an AST
+    tree = ast.parse(source_code)
+
+    # Create a visitor object to check for calls to function1
+    visitor = FunctionCallVisitor(called.__name__)
+
+    # Visit all the nodes in the AST
+    visitor.visit(tree)
+
+    # Return True if function1 is called in function2, False otherwise
+    return visitor.is_called
+
+
+# --------------- Configuration Functions ---------------
 def load_yaml(path: str):
     """
     Load YAML configuration from a file.
@@ -84,6 +156,7 @@ def filter_lang_config(file, lang_prefix):
     :param lang_prefix: The language prefix to filter (e.g. 'ru', 'en')
     :return: Filtered config with values from the specified language prefix
     """
+
     def filter_recursive(data):
         filtered = {}
         for key, value in data.items():
@@ -139,6 +212,15 @@ def run(*args, stdout: bool = False):
     )
 
 
+def run_stdout(*args, shell: bool = False):
+    return subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        shell=shell
+    ).stdout
+
+
 def system_setup():
     """
     Perform platform-specific system setup.
@@ -168,6 +250,16 @@ def cleanup(directory, limit: int):
                 files.pop(0)
             except Exception as e:
                 print(f"Error deleting file (cleanup) {last_created_file} in a {directory}: {e}")
+
+
+def notify(title: str, message: str, timeout: int = 10):
+    notification.notify(
+        app_icon=f"{PROJECT_FOLDER}/data/images/stewart.png",
+        app_name="Stewart",
+        title=title,
+        message=message,
+        timeout=timeout
+    )
 
 
 # --------------- Internet & System Functions ---------------
@@ -215,6 +307,12 @@ def clear():
 
 
 # --------------- Text Processing & Utility Functions ---------------
+def remove_non_letters(input_string):
+    # Use regex to replace all non-letter characters except spaces with an empty string
+    cleaned_string = re.sub(r'[^a-zA-Z\s]', '', input_string)
+    return cleaned_string
+
+
 def numbers_to_strings(text: str):
     """
     Convert numbers found in the given text to their word representations.

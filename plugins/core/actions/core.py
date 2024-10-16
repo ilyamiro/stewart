@@ -145,3 +145,5 @@ def update(**kwargs) -> None:
     sp.run(["sudo", "dnf", "update", "--refresh", "--best", "--allowerasing", "-y"])
 
     app.say("The system was successfully updated")
+
+

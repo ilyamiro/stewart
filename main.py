@@ -13,11 +13,8 @@ if admin():
 
 start_time = time.time()
 
-from app import App
-from api import app as app_api
-
 from data.constants import PLUGINS_FOLDER
-# from gui import main
+from gui import gui_main
 
 
 def main():
@@ -29,16 +26,9 @@ def main():
         system_setup()
         set_logging(True)
 
-        app = App(app_api)
+        gui_main(start_time)
 
-        # plugins
-        found_plugins = find_plugins(PLUGINS_FOLDER)
-        import_plugins(found_plugins)
-
-        # main app and api initialization
-        app.initialize()
-        app.start(start_time)
-
+    #
     except Exception as e:
         log.debug(f"App loop ended with the following error: {e}: \n{traceback.format_exc()} ")
 

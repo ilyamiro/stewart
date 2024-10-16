@@ -6,8 +6,7 @@ from pathlib import Path
 
 from voicesynth import Model, Synthesizer
 
-from utils import load_yaml
-from utils import parse_and_replace_config
+from utils import parse_and_replace_config, load_yaml, tracker
 
 from data.constants import CONFIG_FILE, PROJECT_FOLDER
 
@@ -40,7 +39,6 @@ class TTS:
             thread = threading.Thread(target=self.synthesizer.say, kwargs={"text": text, "path": f"{PROJECT_FOLDER}/audio/output/audio.wav", "prosody_rate": prosody, "module": "playsound"})
             thread.start()
 
-            # caller_frane = inspect.currentframe().f_back
-            # caller_name = caller_frane.f_code.co_name
-
+            tracker.set_value(text)
             log.debug(f"TTS: {text}")
+

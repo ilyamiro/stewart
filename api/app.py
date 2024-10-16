@@ -7,7 +7,7 @@ from typing import Callable
 from importlib import import_module
 
 from data.constants import PROJECT_FOLDER, CONFIG_FILE
-from audio.output import ttsi
+from audio.output import TTS
 from utils import load_yaml, filter_lang_config
 
 log = logging.getLogger("API: app")
@@ -18,6 +18,8 @@ __GPT_CALLBACK_TYPE__ = Callable[[str], str]
 
 class AppAPI:
     def __init__(self):
+        ttsi = TTS()
+
         self.say = ttsi.say
         self.say: Callable
 
@@ -42,7 +44,7 @@ class AppAPI:
         :param index: indicates and index at which the hook will be placed at to modify the queue
         :param func: the hook itself (the link to it)
         """
-        self.__add_hook__(func, self.__post_init_callbacks__, index)
+        self.__set_hook__(func, self.__post_init_callbacks__, index)
 
     def set_pre_init(self, func: types.FunctionType, index: int = -1) -> None:
         """
@@ -91,10 +93,11 @@ class AppAPI:
             members = inspect.getmembers(module)
             functions = {member[0]: member[1] for member in members if (inspect.isfunction(member[1]))}
             if not include_private:
-                for key in functions.keys():
-                    if key.startswith('__'):
-                        del my_dict[key]
-            self.__search_functions__.update(functions)
+                filtered_dict = {k: v for k, v in functions.items() if not k.startswith('__')}
+                self.__search_functions__.update(filtered_dict)
+            else:
+                self.__search_functions__.update(functions)
+
         else:
             log.warning(f"module: {module} is not a module object, try again")
             return
@@ -118,7 +121,6 @@ class AppAPI:
             for file in files:
                 if file.endswith(".py"):
                     file_path = os.path.join(root, file)
-                    # Call the existing function for each Python file
                     self.add_module_for_search(file_path, include_private=include_private)
 
     def set_no_command_callback(self, func: types.FunctionType):
