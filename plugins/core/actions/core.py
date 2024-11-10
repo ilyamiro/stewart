@@ -7,7 +7,7 @@ import webbrowser
 
 # third-party
 import pyautogui
-from pynput.mouse import Controller, Button
+# from pynput.mouse import Controller, Button
 from num2words import num2words
 
 # local imports
@@ -17,7 +17,7 @@ from data.constants import CONFIG_FILE
 from api import app
 
 
-mouse = Controller()
+# mouse = Controller()
 log = logging.getLogger("module: " + __file__)
 
 

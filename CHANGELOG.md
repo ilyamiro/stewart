@@ -1,5 +1,16 @@
 # CHANGELOG
 
+### v1.6.1 - scripts update and overall improvements. Configuration changes
+
+- Update `auto_commit.py` and `changelog.py` scripts for development
+- Fully rework configuration files.
+- Remove custom plugins from repository
+- Removed `/tree` directory to replace with `/api/tree.py`
+- modified GUI and made a parameter in `main` function to start GUI or not
+- Lots of minor improvements
+
+Major updates coming in soon!
+
 ### v1.6.0 - User interface added. Android device connection via ADB; Logging improvements;
 
 - Added `check_adb.sh` and `connect_adb.sh` in `scripts/bash/` directory for connection with android phone via wifi

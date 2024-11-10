@@ -2,6 +2,7 @@ import subprocess
 import re
 import os
 import logging
+import time
 
 from data.constants import CONFIG_FILE, PROJECT_FOLDER, ADB_DEVICE_IP
 from utils import load_yaml, run, run_stdout
@@ -11,16 +12,18 @@ log = logging.getLogger("core-plugin")
 
 app.add_dir_for_search("plugins/core/actions", include_private=False)
 
-app.update_config({
-    "command-specifications": {
-        "no-multi-first-words": {
-            "ru": ["найди", "найти", "запиши", "скажи", "ответь"],
-            "en": ["find", "write", "answer", "play"]
-        },
-        "usb-default": ["linux foundation", "webcam", "network", "finger"],
-        "music-download": True
+app.update_config(
+    {
+        "core": {
+            "music-download": True,
+            "no-multi-first-words": {
+                "en": ["find", "write", "answer", "play"],
+                "ru": ["найди", "найти", "запиши", "скажи", "ответь"]
+            },
+            "usb-default": ["linux foundation", "webcam", "network", "finger"]
+        }
     }
-})
+)
 
 first_words = []
 commands = []
@@ -71,7 +74,7 @@ def handle_commands(request):
                 # if there already is a current command being counted,
                 # the new first words means the new command starts, so we add a last one
                 list_of_commands.append(current_command)
-            if word in app.get_config()["command-specifications"][f"no-multi-first-words"]:
+            if word in app.get_config()["plugins"]["core"]["no-multi-first-words"]:
                 # if a word implies any words after it, like Google search,
                 # then everything after that word should be counted as a command itself
                 current_command = split_request[split_request.index(word):]  # get the remaining part of the request
@@ -92,19 +95,3 @@ def handle_commands(request):
 
 
 app.set_command_processor(handle_commands)
-
-
-def connect_adb():
-    run(f"./scripts/bash/connect_adb.sh", ADB_DEVICE_IP, "41845")
-    log.debug(f"Connected to {ADB_DEVICE_IP} via adb")
-
-
-def check_adb():
-    connection = run_stdout(f"./scripts/bash/check_adb.sh", ADB_DEVICE_IP)
-    if connection == "true":
-        return
-    else:
-        connect_adb()
-
-
-app.set_pre_init(check_adb)

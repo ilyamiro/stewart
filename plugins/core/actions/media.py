@@ -93,7 +93,12 @@ def volume(**kwargs):
 def save_song(href, title):
     log.info(f"searching for song named {title}")
 
-    music_folder = f'{PROJECT_FOLDER}/data/music'
+    # TODO generalize cache creation
+    cache_folder = f"{PROJECT_FOLDER}/.cache"
+    music_folder = f"{cache_folder}/music"
+
+    os.makedirs(music_folder, exist_ok=True)
+
     download = config["command-specifications"]["music-download"]
 
     filename = os.path.join(music_folder, title)
@@ -127,13 +132,19 @@ def save_song(href, title):
 
 
 def find_song(search):
-    result = api.search(search)[0]
-    if result:
+    result = api.search(search, filter="videos")[0]
+
+    # Check for videoId or fall back to songs if missing
+    if not result or not result.get("videoId"):
+        result = api.search(search, filter="songs")[0]
+
+    # Return song URL and title if result is valid
+    if result and result.get("videoId"):
         song = "https://music.youtube.com/watch?v=" + result["videoId"]
         title = f'{result.get("artists")[0]["name"] if result.get("artists") else "Unknown"} - {result["title"]}'
         return song, title
-    else:
-        return None
+
+    return None
 
 
 def play_song(**kwargs):
@@ -153,7 +164,7 @@ def play_song(**kwargs):
 
         player.play()
     else:
-        ap.say("Sorry, I have not found a matching song, sir, please try again")
+        ap.say("Sorry, I have not found a matching song, sir")
 
 
 def boost_bass(**kwargs):
@@ -202,7 +213,8 @@ def find_video(**kwargs):
 
 def stream(**kwargs):
     link = kwargs["parameters"]["link"]
-    process = subprocess.Popen(['mpv', '--shuffle', "--no-video", link], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    process = subprocess.Popen(['mpv', '--shuffle', "--no-video", link], stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True)
 
     title = None
     pattern = r'icy-title:\s*([^\n]+)'
@@ -218,16 +230,13 @@ def stream(**kwargs):
             # Search for the title in the current line of output
             match = re.search(pattern, output)
             if match:
-                title = match.group(1).strip()
-                break
+                new_title = match.group(1).strip()
 
-    notification = Notify.Notification.new(
-        "Streaming audio from a link" if not title else title,
-        link if not title else "playing a song",
-        f"{PROJECT_FOLDER}/data/images/stewart.png"
-    )
-    notification.set_timeout(5000)
-    notification.show()
-
-
-# stream(parameters={"link": "https://play.streamafrica.net/lofiradio"})
+                # Only notify if the title has changed
+                if new_title != title:
+                    title = new_title
+                    notify(
+                        title="Streaming audio from a link" if not title else str(title),
+                        message=link if not title else "playing a song",
+                        timeout=10
+                    )

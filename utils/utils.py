@@ -22,7 +22,7 @@ from num2words import num2words
 from plyer import notification
 
 # Project Imports
-from data.constants import CONFIG_FILE, PROJECT_FOLDER
+from data.constants import CONFIG_FILE, PROJECT_FOLDER, LANG_FILE
 
 # Initialize logging and notifications
 log = logging.getLogger("utils")
@@ -148,6 +148,12 @@ def load_json(path: str):
             return json.load(file)
 
 
+def load_lang():
+    if os.path.exists(LANG_FILE):
+        with open(LANG_FILE, "r", encoding="utf-8") as file:
+            return file.read()
+
+
 def filter_lang_config(file, lang_prefix):
     """
     Filters the configuration for a specific language prefix. If a key contains a nested language dictionary,
@@ -259,7 +265,8 @@ def notify(title: str, message: str, timeout: int = 10):
         app_name="Stewart",
         title=title,
         message=message,
-        timeout=timeout
+        timeout=timeout,
+
     )
 
 
@@ -308,6 +315,15 @@ def clear():
 
 
 # --------------- Text Processing & Utility Functions ---------------
+def issubset(list_of_lists1, list_of_lists2):
+    for sublist2 in list_of_lists2:
+        for sublist1 in list_of_lists1:
+            # Check if sublist2 is a sublist of sublist1
+            if any(sublist2 == sublist1[i:i + len(sublist2)] for i in range(len(sublist1) - len(sublist2) + 1)):
+                return True  # Found a contiguous subset
+    return False
+
+
 def remove_non_letters(input_string):
     # Use regex to replace all non-letter characters except spaces with an empty string
     cleaned_string = re.sub(r'[^a-zA-Z\s]', '', input_string)

@@ -9,7 +9,7 @@ log = logging.getLogger("module: " + __file__)
 
 app.update_config({
     "gpt": {
-        "state": True,  # off
+        "state": False,  # off
         "provider": None,
         "model": "gpt_4o",
         "exceptions": {
@@ -49,11 +49,11 @@ gpt_history = []
 gpt_client = g4f.client.Client()
 
 try:
-    gpt_provider = getattr(g4f.Provider, config["gpt"]["provider"]) if config["gpt"][
+    gpt_provider = getattr(g4f.Provider, config["plugins"]["gpt"]["provider"]) if config["plugins"]["gpt"][
         "provider"] else None
 except (AttributeError, TypeError) as e:
     log.exception(f"There was an error getting a gpt provider, {e}")
-    if app.get_config()["gpt"]["exception"]["if_exception_set_default_provider"]:
+    if app.get_config()["plugins"]["gpt"]["exception"]["if_exception_set_default_provider"]:
         app.update_config({
             "gpt": {
                 "provider": None
@@ -67,7 +67,7 @@ except (AttributeError, TypeError) as e:
         })
 
 try:
-    gpt_model = getattr(g4f.models, config["gpt"]["model"])
+    gpt_model = getattr(g4f.models, config["plugins"]["gpt"]["model"])
 except (AttributeError, TypeError) as e:
     log.exception(f"There was an error setting a gpt model, {e}")
     if app.get_config()["gpt"]["exception"]["if_exception_set_default_model"]:
@@ -84,7 +84,7 @@ except (AttributeError, TypeError) as e:
         })
 
 
-gpt_start = config["gpt"]["start-prompt"]
+gpt_start = config["plugins"]["gpt"]["start-prompt"]
 
 
 def gpt_request(query, messages, client, provider, model=g4f.models.default):
@@ -112,7 +112,7 @@ def gpt_request(query, messages, client, provider, model=g4f.models.default):
 def callback(request):
     global gpt_history
 
-    if app.get_config()["gpt"]["state"]:
+    if app.get_config()["plugins"]["gpt"]["state"]:
         answer = gpt_request(request, [*gpt_start, *gpt_history], gpt_client, gpt_provider, gpt_model)
         # update the gpt history for making long conversations possible
         gpt_history.extend([{"role": "user", "content": request}, {"role": "system", "content": answer}])

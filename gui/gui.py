@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+import signal
 import threading
 import time
 from pathlib import Path
@@ -66,12 +67,19 @@ class GUI:
             if tracker.get_value() != tracker.value[0]:
                 obj.value = "##### "
                 self.cprint(obj, tracker.get_value())
-                # self.checking_tracker = False
                 break
-            # time.sleep(0.25)
 
-    def pause_stt(self, e):
-        self.app.stt.stream.stop_stream() if self.app.stt.stream.is_active() else self.app.stt.stream.start_stream()
+    def pause_stt(self, e=None):
+        if self.app.stt.stream.is_active():
+            self.app.stt.stream.stop_stream()
+            mic_button.icon_color = PURPLE
+            mic_button.bgcolor = ft.colors.TRANSPARENT
+        else:
+            self.app.stt.stream.start_stream()
+            mic_button.icon_color = "white"
+            mic_button.bgcolor = PURPLE
+
+        mic_button.update()
 
     # <! ---------------------- Major functions ---------------------- !>
 
@@ -80,9 +88,10 @@ class GUI:
 
     def send_message(self, e):
         user_input = input_field.value.strip()
+        input_field.value = ""
         input_field.focus()
         if user_input:
-            self.app.handle(user_input)
+            self.app.process_trigger_no_voice(user_input)
 
     def process_message_stt_callback(self, new_value):
         self.checking_tracker = False
@@ -99,7 +108,6 @@ class GUI:
         chat_messages.controls.append(
             va_row
         )
-        input_field.value = ""
         self.page.update()
 
         self.checking_tracker = True
@@ -127,10 +135,12 @@ class GUI:
         # <! ------------------- app initialization ------------------- !>
         from app import App
         from api import app as app_api
+        from api import tree
 
-        self.app = App(app_api)
+        self.app = App(app_api, tree)
 
         self.app.start(self.start_time)
+        self.app.stt.stream.stop_stream()
 
         self.page.views.pop()
         self.page.views.append(home_view)
@@ -142,6 +152,3 @@ class GUI:
         self.app.run()
 
 
-def gui_main(start_time):
-    instance = GUI(start_time)
-    ft.app(instance.start)

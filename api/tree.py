@@ -9,7 +9,7 @@ COMMAND_CALLBACK = Callable[[tuple, dict], None]
 
 
 class CommandNode:
-    def __init__(self, action=None, parameters=None, command=None, synthesize=None, equivalents=None):
+    def __init__(self, action=None, parameters=None, command=None, responses=None, equivalents=None):
         """
         Initializes a CommandNode.
 
@@ -23,7 +23,7 @@ class CommandNode:
         self.action = action
         self.parameters = parameters
         self.command = command
-        self.synthesize = synthesize
+        self.responses = responses
         self.equivalents = equivalents
 
 
@@ -83,6 +83,9 @@ class TreeAPI:
         - commands: A dictionary where keys are command parts (as tuples) and values are command details.
         """
         for definition, details in commands.items():
+            # process commands to ensure stability
+            definition = self.__process_multi_word__(definition)
+
             # execute command callback
             for hook in self.__add_command_callbacks__:
                 try:
@@ -100,11 +103,8 @@ class TreeAPI:
             # process equal commands
             self.__process_equal_commands__(details)
 
-            # process commands to ensure stability
-            self.__process_multi_word__(definition)
-
             self.__add_command_recursive__(self.root, self.__expand_synonyms__(tuple(definition), definition), details.get("action"),
-                                           details.get("parameters"), details.get("synthesize"))
+                                           details.get("parameters"), details.get("responses"))
 
     @staticmethod
     def __process_multi_word__(definition):
@@ -117,12 +117,18 @@ class TreeAPI:
         equivalents = details.get("equivalents")
         if equivalents:
             for equal in equivalents:
+                if not isinstance(equal, tuple):
+                    try:
+                        equal = tuple(equal)
+                    except Exception as e:
+                        raise TypeError("A command equivalent should be either list or a tuple")
+
                 self.add_commands({equal: {"action": details.get("action"),
                                            "parameters": details.get("parameters"),
-                                           "synthesize": details.get("synthesize"),
+                                           "responses": details.get("responses"),
                                            "inside_tts": details.get("inside_tts")}})
 
-    def __add_command_recursive__(self, node, command, action, parameters=None, synthesize=None):
+    def __add_command_recursive__(self, node, command, action, parameters=None, responses=None):
         """
         Recursive method to add a command to the CommandTree.
 
@@ -140,14 +146,14 @@ class TreeAPI:
             node.action = action
             node.parameters = parameters
             node.command = command  # Assign the original command here
-            node.synthesize = synthesize
+            node.responses = responses
             return node  # Return the current node
 
         part = command[0]
         if part not in node.children:
             node.children[part] = CommandNode()
 
-        return self.__add_command_recursive__(node.children[part], command[1:], action, parameters, synthesize)
+        return self.__add_command_recursive__(node.children[part], command[1:], action, parameters, responses)
 
     def find_command(self, command):
         """
@@ -169,10 +175,10 @@ class TreeAPI:
                 node = node.children[part]
             else:
                 if found_one >= 1 and node.action:
-                    return node.action, node.parameters, node.synthesize
+                    return node.action, node.parameters, node.responses
                 return None  # Command not found
 
-        return node.action, node.parameters, node.synthesize
+        return node.action, node.parameters, node.responses
 
     def find_children(self, word):
         """

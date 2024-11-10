@@ -16,6 +16,7 @@ audio/output/models/
 
 # Configuration Files
 private_config.yaml
+private_commands.yaml
 
 # Local Testing Files
 test.py
@@ -29,7 +30,7 @@ scripts/py/post_commit.session
 
 # Data Files
 data/grammar/
-data/music/
+.cache/*
 
 # Development Files
 dev/voice_activity.py
@@ -37,3 +38,8 @@ api/audio.py
 
 # Include Directory
 include/
+
+plugins/*
+!plugins/core/
+!plugins/gpt/
+

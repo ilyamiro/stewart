@@ -1,1 +1,1 @@
-from .gui import gui_main
+from .gui import GUI

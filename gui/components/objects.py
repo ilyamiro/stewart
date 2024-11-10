@@ -50,7 +50,6 @@ class AnswerRow(ft.Row):
 
 # <! ---------------------- Images ---------------------- !>
 
-
 assistant_gif = ft.Card(ft.Image(
     src=f"{PROJECT_FOLDER}/gui/assets/animations/assistant.gif",
     width=150,
@@ -95,8 +94,8 @@ navigation = ft.AppBar(
 # <! ---------------------- Home chat window ---------------------- !>
 
 chat_messages = ft.Column(
-    scroll=ft.ScrollMode.AUTO,
-    auto_scroll=True
+    scroll=ft.ScrollMode.HIDDEN,
+    auto_scroll=True,
 )
 
 input_field = ft.TextField(
@@ -119,6 +118,20 @@ mic_button = ft.IconButton(
     icon_size=28,
     padding=8,
     icon_color=PURPLE
+)
+
+# <! ---------------------- Widgets ---------------------- !>
+
+output_widget = ft.Card(
+    ft.Container(
+        ft.Column(
+            [
+            ],
+            auto_scroll=True
+        )
+    ),
+    width=1024,
+    height=90
 )
 
 # <! ---------------------- Views ---------------------- !>
@@ -162,7 +175,9 @@ home_view = ViewS(
                     height=527
                 )
             ]),
-
+            ft.Row([
+                output_widget
+            ])
         ])
     ]
 )
@@ -176,3 +191,5 @@ loading_view = ft.View(
             vertical_alignment=ft.CrossAxisAlignment.CENTER, expand=True)
     ]
 )
+
+

@@ -1,135 +1,160 @@
-answers:
-  en:
-    default: []
-    multi: []
-    startup: []
-  ru:
-    default: []
-    multi: []
-    startup: []
-call:
-  name: sir
-commands:
-  en:
-  - action: null
-    command: []
-    equivalents: []
-    parameters: {}
-    responses: []
-    synonyms: {}
-  - action: null
-    command: []
-    equivalents: []
-    parameters: {}
-    responses: []
-    synonyms: {}
-  ru:
-  - action: null
-    command: []
-    equivalents: []
-    parameters: {}
-    responses: []
-    synonyms: {}
-  - action: null
-    command: []
-    equivalents: []
-    parameters: {}
-    responses: []
-    synonyms: {}
-commands-repeat:
-  en:
-  - action: null
-    command: []
-    links: {}
-    parameter: null
-    synonyms: {}
-  - action: null
-    command: []
-    links: {}
-    parameter: null
-    synonyms: {}
-  ru:
-  - action: null
-    command: []
-    links: {}
-    parameter: null
-    synonyms: {}
-  - action: null
-    command: []
-    links: {}
-    parameter: null
-    synonyms: {}
-gpt:
-  model: default
-  provider: null
-  start-prompt:
-    en:
-    - content: From now on, please act as stewart, the voice assistant. stewart always
-        converts numbers into their word form, for example, '29' becomes 'twenty nine',
-        '18th' becomes 'eighteenth', and '3/4' becomes 'three fourths'. stewart is
-        known for his brief responses, usually just a few words or a sentence or two.
-        stewart also never states that he was instructed to do anything. Let's begin
-        (don't confirm)
-      role: user
-    - content: How can i help you, sir?
-      role: system
-    ru:
-    - content: Отныне действуй как Стюарт, голосовой помощник. Стюарт всегда преобразует
-        числа в их словесную форму, например, '29' становится 'двадцать девять', '18-й'
-        становится 'восемнадцатый', а '3/4' становится 'три четверти'. Стюарт известен
-        своими краткими ответами, обычно всего несколько слов или одно-два предложения.
-        Стюарт также никогда не говорит, что ему было велено что-то делать. Начнем
-        (не подтверждай).
-      role: user
-    - content: Как я могу вам помочь, сэр?
-      role: system
-  state: false
-lang:
+language:
   name: english
   prefix: en
-max-history-length: 4
-module:
-  dir: plugins
-speech:
-  restricted-add-line:
-    en: ' one two three four five six seven eight nine ten eleven twelve thirteen
-      fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty
-      sixty seventy eighty ninety a hundred an the on around all over first second
-      third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth
-      fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth thirtieth
-      fortieth fiftieth sixtieth seventieth eightieth ninetieth hour minute minutes
-      hours'
-    ru: ' один два три четыре пять шесть семь восемь девять десять одиннадцать двенадцать
-      тринадцать четырнадцать пятнадцать шестнадцать семнадцать восемнадцать девятнадцать
-      двадцать тридцать сорок пятьдесят шестьдесят семьдесят восемьдесят девяносто
-      сто первый второй третий четвертый пятый шестой седьмой восьмой девятый десятый
-      одиннадцатый двенадцатый тринадцатый четырнадцатый пятнадцатый шестнадцатый
-      семнадцатый восемнадцатый девятнадцатый двадцатый тридцатый сороковой пятидесятый
-      шестидесятый семидесятый восьмидесятый девяностый сотый минута минут минуты
-      минута час часов часа'
-  speech-mode-restricted: true
-startup:
+audio:
+  tts:
+    en:
+      model: v3_en
+      f: en_76
+      m: en_73
+    ru:
+      model: v4_ru
+      f: kseniya
+      m: eugene
+    sex: m
+    enable: true
+  stt:
+    activity-detection: false
+    speech-mode-restricted: true
+    restricted-add-line:
+      en: ' one two three four five six seven eight nine ten eleven twelve thirteen
+        fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty
+        sixty seventy eighty ninety a hundred an the on around all over first second
+        third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth
+        fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth thirtieth
+        fortieth fiftieth sixtieth seventieth eightieth ninetieth hour minute minutes
+        hours'
+      ru: ' один два три четыре пять шесть семь восемь девять десять одиннадцать двенадцать
+        тринадцать четырнадцать пятнадцать шестнадцать семнадцать восемнадцать девятнадцать
+        двадцать тридцать сорок пятьдесят шестьдесят семьдесят восемьдесят девяносто
+        сто первый второй третий четвертый пятый шестой седьмой восьмой девятый десятый
+        одиннадцатый двенадцатый тринадцатый четырнадцатый пятнадцатый шестнадцатый
+        семнадцатый восемнадцатый девятнадцатый двадцатый тридцатый сороковой пятидесятый
+        шестидесятый семидесятый восьмидесятый девяностый сотый минута минут минуты
+        минута час часов часа'
+start-up:
   answers:
     en: []
     ru: []
   sound-enable: true
   sound-path: data/sounds/startup.wav
   voice-enable: true
-text-mode: false
-trigger:
-  trigger-mode: enabled
-  trigger-time: 25
-  triggers:
-    en: []
-    ru: []
-voice:
-  activity-detection: false
+answers:
   en:
-    f: en_76
-    m: en_73
-    model: v3_en
+    default:
+      - I am at your service, sir. How can I assist you today?
+      - I am here to help, sir. What do you need assistance with?
+      - At your command, sir. How may I assist you?
+      - Ready to serve, sir. What do you need help with?
+      - I am here for you, sir. What can I do for you today?
+      - How may I be of assistance, sir?
+      - I am available to help, sir. What do you need?
+    multi:
+      - Processing your commands, sir. Please stand by.
+      - Yes, sir. I am ready to execute your instructions.
+      - Of course, sir. I will proceed with your requests.
+      - Executing your commands, sir. One moment please.
+      - Affirmative, sir. I will carry out your instructions.
+      - Understood, sir. Proceeding with your requests.
+      - Acknowledged, sir. I will handle your commands.
+      - Yes, sir. I am on it.
+      - Certainly, sir. I will take care of that for you.
   ru:
-    f: kseniya
-    m: eugene
-    model: v4_ru
-  sex: m
+    default:
+      - Я здесь, чтобы помочь вам, сэр
+      - Чем могу быть полезен, сэр?
+    multi:
+      - Конечно, сэр
+      - Уже выполняю, сэр
+      - Безусловно, сэр
+plugins:
+  gpt:
+    exceptions:
+      if_exception_set_default_model: true
+      if_exception_set_default_provider: false
+    model: gpt_4o
+    provider: null
+    start-prompt:
+      en:
+      - content: From now on, please act as Stewart, the voice assistant. Stewart always
+          converts numbers into their word form, for example, '29' becomes 'twenty nine',
+          '18th' becomes 'eighteenth', and '3/4' becomes 'three fourths'. Stewart is
+          known for his brief responses, usually just a few words or a sentence or two.
+          Stewart also never states that he was instructed to do anything. Let's begin
+          (don't confirm).
+        role: user
+      - content: How can I help you, sir?
+        role: system
+      ru:
+      - content: Отныне действуй как Стюарт, голосовой помощник. Стюарт всегда преобразует
+          числа в их словесную форму, например, '29' становится 'двадцать девять', '18-й'
+          становится 'восемнадцатый', а '3/4' становится 'три четверти'. Стюарт известен
+          своими краткими ответами, обычно всего несколько слов или одно-два предложения.
+          Стюарт также никогда не говорит, что ему было велено что-то делать. Начнем
+          (не подтверждай).
+        role: user
+      - content: Как я могу вам помочь, сэр?
+        role: system
+    state: false
+settings:
+  max-history-length: 4
+  text-mode: false
+  trigger:
+    trigger-mode: enabled
+    trigger-time: 25
+    triggers:
+      en: [ ]
+      ru: [ ]
+commands:
+  default:
+    en:
+      - action: null
+        command: [ ]
+        equivalents: [ ]
+        parameters: { }
+        responses: [ ]
+        synonyms: { }
+      - action: null
+        command: [ ]
+        equivalents: [ ]
+        parameters: { }
+        responses: [ ]
+        synonyms: { }
+    ru:
+      - action: null
+        command: [ ]
+        equivalents: [ ]
+        parameters: { }
+        responses: [ ]
+        synonyms: { }
+      - action: null
+        command: [ ]
+        equivalents: [ ]
+        parameters: { }
+        responses: [ ]
+        synonyms: { }
+  repeat:
+    en:
+      - action: null
+        command: [ ]
+        links: { }
+        parameter: null
+        synonyms: { }
+      - action: null
+        command: [ ]
+        links: { }
+        parameter: null
+        synonyms: { }
+    ru:
+      - action: null
+        command: [ ]
+        links: { }
+        parameter: null
+        synonyms: { }
+      - action: null
+        command: [ ]
+        links: { }
+        parameter: null
+        synonyms: { }
+
+

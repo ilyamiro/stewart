@@ -1,19 +1,26 @@
 import os.path
 import logging
 import inspect
+import threading
 import yaml
 import types
-from typing import Callable
+import typing
 from importlib import import_module
+
+from pynput.keyboard import Controller as Keyboard
+from pynput.keyboard import Key as KeyboardKey
+
+from pynput.mouse import Controller as Mouse
+from pynput.mouse import Button as MouseButton
 
 from data.constants import PROJECT_FOLDER, CONFIG_FILE
 from audio.output import TTS
-from utils import load_yaml, filter_lang_config
+from utils import load_yaml, filter_lang_config, load_lang
 
 log = logging.getLogger("API: app")
 
 # Types
-__GPT_CALLBACK_TYPE__ = Callable[[str], str]
+__GPT_CALLBACK_TYPE__ = typing.Callable[[str], str]
 
 
 class AppAPI:
@@ -22,6 +29,12 @@ class AppAPI:
 
         self.say = ttsi.say
         self.say: Callable
+
+        self.mouse = Mouse()
+        self.keyboard = Keyboard()
+
+        self.Button = MouseButton
+        self.Key = KeyboardKey
 
         self.lang = self.__get_lang__()
 
@@ -67,8 +80,9 @@ class AppAPI:
 
     # < ------------------- Modules ------------------- >
 
-    def add_func_for_search(self, name: str, func: types.FunctionType):
-        self.__search_functions__[name] = func
+    def add_func_for_search(self, *args: typing.Tuple[types.FunctionType]):
+        for func in args:
+            self.__search_functions__[func.__name__] = func
 
     def add_module_for_search(self, path: str = None, module=None, include_private: bool = False):
         """
@@ -140,13 +154,22 @@ class AppAPI:
         """
         Returns language settings
         """
-        with open(f"{PROJECT_FOLDER}/lang.txt", "r", encoding="utf-8") as file:
-            return file.read()
+        return load_lang()
 
     # <! ----------------------- config ----------------------- !>
     def update_config(self, config: dict):
-        self.config.update(config)
+        self.config["plugins"].update(config)
         self.__save_config__()
+
+    def update_config_with_yaml_file(self, path):
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as file:
+                data = yaml.safe_load(file)
+
+            self.config.update(data)
+            self.__save_config__()
+        else:
+            raise FileNotFoundError()
 
     def get_config(self):
         return filter_lang_config(self.config, self.lang)
@@ -165,6 +188,13 @@ class AppAPI:
 
     def use_command_processor(self, request):
         return self.__command_processor__(request)
+
+    # <! --------------- background processes --------------- !>
+    @staticmethod
+    def start_background_process(func: types.FunctionType):
+        print("added ", func.__name__)
+        bg_thread = threading.Thread(target=func, name=func.__name__)
+        bg_thread.start()
 
 
 app = AppAPI()

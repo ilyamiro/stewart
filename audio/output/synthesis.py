@@ -6,17 +6,18 @@ from pathlib import Path
 
 from voicesynth import Model, Synthesizer
 
-from utils import parse_and_replace_config, load_yaml, tracker
+from utils import parse_and_replace_config, load_yaml, tracker, load_lang
 
-from data.constants import CONFIG_FILE, PROJECT_FOLDER
+from data.constants import PROJECT_FOLDER, CONFIG_FILE
 
 config = load_yaml(CONFIG_FILE)
 
-LANG = config["lang"]["prefix"]
-SEX = config["voice"]["sex"]
-SPEAKER = config["voice"][LANG][SEX]
-MODEL = config["voice"][LANG]["model"]
-ENABLE = config["voice"]["enable"]
+
+LANG = load_lang()
+SEX = config["audio"]["tts"]["sex"]
+SPEAKER = config["audio"]["tts"][LANG][SEX]
+MODEL = config["audio"]["tts"][LANG]["model"]
+ENABLE = config["audio"]["tts"]["enable"]
 
 log = logging.getLogger("tts")
 

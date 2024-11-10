@@ -49,6 +49,7 @@ Author: **{commit_info['author']}**
 Date: **{commit_info['date']}**
 
 {commit_info['message']}
+
 **Changes**
 
 {changes}
