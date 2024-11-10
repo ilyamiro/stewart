@@ -11,7 +11,6 @@
 <br>
 
 **[<kbd> <br> About <br> </kbd>][About]** 
-**[<kbd> <br> Roadmap <br> </kbd>][Roadmap]** 
 **[<kbd> <br> Install <br> </kbd>][Install]** 
 **[<kbd> <br> License <br> </kbd>][License]** 
 
@@ -20,11 +19,12 @@
 </div>
 
 > [!CAUTION]
-> The project is in development and is not ready for usage</h3>
+> The project is in development and is intended for personal use,
+> the project will most likely NOT work on other systems</h3>
 
 ## About
 
-Lines of code: **5836** 
+Lines of code: **5831** 
 
 A desktop-based voice assistant build with python.
 
@@ -35,36 +35,32 @@ A desktop-based voice assistant build with python.
 - Fast and efficient command **handling**
 - **Linux-based**
 
-### Roadmap
-
-- [x] Wake word detection
-- [x] Speaker diarization and recognition for vosk speech-to-text
-- [ ] GUI written with **flet** (Flutter port for python) / **PyQt5** (PySide6)
-- [ ] Improve extensibility (Plugin support) and create API
-- [ ] Wiki
-  - [ ] Command editor
-  - [ ] Reference
-  - [ ] Plugins/Extensions
-
 ## Installation
 
 > [!IMPORTANT]
-> Windows 10/11 is not supported at the moment
+> Windows 7/8.1/10/11 is not supported 
 
-1. Clone repository and install dependencies:
+### Manual
+1.Clone repository and install dependencies:
   ```commandline
   git clone https://github.com/ilyamiro/Stewart.git
   cd Stewart
   python3.11 -m pip install -r requirements.txt
   ```
 2. Launch main.py and wait till voice assistant starts:<br>
-- **Linux**:
 ```commandline
 python3.11 main.py
 ```
+### Installator 
+
+> [!IMPORTANT]
+> This is an alpha version that is not stable at all
+
+```commandline
+RESERVED
+```
 
 ### License
-
 
 Copyright - 2024 -  <i>Miroshnichenko Illia</i> ©
 
@@ -83,7 +79,6 @@ See the License for the specific language governing permissions and limitations 
 
 [About]: #About
 [Install]: #Installation
-[Roadmap]: #Roadmap
 [License]: #License
 
 <!----------------------------------{ Badges }--------------------------------->
