@@ -8,8 +8,6 @@ PROJECT_FOLDER = Path(__file__).resolve().parent.parent
 CONFIG_DIR = PROJECT_FOLDER
 
 CONFIG_FILE = f"{CONFIG_DIR}/private_config.yaml"
-COMMANDS_FILE = f"{CONFIG_DIR}/private_commands.yaml"
-
 LANG_FILE = f"{CONFIG_DIR}/lang.txt"
 
 # plugins
@@ -22,4 +20,6 @@ LOG_FILENAME = os.path.join(LOG_DIR, f"log_{datetime.now().strftime('%Y-%m-%d_%H
 # MY PHONE LOCAL IP
 ADB_DEVICE_IP = "192.168.1.160"
 
+# Caching
+CACHING_FOLDER = os.path.join(os.path.expanduser("~"), ".cache/stewart")
 

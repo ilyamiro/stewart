@@ -14,12 +14,11 @@ from pynput.mouse import Controller as Mouse
 from pynput.mouse import Button as MouseButton
 
 from data.constants import PROJECT_FOLDER, CONFIG_FILE
-from audio.output import TTS
+from audio.tts import TTS
 from utils import load_yaml, filter_lang_config, load_lang
 
 log = logging.getLogger("API: app")
 
-# Types
 __GPT_CALLBACK_TYPE__ = typing.Callable[[str], str]
 
 
@@ -47,6 +46,8 @@ class AppAPI:
         self.__trigger_callback__ = self.__blank__
 
         self.__search_functions__: dict = {}
+
+        self.scenarios: list = []
 
     @staticmethod
     def __blank__(value=None):
@@ -82,7 +83,7 @@ class AppAPI:
 
     def add_func_for_search(self, *args: typing.Tuple[types.FunctionType]):
         for func in args:
-            self.__search_functions__[func.__name__] = func
+            self.__search_functions__.update({func.__name__: func})
 
     def add_module_for_search(self, path: str = None, module=None, include_private: bool = False):
         """
@@ -105,13 +106,16 @@ class AppAPI:
                 return
         if isinstance(module, types.ModuleType):
             members = inspect.getmembers(module)
-            functions = {member[0]: member[1] for member in members if (inspect.isfunction(member[1]))}
+            functions = {
+                member[0]: member[1]
+                for member in members
+                if inspect.isfunction(member[1]) and member[1].__module__ == module.__name__
+            }
             if not include_private:
                 filtered_dict = {k: v for k, v in functions.items() if not k.startswith('__')}
                 self.__search_functions__.update(filtered_dict)
             else:
                 self.__search_functions__.update(functions)
-
         else:
             log.warning(f"module: {module} is not a module object, try again")
             return
@@ -156,6 +160,9 @@ class AppAPI:
         """
         return load_lang()
 
+    def get_config(self):
+        return filter_lang_config(self.config, self.lang)
+
     # <! ----------------------- config ----------------------- !>
     def update_config(self, config: dict):
         self.config["plugins"].update(config)
@@ -170,9 +177,6 @@ class AppAPI:
             self.__save_config__()
         else:
             raise FileNotFoundError()
-
-    def get_config(self):
-        return filter_lang_config(self.config, self.lang)
 
     def __save_config__(self):
         if os.path.exists(CONFIG_FILE):
@@ -195,6 +199,11 @@ class AppAPI:
         print("added ", func.__name__)
         bg_thread = threading.Thread(target=func, name=func.__name__)
         bg_thread.start()
+
+    # <! --------------- scenarios --------------- !>
+    def add_scenario(self, scenario):
+        if hasattr(scenario, "name"):
+            self.scenarios.append(scenario)
 
 
 app = AppAPI()

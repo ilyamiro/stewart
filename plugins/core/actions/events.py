@@ -24,35 +24,19 @@ def __parse_ics_file__(ics_file_path):
     events = []
 
     try:
-        # Open and read the .ics file
         with open(ics_file_path, 'rb') as f:
             ics_content = f.read()
 
-        # Parse the .ics content
         calendar = Calendar.from_ical(ics_content)
 
-        # Iterate through calendar components to find events
         for component in calendar.walk():
             if component.name == "VEVENT":
-                # Get event details (summary, start time, end time, etc.)
                 summary = component.get('summary', 'No title')
                 start_time = component.get('dtstart').dt
                 end_time = component.get('dtend').dt
                 description = component.get('description', 'No description')
                 location = component.get('location', 'No location')
 
-                # Only process events with valid datetime objects
-                if isinstance(start_time, datetime):
-                    start_time_str = start_time.strftime('%Y-%m-%d %H:%M')
-                else:
-                    start_time_str = start_time
-
-                if isinstance(end_time, datetime):
-                    end_time_str = end_time.strftime('%Y-%m-%d %H:%M')
-                else:
-                    end_time_str = end_time
-
-                # Create a dictionary for each event
                 event = {
                     "summary": summary,
                     "start_time": start_time,
@@ -61,7 +45,6 @@ def __parse_ics_file__(ics_file_path):
                     "description": description
                 }
 
-                # Append the event dictionary to the events list
                 events.append(event)
 
     except FileNotFoundError:
@@ -85,7 +68,6 @@ def __convert_time_to_words__(time_obj):
     hours = time_obj.hour
     minutes = time_obj.minute
 
-    # Convert hours and minutes to words using num2words
     if hours == 0 and minutes == 0:
         return "midnight"
     elif hours == 12 and minutes == 0:
@@ -146,7 +128,7 @@ def __filter_events__(events, filter_type='all'):
     return filtered_events
 
 
-def __generate_event_summary_string__(events, filter_type='all'):
+def __generate_event_summary_string__(events):
     """
     Generates a natural language string summary for filtered events with creative language.
 
@@ -160,22 +142,20 @@ def __generate_event_summary_string__(events, filter_type='all'):
     if not events:
         return "There aren't any scheduled events"
 
-    events.sort(key=lambda event: event['start_time'])
+    events.sort(key=lambda doing: doing['start_time'])
 
     now = datetime.now()
     event_string = ""
 
-    # Iterate through the events to create a detailed summary
     for i, event in enumerate(events):
         event_summary = bold(event.get("summary", "No title").lower().capitalize())
         start_time = event.get("start_time", "")
 
         if isinstance(start_time, datetime):
-            event_day = bold(start_time.strftime('%A').lower())  # Get day of the week
-            time_in_words = __convert_time_to_words__(start_time)  # Convert time to words
-            days_until_event = (start_time.date() - now.date()).days  # How far away is the event
+            event_day = bold(start_time.strftime('%A').lower())
+            time_in_words = __convert_time_to_words__(start_time)
+            days_until_event = (start_time.date() - now.date()).days
 
-            # Creative phrasing based on how far away the event is
             if days_until_event == 0:
                 phrase = f"{event_day} at {time_in_words}, you have {event_summary}."
             elif days_until_event == 1:
@@ -189,13 +169,11 @@ def __generate_event_summary_string__(events, filter_type='all'):
             else:
                 phrase = f"on {event_day} at {time_in_words}, {event_summary} is set."
 
-            # Add "also" for additional events if applicable
             if i > 0 and i == len(events) - 1:
                 phrase = f"and then {phrase}"
             elif i > 0:
                 phrase = f"also, {phrase}"
 
-            # Add this event's string to the overall event string
             event_string += phrase + " "
 
             tracker.set_value(event_string.strip().replace(time_in_words, str(start_time)))
@@ -207,10 +185,11 @@ def __generate_event_summary_string__(events, filter_type='all'):
 
 def upcoming_events(**kwargs):
     events = __parse_ics_file__("/home/ilyamiro/.local/share/evolution/calendar/system/calendar.ics")
+
     for word in ["week", "tomorrow", "today"]:
         if word in kwargs["command"]:
             events_filtered = __filter_events__(events, word)
-            string = __generate_event_summary_string__(events_filtered, word)
+            string = __generate_event_summary_string__(events_filtered)
             app.say(string, prosody=88)
             break
 

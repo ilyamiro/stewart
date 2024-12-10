@@ -1,4 +1,3 @@
-# Standart library imports
 import logging
 import random
 import sys
@@ -11,17 +10,12 @@ import inspect
 from datetime import datetime
 from pathlib import Path
 
-# Third-party imports
 from playsound import playsound
-import g4f.Provider
-from g4f.client import Client as GPTClient
 
-# Local imports
 from audio.input import STT
 from utils import *
-from data.constants import CONFIG_FILE, PROJECT_FOLDER, PLUGINS_FOLDER, COMMANDS_FILE
+from data.constants import CONFIG_FILE, PROJECT_FOLDER, PLUGINS_FOLDER
 
-# disable playsound logger
 logging.getLogger("playsound").setLevel(logging.ERROR)
 
 log = logging.getLogger("app")
@@ -51,7 +45,10 @@ class App:
             # <!--------------- pre-init: start ---------------!>
             self.api.__run_hooks__(self.api.__pre_init_callbacks__)
 
-            import_plugins(find_plugins(PLUGINS_FOLDER))
+            plugins = find_plugins(PLUGINS_FOLDER)
+            import_plugins(plugins)
+
+            log.debug(f"Imported plugins: {plugins}")
 
             self.config = filter_lang_config(load_yaml(CONFIG_FILE), self.api.lang)
             self.lang = self.api.lang
@@ -60,10 +57,6 @@ class App:
 
             # play sounds
             self.play_startup()
-
-            # <!--------------- cleanup directories ---------------!>
-
-            # cleanup(f"{PROJECT_FOLDER}/data/music", 10)
 
             # <!--------------- pre-init: end ---------------!>
 
@@ -83,14 +76,12 @@ class App:
 
         self.trigger_timed_needed = self.config["settings"]["trigger"]["trigger-mode"] != "disabled"
 
-        # data tree initializing
         self.tree_init()
 
         log.info("Data tree initialized")
 
-        # history of requests
         self.history = []
-        self.request_monitor = MonitoredVariable()
+        self.scenario_active = []
 
         if not self.config["settings"]["text-mode"]:
             # voice recognition
@@ -116,7 +107,6 @@ class App:
     def run(self):
         if not self.config["settings"]["text-mode"]:
             self.recognition_thread = threading.Thread(target=self.recognition)
-            # starting the voice recognition
             self.recognition_thread.start()
 
             log.debug(f"Recognition thread started with name: {self.recognition_thread.daemon}")
@@ -124,21 +114,17 @@ class App:
             while True:
                 self.process_trigger_no_voice(input("Input: "))
 
-    def handle(self, request, trigger=None):
-        # TODO make detailed comments
-        tracker.reset()
-        if (not request or not self.remove_trigger_word(request)) and self.config["settings"]["trigger"]["trigger-mode"] != "disabled":
-            self.request_monitor.value = trigger
+    def handle(self, request):
+        self.history_update(request)
+        self.scan_scenarios()
 
+        if (not request or not self.remove_trigger_word(request)) and self.config["settings"]["trigger"]["trigger-mode"] != "disabled" and not any(self.scenario_active):
             self.api.say(parse_config_answers(self.config[f"answers"]["default"]))
         else:
-            self.history_update(request)
-            self.request_monitor.value = request
-
             total, exec_time = track_time(lambda: self.api.__command_processor__(request))
 
             log.info(f"Commands subdivision time: {exec_time:.6f}")
-            log.debug(f"Total commands: {total}")  # TODO Revise
+            log.info(f"Commands to execute: {total}")
 
             if len(total) == 1:
                 result, exec_time = track_time(lambda: self.find_command(total[0], request))
@@ -154,6 +140,7 @@ class App:
                     commands_to_execute.append(self.find_command(command, request))
 
                 amount_of_command_actions = len([x for x in commands_to_execute if x is not None])
+
                 if amount_of_command_actions > 1:
                     if not issubset(total, self.tree.__inside_tts_list__):
                         self.api.say(parse_config_answers(self.config[f"answers"]["multi"]))
@@ -169,11 +156,10 @@ class App:
 
     def find_command(self, command, full):
         result = self.tree.find_command(command)
-        log.info(f"Execution parameters: {result}")  # TODO fix that log
 
-        if result and not all(element is None for element in result):  # if the command was found, process it
+        if result and not all(element is None for element in result):
             result = list(result)
-            result.extend([command, full])  # a list can be extended
+            result.extend([command, full])
 
             return result
         else:
@@ -181,6 +167,8 @@ class App:
 
     def execute_commands(self, commands, multi: bool = False):
         for command in commands:
+            log.debug(f"command: {' '.join(command[3])}; action: {command[0]}; parameters: {command[1]}")
+
             if command[2] and not multi:
                 self.api.say(parse_config_answers(command[2]))
             self.do(command)
@@ -201,14 +189,14 @@ class App:
                 if self.config["settings"]["trigger"]["trigger-mode"] == "timed":
                     self.trigger_timed_needed = False
                     self.trigger_counter(self.config["trigger"]["trigger-time"])
-                self.handle(result, trigger)
+                self.handle(result)
         else:
             self.handle(word)
 
     def process_trigger_no_voice(self, request):
         trigger, result = self.remove_trigger_word(request)
         if result != "blank":
-            self.handle(result, trigger)
+            self.handle(result)
         else:
             self.handle(request)
 
@@ -272,13 +260,15 @@ class App:
         """
         Update history of requests
         """
-        timestamp = datetime.now().isoformat()  # Get a timestamp
-        new_event = {"timestamp": timestamp, "request": request}
-
         if len(self.history) > self.config["settings"]["max-history-length"]:
             self.history.pop(0)
 
-        self.history.append(new_event)
+        self.history.append(request)
+
+    def scan_scenarios(self):
+        for request in self.history:
+            for scenario in self.api.scenarios:
+                self.scenario_active.append(scenario.check_scenario(request, self.history))
 
     def do(self, request):
         """

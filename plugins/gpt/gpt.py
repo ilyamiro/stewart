@@ -11,7 +11,7 @@ app.update_config({
     "gpt": {
         "state": False,  # off
         "provider": None,
-        "model": "gpt_4o",
+        "model": "gpt_4o_mini",
         "exceptions": {
             "if_exception_set_default_model": True,
             "if_exception_set_default_provider": False
@@ -114,15 +114,14 @@ def callback(request):
 
     if app.get_config()["plugins"]["gpt"]["state"]:
         answer = gpt_request(request, [*gpt_start, *gpt_history], gpt_client, gpt_provider, gpt_model)
-        # update the gpt history for making long conversations possible
         gpt_history.extend([{"role": "user", "content": request}, {"role": "system", "content": answer}])
         if len(gpt_history) >= 10:
             gpt_history = gpt_history[2:]
 
         log.info(f"GPT model answer: {answer}")
         app.say(answer)
-    else:
-        app.say(parse_config_answers(config["answers"]["default"]))
+    # else:
+    #     app.say(parse_config_answers(config["answers"]["default"]))
 
 
 app.set_no_command_callback(callback)

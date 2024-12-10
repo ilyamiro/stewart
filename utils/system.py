@@ -1,6 +1,4 @@
-# Standard Library Imports
 import json
-import ast
 import os
 import subprocess
 import logging
@@ -13,7 +11,6 @@ import time
 from pathlib import Path
 from importlib import import_module
 
-# Third-Party Imports
 import requests
 import yaml
 import g4f
@@ -21,69 +18,9 @@ import g4f
 from num2words import num2words
 from plyer import notification
 
-# Project Imports
 from data.constants import CONFIG_FILE, PROJECT_FOLDER, LANG_FILE
 
-# Initialize logging and notifications
 log = logging.getLogger("utils")
-
-# --------------- Classes ---------------
-
-
-class FunctionCallVisitor(ast.NodeVisitor):
-    def __init__(self, target_function_name):
-        self.target_function_name = target_function_name
-        self.is_called = False
-
-    def visit_Call(self, node):
-        # Check if the function name matches
-        if isinstance(node.func, ast.Name) and node.func.id == self.target_function_name:
-            self.is_called = True
-        self.generic_visit(node)
-
-
-class MonitoredVariable:
-    def __init__(self, initial_value=None, callback=None):
-        self._value = initial_value
-        self._callback = callback  # Optional callback function
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, new_value):
-        if self._callback:
-            self._callback(new_value)  # Call the callback when value changes
-        # print(f"Value changed from {self._value} to {new_value}")
-        self._value = new_value
-
-    def set_callback(self, new_callback):
-        self._callback = new_callback
-
-
-class ValueTracker:
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(ValueTracker, cls).__new__(cls)
-            cls._instance.value = [None, ]
-        return cls._instance
-
-    def set_value(self, text):
-        if len(self.value) == 2:
-            self.value.pop(0)
-        self.value.append(text)
-
-    def get_value(self):
-        return self.value[-1]
-
-    def reset(self):
-        self.value = [None, ]
-
-
-tracker = ValueTracker()
 
 
 # --------------- Inspection Functions ---------------
@@ -92,20 +29,29 @@ def get_caller_dir():
 
 
 def is_function_called_in_another(called, executed):
-    # Get the source code of function2
     source_code = inspect.getsource(executed)
 
-    # Parse the source code into an AST
     tree = ast.parse(source_code)
 
-    # Create a visitor object to check for calls to function1
     visitor = FunctionCallVisitor(called.__name__)
 
-    # Visit all the nodes in the AST
     visitor.visit(tree)
 
-    # Return True if function1 is called in function2, False otherwise
     return visitor.is_called
+
+
+def called_from():
+    frame = inspect.currentframe()
+    caller_frame = frame.f_back
+    caller_of_caller_frame = caller_frame.f_back
+
+    function_name = caller_frame.f_code.co_name
+    caller_function_name = caller_of_caller_frame.f_code.co_name
+
+    caller_line_number = caller_of_caller_frame.f_lineno
+    caller_filename = caller_of_caller_frame.f_code.co_filename
+
+    print(f"'{function_name}' was called by {caller_function_name} on line {caller_line_number} in {caller_filename}.")
 
 
 # --------------- Configuration Functions ---------------
@@ -168,14 +114,11 @@ def filter_lang_config(file, lang_prefix):
         filtered = {}
         for key, value in data.items():
             if isinstance(value, dict):
-                # Check if the dict contains language-specific values
                 if lang_prefix in value:
-                    # If it's a language-specific dict, return the value for the given prefix
                     filtered[key] = value[lang_prefix]
                 else:
-                    # Recursively process the nested dictionary
                     nested_filtered = filter_recursive(value)
-                    if nested_filtered:  # Only add if there are valid results
+                    if nested_filtered:
                         filtered[key] = nested_filtered
             else:
                 filtered[key] = value
@@ -187,18 +130,36 @@ def filter_lang_config(file, lang_prefix):
 
 # --------------- System & Subprocess Functions ---------------
 
+def set_caching_directory():
+    home_dir = os.path.expanduser("~")
+
+    cache_dir = os.path.join(home_dir, ".cache")
+
+    stewart_dir = os.path.join(cache_dir, "stewart")
+
+    if not os.path.exists(cache_dir):
+        log.info(f"Creating .cache directory at {cache_dir}")
+        os.makedirs(cache_dir)
+
+    if not os.path.exists(stewart_dir):
+        log.info(f"Creating caching directory at {stewart_dir}")
+        os.makedirs(stewart_dir)
+    else:
+        log.info(f"Using existing caching directory at {stewart_dir}")
+
+    return stewart_dir
+
+
 def admin():
     current_platform = platform.system()
 
     if current_platform == "Windows":
-        # Import ctypes only on Windows
         import ctypes
         try:
             return ctypes.windll.shell32.IsUserAnAdmin()
         except (AttributeError, OSError, ctypes.WinError):
             return False
-    elif current_platform in ["Linux", "Darwin"]:  # 'Darwin' is the identifier for macOS
-        # Linux and macOS (root) check
+    elif current_platform in ["Linux", "Darwin"]:
         return os.geteuid() == 0
     else:
         raise NotImplementedError(f"Unsupported platform: {current_platform}")
@@ -238,6 +199,7 @@ def system_setup():
     if current == "Linux":
         run("jack_control", "start")
         run("xhost", "+local:$USER")
+        set_caching_directory()
 
 
 def cleanup(directory, limit: int):
@@ -318,14 +280,12 @@ def clear():
 def issubset(list_of_lists1, list_of_lists2):
     for sublist2 in list_of_lists2:
         for sublist1 in list_of_lists1:
-            # Check if sublist2 is a sublist of sublist1
             if any(sublist2 == sublist1[i:i + len(sublist2)] for i in range(len(sublist1) - len(sublist2) + 1)):
-                return True  # Found a contiguous subset
+                return True
     return False
 
 
 def remove_non_letters(input_string):
-    # Use regex to replace all non-letter characters except spaces with an empty string
     cleaned_string = re.sub(r'[^a-zA-Z\s]', '', input_string)
     return cleaned_string
 
@@ -386,7 +346,7 @@ def find_plugins(directory):
     """
     Find all plugin directories under the main plugin folder.
     """
-    skip_dirs = ["__pycache__"]
+    skip_dirs = ["__pycache__", ".idea", "venv"]
     subdirectories = []
     base_directory = Path(directory)  # Convert to a Path object
 

@@ -1,5 +1,9 @@
 from datetime import datetime
 from modules.words2num import words2num
+from num2words import num2words
+import requests
+import random
+
 
 number_dict = {
     "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
@@ -45,3 +49,99 @@ def get_part_of_day():
         return "evening"
 
 
+API_KEY = "b7aa64e8dc28ccf8945c685151aed1fc"
+CITY = "Aarhus"
+
+
+def fetch_weather():
+    """
+    Fetch weather data from the OpenWeather API.
+
+    Returns:
+    dict: Parsed JSON response from the API.
+    """
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={CITY}&appid={API_KEY}&units=metric"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching weather data: {e}")
+        return None
+
+
+def get_weather_description():
+    """
+    Returns a weather description with an assistant's reaction for the day.
+
+    Example: "It's sunny today, sir. A perfect day to get things done!"
+    """
+    weather_data = fetch_weather()
+    if weather_data:
+        weather_description = weather_data["weather"][0]["description"]
+
+        reactions = {
+            "clear sky": [
+                "It's sunny today, sir. A perfect day to get things done!",
+                "Sir, it’s clear skies today. Enjoy the sunshine!",
+                "The sun is out, sir"
+            ],
+            "rain": [
+                "It's raining today, sir. Don't forget your umbrella if you're heading out. ",
+                "Rainy weather today, sir. A good day to stay productive indoors!",
+                "It’s wet outside, sir. Perhaps a warm drink would suit you?"
+            ],
+            "clouds": [
+                "It's cloudy today, sir",
+                "Cloudy weather today, sir",
+                "It’s overcast today, sir"
+            ],
+            "snow": [
+                "Snowy conditions today, sir. Please stay warm.",
+                "It’s snowing today, sir.",
+                "Sir, the snow is falling outside"
+            ],
+            "thunderstorm": [
+                "It’s stormy today, sir. Please stay safe if you're heading out.",
+                "Thunderstorms are rolling in, sir. Shall I prepare an indoor activity list?",
+                "Stormy weather today, sir. A good day to stay cozy indoors."
+            ],
+            "fog": [
+                "Foggy weather today, sir. Visibility might be low outside.",
+                "It’s quite foggy today, sir",
+                "Sir, the fog is dense today. "
+            ]
+        }
+
+        for key, response_list in reactions.items():
+            if key in weather_description.lower():
+                return random.choice(response_list)
+
+        return f"The weather is {weather_description} today, sir. "
+    else:
+        return "I'm unable to fetch the weather information right now, sir."
+
+
+def get_weather_temperature():
+    """
+    Returns a temperature description with an assistant's reaction.
+
+    Example: "It's 8 degrees onboard, sir. A bit chilly, don't you think?"
+    """
+    weather_data = fetch_weather()
+    if weather_data:
+        temperature = round(weather_data["main"]["temp"])
+        description = num2words(temperature)
+
+        if temperature <= 0:
+            return f"It's {description} degrees onboard, sir. Freezing cold! Stay warm."
+        elif 0 < temperature <= 10:
+            return f"It's {description} degrees onboard, sir. Quite chilly today."
+        elif 10 < temperature <= 20:
+            return f"It's {description} degrees onboard, sir. Mild weather, quite comfortable."
+        elif 20 < temperature <= 30:
+            return f"It's {description} degrees onboard, sir. Warm and pleasant."
+        else:
+            return f"It's {description} degrees onboard, sir. Quite hot today, stay hydrated."
+    else:
+        return "I'm unable to fetch the temperature information right now, sir."

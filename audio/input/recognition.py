@@ -12,7 +12,9 @@ import torch
 from vosk import KaldiRecognizer, Model, SpkModel
 
 from data.constants import PROJECT_FOLDER, CONFIG_FILE
-from utils.utils import load_yaml
+from utils import load_yaml
+
+from api import app
 
 # Logging setup
 log = logging.getLogger("stt")

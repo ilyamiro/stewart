@@ -14,38 +14,27 @@ if admin():
     sys.exit()
 
 from data.constants import PLUGINS_FOLDER
-from gui import GUI
 
 
-def start_gui():
-    import flet as ft
-    instance = GUI(start_time)
-    ft.app(instance.start)
-
-
-def main(gui: bool = False):
+def main():
     # noinspection PyBroadException
     try:
-        # system preparations
-        log.debug("started running...")
+        log.debug("Started running...")
 
         system_setup()
         set_logging(True)
 
-        if gui:
-            start_gui()
-        else:
-            from app import App
-            from api import app as app_api
-            from api import tree
+        from app import App
+        from api import app as app_api
+        from api import tree
 
-            app = App(app_api, tree)
-            app.start(start_time)
-            app.run()
+        app = App(app_api, tree)
+        app.start(start_time)
+        app.run()
 
     except Exception as e:
         log.debug(f"App loop ended with the following error: {e}: \n{traceback.format_exc()} ")
 
 
 if __name__ == "__main__":
-    main(gui=True)
+    main()

@@ -34,13 +34,9 @@ class TreeAPI:
 
     def __init__(self):
         self.__add_command_callbacks__ = []
-
         self.synonym_map = {}  # Synonym mapping for words with the same meaning
-
         self.root = CommandNode()
-
         self.recognizer_string = ""
-        # self.__first_words__ = set()
 
         self.__inside_tts_list__ = []
 
@@ -89,7 +85,7 @@ class TreeAPI:
             # execute command callback
             for hook in self.__add_command_callbacks__:
                 try:
-                    hook(definition, details)
+                    hook(definition=definition, details=details)
                 except Exception as e:
                     log.warning(f"Add command hook {hook.__name__} threw an error: {e}")
 

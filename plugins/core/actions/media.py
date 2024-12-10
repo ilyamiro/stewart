@@ -1,35 +1,42 @@
 import os
-import logging
-import json
-import time
-import webbrowser
 import re
-import urllib
+import time
+import json
+import logging
+import urllib.request
+import urllib.parse
+import webbrowser
+import subprocess
 from importlib import import_module
 
-# third-party imports
 import vlc
 import yt_dlp
 from ytmusicapi import YTMusic
 
-# local imports
-from data.constants import CONFIG_FILE, PROJECT_FOLDER
+from data.constants import CONFIG_FILE, PROJECT_FOLDER, CACHING_FOLDER
 from utils import *
-
 from api import app
 
 config = load_yaml(CONFIG_FILE)
 
-# vlc media player
+# vlc
 instance = vlc.Instance()
 player = instance.media_player_new()
 equalizer = vlc.AudioEqualizer()
 player.set_equalizer(equalizer)
 
-# YouTube Music search
 api = YTMusic()
 
 log = logging.getLogger("module: " + __file__)
+
+
+def sanitize_filename(filename):
+    """
+    Sanitize the filename by replacing invalid characters with underscores or removing them.
+    """
+    sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
+    sanitized = sanitized.strip()
+    return sanitized
 
 
 def mpv():
@@ -91,34 +98,47 @@ def volume(**kwargs):
 
 
 def save_song(href, title):
-    log.info(f"searching for song named {title}")
+    log.info(f"Searching for song named {title}")
 
-    # TODO generalize cache creation
-    cache_folder = f"{PROJECT_FOLDER}/.cache"
-    music_folder = f"{cache_folder}/music"
-
+    music_folder = f"{CACHING_FOLDER}/music"
     os.makedirs(music_folder, exist_ok=True)
 
-    download = config["command-specifications"]["music-download"]
-
-    filename = os.path.join(music_folder, title)
+    download = config["plugins"]["core"]["music-download"]
+    filename = os.path.join(music_folder, sanitize_filename(title))
 
     ydl_opts = {
-        'format': 'bestaudio/best',  # Select best quality audio
+        'format': 'bestaudio/best',
         'postprocessors': [{
-            'key': 'FFmpegExtractAudio',  # Extract audio using ffmpeg
-            'preferredcodec': 'mp3',  # Save file as mp3
-            'preferredquality': '192',  # Quality of mp3
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
         }],
-        'outtmpl': filename,  # Name of the output file
+        'outtmpl': filename,
     }
-    # Check if the file already exists
+
     if os.path.exists(filename + ".mp3"):
         log.info(f"{filename} already exists. Playing the existing file.")
     else:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             if download:
-                ydl.download([href])
+                try:
+                    # Fetch video metadata
+                    info = ydl.extract_info(href, download=False)
+                    file_size = info.get('filesize') or max(
+                        f.get('filesize', 0) for f in info.get('formats', []) if f.get('filesize')
+                    )
+
+                    # Convert size to MB and skip if greater than 20 MB
+                    if file_size and file_size > 20 * 1024 * 1024:
+                        log.info(f"Skipping {title} as it exceeds 20 MB.")
+                        return None  # Indicate to skip this song
+
+                    # Download the song if it's within size limit
+                    ydl.download([href])
+
+                except Exception as e:
+                    log.error(f"Failed to download song {title}: {str(e)}")
+                    return None
             else:
                 formats = ydl.extract_info(href, download=False)["formats"]
                 audio_formats = [f for f in formats if
@@ -150,21 +170,30 @@ def find_song(search):
 def play_song(**kwargs):
     search = ' '.join(kwargs["command"][1:])
     log.info(f"Searching music sources for {search}")
-    link, title = find_song(search)
-    if link:
+    results = api.search(search, filter="videos")  # Fetch multiple results
+
+    for result in results:
+        if not result or not result.get("videoId"):
+            continue  # Skip invalid results
+
+        link = "https://music.youtube.com/watch?v=" + result["videoId"]
+        title = f'{result.get("artists")[0]["name"] if result.get("artists") else "Unknown"} - {result["title"]}'
+
+        # Attempt to save the song
         song = save_song(link, title)
-        media = instance.media_new(song)
-        player.set_media(media)
+        if song:  # If song is valid (not skipped), play it
+            media = instance.media_new(song)
+            player.set_media(media)
 
-        notify(
-            title,
-            "Playing a requested song",
-            10
-        )
+            notify(
+                title,
+                "Playing a requested song",
+                10
+            )
+            player.play()
+            return
 
-        player.play()
-    else:
-        ap.say("Sorry, I have not found a matching song, sir")
+    app.say("Sorry, I couldn't find a suitable song under 20 MB, sir.")
 
 
 def boost_bass(**kwargs):

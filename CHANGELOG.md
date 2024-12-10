@@ -1,5 +1,11 @@
 # CHANGELOG
 
+### v1.7.0 - Scenario system and major improvements
+
+- Created a scenario system
+- Removed GUI support for the time being (it will be the last thing to implement)
+- Changed plugins and reformatted utils
+
 ### v1.6.1 - scripts update and overall improvements. Configuration changes
 
 - Update `auto_commit.py` and `changelog.py` scripts for development
