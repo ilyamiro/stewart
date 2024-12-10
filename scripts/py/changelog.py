@@ -38,7 +38,7 @@ def update_changelog(commit: str):
         with open(CHANGELOG_FILE, "r", encoding="utf-8") as f:
             changelog = f.read()
 
-        changelog_updated = changelog.replace("# CHANGELOG\n", f"# CHANGELOG\n\n### {commit}\n")
+        changelog_updated = changelog.replace("# CHANGELOG\n", f"# CHANGELOG\n\n#### {commit}\n")
 
         with open(CHANGELOG_FILE, "w", encoding="utf-8") as f:
             f.write(changelog_updated)

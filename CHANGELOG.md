@@ -1,12 +1,12 @@
 # CHANGELOG
 
-### v1.7.0 - Scenario system and major improvements
+#### v1.7.0 - Scenario system and major improvements
 
 - Created a scenario system
 - Removed GUI support for the time being (it will be the last thing to implement)
 - Changed plugins and reformatted utils
 
-### v1.6.1 - scripts update and overall improvements. Configuration changes
+#### v1.6.1 - scripts update and overall improvements. Configuration changes
 
 - Update `auto_commit.py` and `changelog.py` scripts for development
 - Fully rework configuration files.
@@ -17,7 +17,7 @@
 
 Major updates coming in soon!
 
-### v1.6.0 - User interface added. Android device connection via ADB; Logging improvements;
+#### v1.6.0 - User interface added. Android device connection via ADB; Logging improvements;
 
 - Added `check_adb.sh` and `connect_adb.sh` in `scripts/bash/` directory for connection with android phone via wifi
 - Made GUI run with app at same time. EXPERIMENTAL!
@@ -26,7 +26,7 @@ Major updates coming in soon!
 - Dirty code, improvements coming
 
 
-### v1.5.3 - Stream audio and dir improvements
+#### v1.5.3 - Stream audio and dir improvements
 
 - Arranged plugin search modules into `actions` as in `core/actions/core.py` or `core/actions/media.py`
 - added `stream` function into `core/actions/media.py` to stream audio from url using `mpv`
@@ -38,21 +38,21 @@ Major updates coming in soon!
 - Replaced direct ttsi (text-to-speech-instance) import from audio directory in plugins: instead using `api.app.say`.
 - Added calendar module into core plugin that helps get events from `.ics` file (gnome-calendar)
 
-### v1.5.2 - Data tree command processing improvements
+#### v1.5.2 - Data tree command processing improvements
 
 - `list_usb_devices` action reworked to match 0 devices connected
 - added `admin` function to check whether the program is run with admin privileges
 - added try-except structure to run plugin hooks `pre_init` and `post_init`.
 - United `__run_pre_init_hooks__` and `__run_post_init_hooks__` into `__run_hooks__`
 
-### v1.5.1 - Data tree command processing improvements
+#### v1.5.1 - Data tree command processing improvements
 
 - Made plugin files more structured
 - Improved tree api by splitting main `add_commands` method into parts
 - Reworked `__process_multi_word__` and sped it up by x4 times.
 
 
-### v1.5.0 - API improvements
+#### v1.5.0 - API improvements
 
 - improved app API methods by adding callbacks
 - added `lang.txt`.
@@ -64,7 +64,7 @@ Major updates coming in soon!
 - removed `lang` variable from inside implementation and moved it to `app.lang` in api. Might be moved to constants in the future.
 
 
-### v1.4.0
+#### v1.4.0
 
 - Created a basis for plugin system
 - Created plugin loader utils `plugins/importer.py`
@@ -72,14 +72,14 @@ Major updates coming in soon!
 - Renamed some directories and minor fixes
 
 
-### v1.3.3
+#### v1.3.3
 
 - Added `logging_disable` and `logging_enable` functions, broke down `logging_setup` into parts.
 - Refactored language-specific utilities and created a `utils/lang` directory
   for python files. (`utils/lang/en.py` instead of `utils/en/text.py`)
 - Refactored pre-init and post-init procedures in `app.py` 
 
-### v1.3.2
+#### v1.3.2
 
 - Fixed import inconsistency of language-specific utils
 - Added music playing by name in media plugin with **YouTube Music**
@@ -92,19 +92,19 @@ Major updates coming in soon!
 - Returned `CHANGELOG.md` to a development branch
 - Created `data/music` folder for music files downloaded by **YouTube Music**
 
-### v1.3.0
+#### v1.3.0
 
 - Using speaker diarization with a vosk SPK model to recognize a speaker, and comparing him with a use of cosine distance 
 - Created development branch
 
-### v1.2.5
+#### v1.2.5
 
 - Replaced all `os.path.dirname()` with `pathlib.Path`
 - Added `version.txt`
 - Removed redundant config parameters `include` (reserved)
 - Added volume changing function (in progress)
 
-### v1.2.2
+#### v1.2.2
 - Added data collection for Named Entity Recognition model development 
 - Added a script for automatic GPT generation of example requests
 - Created a script to count a number of lines of code for `REAMDE.md`
