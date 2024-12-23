@@ -21,7 +21,7 @@ def subprocess(**kwargs) -> None:
     Runs a command using python subprocess module
     """
     sp.run(
-        kwargs["parameters"]["command"],
+        kwargs["command"].parameters["command"],
         stdout=sp.DEVNULL,
         stderr=sp.STDOUT,
     )
@@ -31,18 +31,18 @@ def hotkey(**kwargs) -> None:
     """
     Executes a hotkey using pyautogui backend
     """
-    pyautogui.hotkey(*kwargs["parameters"]["hotkey"])
+    pyautogui.hotkey(*kwargs["command"].parameters["hotkey"])
 
 
 def key(**kwargs) -> None:
     """
     Presses a key on the keyboard
     """
-    pyautogui.press(kwargs["parameters"]["key"])
+    pyautogui.press(kwargs["command"].parameters["key"])
 
 
 def scroll(**kwargs) -> None:
-    match kwargs["parameters"]["way"]:
+    match kwargs["command"].parameters["way"]:
         case "up":
             mouse.scroll(dy=1, dx=0)
         case "down":
@@ -50,7 +50,7 @@ def scroll(**kwargs) -> None:
 
 
 def browser(**kwargs) -> None:
-    webbrowser.open(kwargs["parameters"]["url"])
+    webbrowser.open(kwargs["command"].parameters["url"])
 
 
 def get_connected_usb_devices() -> list:
@@ -99,11 +99,11 @@ def power_reload(**kwargs) -> None:
     """
     Handles system reload based on the specified parameters.
     """
-    way = kwargs.get("parameters", {}).get("way", "")
-    command = kwargs.get("command", "")
+    way = kwargs["command"].parameters["way"]
+    context = kwargs["context"]
 
     if way == "off":
-        num = find_num_in_list(command)
+        num = find_num_in_list(context)
         if num:
             minutes = num2words(num, lang="en")
             app.say(f"Computer will be reloaded in {minutes} minutes, sir.")
@@ -133,11 +133,11 @@ def power_off(**kwargs) -> None:
         - kwargs["parameters"]["way"]: The shutdown method ("off", "now", or others to cancel shutdown).
         - kwargs["command"]: The command string, potentially containing the delay in minutes.
     """
-    way = kwargs.get("parameters", {}).get("way", "")
-    command = kwargs.get("command", "")
+    way = kwargs["command"].parameters["way"]
+    context = kwargs["context"]
 
     if way == "off":
-        num = find_num_in_list(command)
+        num = find_num_in_list(context)
         if num:
             minutes = num2words(num, lang="en")
             app.say(f"System will shut down in {minutes} minutes, sir.")

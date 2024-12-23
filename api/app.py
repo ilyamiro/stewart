@@ -1,5 +1,9 @@
+import json
 import os.path
 import logging
+import re
+import subprocess
+import socket
 import inspect
 import threading
 import yaml
@@ -13,13 +17,182 @@ from pynput.keyboard import Key as KeyboardKey
 from pynput.mouse import Controller as Mouse
 from pynput.mouse import Button as MouseButton
 
+import mpv
+
 from data.constants import PROJECT_FOLDER, CONFIG_FILE
 from audio.tts import TTS
-from utils import load_yaml, filter_lang_config, load_lang
+from utils import load_yaml, filter_lang_config, load_lang, notify
+
+from .tree import Manager
 
 log = logging.getLogger("API: app")
 
 __GPT_CALLBACK_TYPE__ = typing.Callable[[str], str]
+
+
+class AudioInference:
+    def __init__(self):
+        try:
+            self.player = mpv.MPV(
+                ytdl=True,
+                input_default_bindings=True,
+                video=False,
+                input_ipc_server="/tmp/mpv-socket"
+            )
+
+        except Exception as e:
+            log.error(f"Failed to initialize MPV player: {e}")
+            self.player = None
+
+        self.equalizer_values = [
+            {"frequency": 20, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 30, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 40, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 50, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 60, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 70, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 80, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 100, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 120, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 140, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 160, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 180, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 200, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 250, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 300, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 350, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 400, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 450, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 500, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 600, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 700, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 800, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 900, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 1000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 1500, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 2000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 2500, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 3000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 3500, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 4000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 5000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 6000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 7000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 8000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 9000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 10000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 12000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 14000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 16000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 18000, "width": 80, "gain": 0.0, "width_type": "h"},
+            {"frequency": 20000, "width": 80, "gain": 0.0, "width_type": "h"},
+        ]
+
+    def update_equalizer(self, bands=None):
+        """
+        Updates the MPV equalizer with specified bands or clears it if bands are empty.
+
+        :param bands: A list of dictionaries with 'frequency', 'width', and 'gain' values.
+        """
+        if not self.player:
+            log.error("MPV player not initialized")
+            return
+
+        if bands is None or not bands:
+            try:
+                self.player.command('af', 'clr', '')
+                log.info("Equalizer reset to default settings")
+            except Exception as e:
+                log.error(f"Failed to reset equalizer: {e}")
+            return
+
+        try:
+            for band in bands:
+                frequency = band.get('frequency')
+                width = band.get('width', 80)
+                gain = band.get('gain', 0.0)
+                width_type = band.get('width_type', 'h')
+
+                eq_filter = f"equalizer=f={frequency}:width_type={width_type}:w={width}:g={gain}"
+                self.player.command("af", "add", eq_filter)
+
+        except Exception as e:
+            log.error(f"Failed to apply equalizer settings: {e}")
+
+    def stream(self, value):
+        """
+        Stream audio from a given URL or path.
+
+        :param value: URL or file path to stream
+        """
+        if not self.player:
+            log.error("MPV player not initialized")
+            return
+
+        try:
+            self.player.stop()
+
+            self.player.play(value)
+
+        except Exception as e:
+            log.error(f"Error streaming {value}: {e}")
+
+    def play(self, file_path: str):
+        """
+        Plays a sound file using mpv.
+
+        :param file_path: Path to the sound file to be played.
+        """
+        if not self.player:
+            log.error("MPV player not initialized")
+            return
+
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"The file {file_path} does not exist.")
+
+        try:
+            self.player.stop()
+
+            self.player.play(file_path)
+
+        except Exception as e:
+            log.error(f"Failed to play sound: {e}")
+
+    def stop(self):
+        """
+        Stop the currently playing media.
+        """
+        if self.player:
+            self.player.stop()
+
+    def pause(self):
+        if self.player:
+            self.player.pause()
+
+    @staticmethod
+    def is_mpv():
+        """
+        Check if MPV is currently running.
+
+        :return: Boolean indicating if MPV is running
+        """
+        try:
+            output = subprocess.check_output(["pgrep", "-a", "mpv"], text=True)
+            return bool(output.strip())
+        except subprocess.CalledProcessError:
+            return False
+
+    def __send_ipc_command__(self, command):
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.connect(self.ipc_socket_path)
+                command_with_id = {**command, "request_id": 1}
+                s.sendall(json.dumps(command_with_id).encode('utf-8') + b'\n')
+                response = s.recv(4096).decode('utf-8')
+                return json.loads(response)
+        except Exception as e:
+            print(f"IPC Command Error: {e}")
+            return None
 
 
 class AppAPI:
@@ -29,8 +202,13 @@ class AppAPI:
         self.say = ttsi.say
         self.say: Callable
 
+        self.manager = Manager()
+        self.Command = self.manager.Command
+
         self.mouse = Mouse()
         self.keyboard = Keyboard()
+
+        self.audio = AudioInference()
 
         self.Button = MouseButton
         self.Key = KeyboardKey
@@ -149,9 +327,6 @@ class AppAPI:
         """A function that will run when a command was recognized"""
         self.__trigger_callback__ = func
 
-    def set_command_processor(self, func: types.FunctionType):
-        self.__command_processor__ = func
-
     # <! ----------------------- get ----------------------- !>
     @staticmethod
     def __get_lang__():
@@ -184,19 +359,13 @@ class AppAPI:
                 data = yaml.safe_load(file)
 
             data.update(self.config)
-
             with open(CONFIG_FILE, "w", encoding="utf-8") as file:
                 yaml.dump(data, file, allow_unicode=True)
-
-    # <! ----------------------- use ----------------------- !>
-
-    def use_command_processor(self, request):
-        return self.__command_processor__(request)
 
     # <! --------------- background processes --------------- !>
     @staticmethod
     def start_background_process(func: types.FunctionType):
-        print("added ", func.__name__)
+        log.info(f"added {func.__name__}")
         bg_thread = threading.Thread(target=func, name=func.__name__)
         bg_thread.start()
 

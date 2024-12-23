@@ -9,7 +9,6 @@ import webbrowser
 import subprocess
 from importlib import import_module
 
-import vlc
 import yt_dlp
 from ytmusicapi import YTMusic
 
@@ -19,15 +18,11 @@ from api import app
 
 config = load_yaml(CONFIG_FILE)
 
-# vlc
-instance = vlc.Instance()
-player = instance.media_player_new()
-equalizer = vlc.AudioEqualizer()
-player.set_equalizer(equalizer)
-
 api = YTMusic()
 
 log = logging.getLogger("module: " + __file__)
+
+boost_amount = 0.5
 
 
 def sanitize_filename(filename):
@@ -39,53 +34,32 @@ def sanitize_filename(filename):
     return sanitized
 
 
-def mpv():
-    output = run_stdout("pgrep", "-a", "mpv")
-    if output:
-        return True
-    return False
-
-
 def play_audio(**kwargs):
-    if os.path.exists(kwargs["parameters"]["path"]):
-        media = instance.media_new(kwargs["parameters"]["path"])
-        player.set_media(media)
-        player.play()
+    if os.path.exists(kwargs["command"].parameters["path"]):
+        app.audio.play(kwargs["command"].parameters["path"])
 
 
 def kill_audio(**kwargs):
-    if player.get_state() == vlc.State.Playing:
-        player.stop()
-
-    if mpv():
-        run("pkill", "mpv")
+    app.audio.stop()
 
 
 def pause_audio(**kwargs):
-    if player.get_state() == vlc.State.Playing:
-        player.pause()
-
-    if mpv():
-        app.say("The mpv player can be paused in system notifications, sir")
+    app.audio.player.pause = True
 
 
 def resume_audio(**kwargs):
-    if player.get_state() in [vlc.State.Paused, vlc.State.Stopped]:
-        player.play()
-
-    if mpv():
-        app.say("The mpv player can be resumed in system notifications, sir")
+    app.audio.player.pause = False
 
 
 def mute_volume(**kwargs):
-    os.system(f'amixer set Master {kwargs["parameters"]["command"]} > /dev/null 2>&1')
+    os.system(f'amixer set Master {kwargs["command"].parameters["command"]} > /dev/null 2>&1')
 
 
 def volume(**kwargs):
-    num = find_num_in_list(kwargs["command"])
+    num = find_num_in_list(kwargs["context"])
     current = os.popen('amixer get Master | grep -oP "\[\d+%\]"').read()
     current = int(current.split()[0][1:-2])
-    if_up = kwargs["parameters"]["command"] == "up"
+    if_up = kwargs["command"].parameters["command"] == "up"
     if num:
         if kwargs["parameters"]["command"] == "set":
             os.system(f"amixer set 'Master' {num}% /dev/null 2>&1")
@@ -105,6 +79,7 @@ def save_song(href, title):
 
     download = config["plugins"]["core"]["music-download"]
     filename = os.path.join(music_folder, sanitize_filename(title))
+    url = None
 
     ydl_opts = {
         'format': 'bestaudio/best',
@@ -122,7 +97,6 @@ def save_song(href, title):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             if download:
                 try:
-                    # Fetch video metadata
                     info = ydl.extract_info(href, download=False)
                     file_size = info.get('filesize') or max(
                         f.get('filesize', 0) for f in info.get('formats', []) if f.get('filesize')
@@ -154,11 +128,9 @@ def save_song(href, title):
 def find_song(search):
     result = api.search(search, filter="videos")[0]
 
-    # Check for videoId or fall back to songs if missing
     if not result or not result.get("videoId"):
         result = api.search(search, filter="songs")[0]
 
-    # Return song URL and title if result is valid
     if result and result.get("videoId"):
         song = "https://music.youtube.com/watch?v=" + result["videoId"]
         title = f'{result.get("artists")[0]["name"] if result.get("artists") else "Unknown"} - {result["title"]}'
@@ -168,7 +140,7 @@ def find_song(search):
 
 
 def play_song(**kwargs):
-    search = ' '.join(kwargs["command"][1:])
+    search = kwargs["context"]
     log.info(f"Searching music sources for {search}")
     results = api.search(search, filter="videos")  # Fetch multiple results
 
@@ -181,58 +153,37 @@ def play_song(**kwargs):
 
         # Attempt to save the song
         song = save_song(link, title)
-        if song:  # If song is valid (not skipped), play it
-            media = instance.media_new(song)
-            player.set_media(media)
-
+        if song:
             notify(
                 title,
                 "Playing a requested song",
                 10
             )
-            player.play()
+            if song.startswith("https"):
+                app.audio.stream(song)
+            else:
+                app.audio.play(song)
             return
 
     app.say("Sorry, I couldn't find a suitable song under 20 MB, sir.")
 
 
 def boost_bass(**kwargs):
-    boost_amount = 4.5
+    bass_boost_bands = [band.copy() for band in app.audio.equalizer_values]
+    for band in bass_boost_bands:
+        if band['frequency'] in [30, 40, 50, 60, 70, 80]:
+            band['gain'] += boost_amount
 
-    # Get current amplification levels (assuming these are retrievable)
-    current_amp_60hz = equalizer.get_amp_at_index(0)  # 60 Hz (deep bass)
-    current_amp_170hz = equalizer.get_amp_at_index(1)  # 170 Hz (bass)
-    current_amp_310hz = equalizer.get_amp_at_index(2)  # 310 Hz (upper bass/lower midrange)
-
-    # Increase bass frequencies by the boost amount
-    equalizer.set_amp_at_index(current_amp_60hz + boost_amount, 0)  # Boost 60 Hz (deep bass)
-    equalizer.set_amp_at_index(current_amp_170hz + boost_amount, 1)  # Boost 170 Hz (bass)
-    equalizer.set_amp_at_index(current_amp_310hz + boost_amount, 2)  # Boost 310 Hz (upper bass/lower midrange)
-
-    # Midrange and treble should stay at fixed values (can modify similarly if needed)
-    equalizer.set_amp_at_index(0.4, 3)  # 600 Hz (midrange)
-    equalizer.set_amp_at_index(0.3, 4)  # 1 kHz (upper midrange)
-    equalizer.set_amp_at_index(0.3, 5)  # 3 kHz (high midrange)
-    equalizer.set_amp_at_index(0.2, 6)  # 6 kHz (treble)
-    equalizer.set_amp_at_index(0.2, 7)  # 12 kHz (upper treble)
-    equalizer.set_amp_at_index(0.1, 8)  # 14 kHz (upper treble)
-    equalizer.set_amp_at_index(0.1, 9)  # 16 kHz (air)
-
-    # Apply the updated equalizer settings
-    player.set_equalizer(equalizer)
+    app.audio.update_equalizer(bass_boost_bands)
 
 
 def normalize_sound(**kwargs):
-    for band in range(10):
-        equalizer.set_amp_at_index(0.0, band)
-
-    # Apply the reset equalizer settings to the player
-    player.set_equalizer(equalizer)
+    app.audio.update_equalizer()
 
 
 def find_video(**kwargs):
     html = urllib.request.urlopen(
-        f"https://www.youtube.com/results?search_query={urllib.parse.quote('+'.join(kwargs['command'][2:]))}")
+        f"https://www.youtube.com/results?search_query={urllib.parse.quote(kwargs['context'])}")
     video_ids = re.findall(r"watch\?v=(\S{11})", html.read().decode())
     if video_ids:
         webbrowser.open("https://www.youtube.com/watch?v=" + video_ids[0], autoraise=True)
@@ -242,30 +193,6 @@ def find_video(**kwargs):
 
 def stream(**kwargs):
     link = kwargs["parameters"]["link"]
-    process = subprocess.Popen(['mpv', '--shuffle', "--no-video", link], stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, text=True)
+    app.play(link)
 
-    title = None
-    pattern = r'icy-title:\s*([^\n]+)'
 
-    while True:
-        # Read output line by line
-        output = process.stdout.readline()
-
-        if output == '' and process.poll() is not None:
-            break  # Exit loop if process has ended
-
-        if output:
-            # Search for the title in the current line of output
-            match = re.search(pattern, output)
-            if match:
-                new_title = match.group(1).strip()
-
-                # Only notify if the title has changed
-                if new_title != title:
-                    title = new_title
-                    notify(
-                        title="Streaming audio from a link" if not title else str(title),
-                        message=link if not title else "playing a song",
-                        timeout=10
-                    )

@@ -25,10 +25,9 @@ def main():
         set_logging(True)
 
         from app import App
-        from api import app as app_api
-        from api import tree
+        from api import app as iapp
 
-        app = App(app_api, tree)
+        app = App(iapp)
         app.start(start_time)
         app.run()
 

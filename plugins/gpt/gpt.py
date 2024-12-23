@@ -43,8 +43,6 @@ app.update_config({
 
 config = app.get_config()
 
-# gpt configuration
-
 gpt_history = []
 gpt_client = g4f.client.Client()
 
@@ -120,8 +118,6 @@ def callback(request):
 
         log.info(f"GPT model answer: {answer}")
         app.say(answer)
-    # else:
-    #     app.say(parse_config_answers(config["answers"]["default"]))
 
 
 app.set_no_command_callback(callback)

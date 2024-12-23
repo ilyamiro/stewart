@@ -1,2 +1,2 @@
 from .app import app
-from .tree import tree
+from .tree import Manager

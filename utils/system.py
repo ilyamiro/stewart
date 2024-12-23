@@ -51,7 +51,7 @@ def called_from():
     caller_line_number = caller_of_caller_frame.f_lineno
     caller_filename = caller_of_caller_frame.f_code.co_filename
 
-    print(f"'{function_name}' was called by {caller_function_name} on line {caller_line_number} in {caller_filename}.")
+    log.info(f"'{function_name}' was called by {caller_function_name} on line {caller_line_number} in {caller_filename}.")
 
 
 # --------------- Configuration Functions ---------------
@@ -407,7 +407,7 @@ def import_all_from_module(module_name):
 
 
 # --------------- Config Parsing & Handling Functions ---------------
-def parse_and_replace_config(string, module=None):
+def parse_config_answers(string, module=None):
     """
     Parse placeholders in a string and replace them with data from the configuration module.
 
@@ -431,19 +431,6 @@ def parse_and_replace_config(string, module=None):
                 string = string.replace(f'[{match}]', func())
 
     return string
-
-
-def parse_config_answers(answers):
-    """
-    Randomly select an answer and parse it to replace placeholders.
-
-    Parameters:
-    - answers (list): List of possible answers.
-
-    Returns:
-    str: Parsed answer with placeholders replaced.
-    """
-    return parse_and_replace_config(random.choice(answers))
 
 
 def track_time(func, *args, **kwargs):

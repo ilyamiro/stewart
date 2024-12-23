@@ -1,5 +1,17 @@
 # CHANGELOG
 
+#### v1.7.1 - Scenario system and major improvements
+
+1. Reworked the tree system completely
+    1.1. Now commands are not in the tree view, but rather separate objects
+    1.2. New context identifier makes it easy to extract specific values in commands.
+    1.3. Now commands can separately have a "continues" flag that is useful for search or music requests, instead of hard-coding them
+    1.4. Modified all actions to match the new system, since `command` and `context` instances are now separate in **kwargs
+    1.5. Completely
+2. GUI removal for the time being
+    2.1. GUI switch option removed in the main file
+3. Removed `__command_processor__` field in the API
+
 #### v1.7.0 - Scenario system and major improvements
 
 - Created a scenario system

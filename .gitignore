@@ -21,6 +21,7 @@ private_commands.yaml
 # Local Testing Files
 test.py
 test
+test2.py
 commit.txt
 do.txt
 scripts/py/post_commit.session

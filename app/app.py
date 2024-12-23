@@ -27,16 +27,15 @@ class App:
     For further reference, VA = Voice Assistant
     """
 
-    def __init__(self, api, tree):
+    def __init__(self, api):
         self.api = api
-        self.tree = tree
 
     def play_startup(self):
         if self.config["start-up"]["sound-enable"]:
             playsound(self.config["start-up"]["sound-path"], block=False)
             log.info("Played startup sound")
         if self.config["start-up"]["voice-enable"]:
-            self.api.say(parse_config_answers(self.config[f"start-up"]["answers"]))
+            self.api.say(parse_config_answers(random.choice(self.config[f"start-up"]["answers"])))
             log.info("Played startup voice synthesis")
 
     @staticmethod
@@ -121,57 +120,19 @@ class App:
         if (not request or not self.remove_trigger_word(request)) and self.config["settings"]["trigger"]["trigger-mode"] != "disabled" and not any(self.scenario_active):
             self.api.say(parse_config_answers(self.config[f"answers"]["default"]))
         else:
-            total, exec_time = track_time(lambda: self.api.__command_processor__(request))
+            result, execution_time = track_time(lambda: self.api.manager.find(request))
+            log.info(f"Command search time: {execution_time:.6f}")
 
-            log.info(f"Commands subdivision time: {exec_time:.6f}")
-            log.info(f"Commands to execute: {total}")
-
-            if len(total) == 1:
-                result, exec_time = track_time(lambda: self.find_command(total[0], request))
-                log.info(f"Command tree search time: {exec_time:.6f}")
-                if result:
-                    result, exec_time = track_time(lambda: self.execute_commands([result]))
-                    log.info(f"Command execution time: {exec_time:.6f}")
-                else:
-                    self.api.__no_command_callback__(request)
-            elif len(total) > 1:
-                commands_to_execute = []
-                for command in total:
-                    commands_to_execute.append(self.find_command(command, request))
-
-                amount_of_command_actions = len([x for x in commands_to_execute if x is not None])
-
-                if amount_of_command_actions > 1:
-                    if not issubset(total, self.tree.__inside_tts_list__):
-                        self.api.say(parse_config_answers(self.config[f"answers"]["multi"]))
-
-                    self.execute_commands(commands_to_execute, multi=True)
-                elif amount_of_command_actions == 1:
-                    self.execute_commands(commands_to_execute)
-                else:
-                    self.api.__no_command_callback__(request)
-
-            elif not total:
+            if len(result) == 1:
+                command = result[0]
+                if command.responses:
+                    self.api.say(random.choice(command.responses))
+                self.do(command)
+            elif len(result) > 1:
+                for command in result:
+                    self.do(command)
+            elif not result:
                 self.api.__no_command_callback__(request)
-
-    def find_command(self, command, full):
-        result = self.tree.find_command(command)
-
-        if result and not all(element is None for element in result):
-            result = list(result)
-            result.extend([command, full])
-
-            return result
-        else:
-            return None
-
-    def execute_commands(self, commands, multi: bool = False):
-        for command in commands:
-            log.debug(f"command: {' '.join(command[3])}; action: {command[0]}; parameters: {command[1]}")
-
-            if command[2] and not multi:
-                self.api.say(parse_config_answers(command[2]))
-            self.do(command)
 
     def recognition(self):
         """
@@ -252,9 +213,22 @@ class App:
 
     def add_command(self, com: tuple, action: str, parameters: dict = None, responses: list = None,
                     synonyms: dict = None, equivalents: list = None, inside_tts: bool = False):
-        self.tree.add_commands(
-            {com: {"action": action, "parameters": parameters, "responses": responses, "synonyms": synonyms,
-                   "equivalents": equivalents, "inside_tts": inside_tts}})
+        if equivalents is None:
+            equivalents = []
+
+        initial = self.api.manager.Command(
+            keywords=list(com),
+            action=action,
+            parameters=parameters,
+            responses=responses,
+            synonyms=synonyms
+        )
+        commands = [initial]
+
+        for eq in equivalents:
+            commands.append(initial.copy(eq))
+
+        self.api.manager.add(*commands)
 
     def history_update(self, request):
         """
@@ -270,17 +244,16 @@ class App:
             for scenario in self.api.scenarios:
                 self.scenario_active.append(scenario.check_scenario(request, self.history))
 
-    def do(self, request):
+    def do(self, command):
         """
         Start the action thread
         """
-        func = self.find_exec(request[0])
-        thread = threading.Thread(target=func,
-                                  kwargs={"parameters": request[1], "command": request[3],
-                                          "request": request[4]})
+        action = self.find_action(command[0].action)
+        thread = threading.Thread(target=action,
+                                  kwargs={"command": command[0], "context": command[1]})
         thread.start()
 
-    def find_exec(self, name):
+    def find_action(self, name):
         """
         Find a module that has a function that corresponds to an action that has to be done
         """

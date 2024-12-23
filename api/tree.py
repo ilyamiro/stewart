@@ -1,203 +1,162 @@
-import logging
-import types
-import typing
-from typing import Dict, Tuple, Literal, TypedDict, NotRequired, List, Callable
-
-log = logging.getLogger("tree")
-
-COMMAND_CALLBACK = Callable[[tuple, dict], None]
+import datetime
+from typing import List, Dict, Optional, Any
 
 
-class CommandNode:
-    def __init__(self, action=None, parameters=None, command=None, responses=None, equivalents=None):
-        """
-        Initializes a CommandNode.
+class Command:
+    def __init__(self, keywords: List[str], action: str, synonyms: Dict[str, List[str]] = None, responses: List = None,
+                 parameters: Dict = None, continues: bool = False, equivalents: List = None):
+        if synonyms is None:
+            synonyms = {}
+        if parameters is None:
+            parameters = {}
+        if responses is None:
+            responses = []
+        if equivalents is None:
+            equivalents = []
 
-        Parameters:
-        - action: The action associated with the command.
-        - parameters: Additional parameters associated with the command.
-        - synthesize: Speech synthesis information.
-        - command: Original command string.
-        """
-        self.children = {}  # Child nodes, where keys are the next parts of the command
+        self.keywords = keywords
+        self.synonyms = synonyms
+        self.responses = responses
         self.action = action
         self.parameters = parameters
-        self.command = command
-        self.responses = responses
+        self.continues = continues
         self.equivalents = equivalents
 
+    def copy(self, keywords):
+        return Command(keywords, self.action, self.synonyms, self.responses, self.parameters, self.continues)
 
-class TreeAPI:
-    """
-    Represents a trie structure for storing and retrieving voice assistant commands.
-    """
 
+class Manager:
     def __init__(self):
-        self.__add_command_callbacks__ = []
-        self.synonym_map = {}  # Synonym mapping for words with the same meaning
-        self.root = CommandNode()
-        self.recognizer_string = ""
+        self.Command = Command
+        self.commands = []
 
-        self.__inside_tts_list__ = []
-
-    def add_commands_addition_callback(self, func: COMMAND_CALLBACK):
-        self.__add_command_callbacks__.append(func)
-
-    def set_synonym(self, command: typing.Union[list, tuple], synonym: str, canonical: str):
+    def add(self, *commands: Command):
         """
-        Adds a synonym to the synonym map.
-
-        Parameters:
-        - synonym: The synonym word.
-        - canonical: The canonical form of the word.
+        Add one or more Command instances to the manager.
         """
-        self.synonym_map[tuple(command)] = {synonym: canonical}
+        for command in commands:
+            if isinstance(command, Command):
+                self.commands.append(command)
+                for equivalent in command.equivalents:
+                    self.commands.append(command.copy(equivalent))
+            else:
+                raise TypeError(f"Expected Command instance, got {type(command).__name__}")
 
-    def __expand_synonyms__(self, command, words):
-        """
-        Expands synonyms in a list of words based on the synonym map.
+    def find(self, request: str):
+        request = request.lower().strip()
+        words = request.split()
 
-        Parameters:
-        - words: A list of words.
+        results = {}
 
-        Returns:
-        - A list of expanded words.
-        """
-        mapping = self.synonym_map.get(command, None)
-        if mapping:
-            expanded_words = [mapping.get(word, word) for word in words]
-        else:
-            expanded_words = command
+        first_keywords = {}
+        for command in self.commands:
+            first_keywords[command.keywords[0]] = command
+            for synonym in command.synonyms.get(command.keywords[0], []):
+                first_keywords[synonym] = command
 
-        return tuple(expanded_words)
+        mapping = self.map_words_to_indexes(words, first_keywords)
+        found_command = len(words)
+        previous_index = None
 
-    def add_commands(self, commands):
-        """
-        Adds multiple commands to the CommandTree.
+        for index, keyword in mapping.items():
+            if results and previous_index and results.get(previous_index, None) is not None:
+                if results.get(previous_index).continues:
+                    results = {previous_index: results.get(previous_index)}
 
-        Parameters:
-        - commands: A dictionary where keys are command parts (as tuples) and values are command details.
-        """
-        for definition, details in commands.items():
-            # process commands to ensure stability
-            definition = self.__process_multi_word__(definition)
+            previous_index = index
+            matches = self.get_matching_commands(keyword)
 
-            # execute command callback
-            for hook in self.__add_command_callbacks__:
-                try:
-                    hook(definition=definition, details=details)
-                except Exception as e:
-                    log.warning(f"Add command hook {hook.__name__} threw an error: {e}")
+            constructed = []
+            keyword_index = 0
+            last_index = 0
+            for command in matches:
+                if len(command.keywords) == 1 and command.keywords == constructed and not words[index + 1:found_command]:
+                    results[index] = command
+                    found_command = index + 1
+                    constructed = []
 
-            # recognizer string creation
-            self.recognizer_string += f" {' '.join(definition)}"
+            for word_index, word in enumerate(words[index:found_command]):
+                if word_index - last_index > 2:
+                    break
+                for command in matches:
+                    if len(command.keywords) == 1:
+                        results[index] = command
+                        found_command = index + 1
+                        constructed = []
+                        break
+                    if (word == command.keywords[keyword_index] or word in command.synonyms.get(
+                            command.keywords[keyword_index], [])) and all(
+                            key in command.keywords for key in constructed):
+                        keyword_index += 1
+                        constructed.append(word)
+                        last_index = word_index
+                        if keyword_index == len(command.keywords) and constructed == command.keywords:
+                            results[index] = command
+                            found_command = index + 1
+                            keyword_index = 1
+                            constructed = []
+                            break
+                        break
 
-            # inside tts procession
-            if details.get("inside_tts"):
-                self.__inside_tts_list__.append(definition)
+        if results and previous_index and results.get(previous_index, None) is not None:
+            if results.get(previous_index).continues:
+                results = {previous_index: results.get(previous_index)}
 
-            # process equal commands
-            self.__process_equal_commands__(details)
+        sorted_keys = sorted(results.keys())
+        number = 1
+        context = {number + i: [key, ""] for i, key in enumerate(results.values())}
 
-            self.__add_command_recursive__(self.root, self.__expand_synonyms__(tuple(definition), definition), details.get("action"),
-                                           details.get("parameters"), details.get("responses"))
+        for index, result in results.items():
+            if result.continues:
+                boundary = len(words)
+            else:
+                sorted_index = sorted_keys.index(index)
+
+                if sorted_index < len(sorted_keys) - 1:
+                    boundary = sorted_keys[sorted_index + 1]
+                else:
+                    boundary = len(words)
+
+            found = False
+            track_command = []
+
+            for word in words[index:boundary]:
+                if word not in result.keywords and all(word not in synonyms for synonyms in result.synonyms.values()):
+                    found = True
+                    context[number] = [result, context.get(number)[1] + " " + word]
+                else:
+                    track_command.append(word)
+                    if word in track_command and result.keywords[:len(track_command)] != track_command:
+                        found = True
+                        context[number] = [result, context.get(number)[1] + " " + word]
+
+            if not found:
+                context[number] = [result, ""]
+
+            number += 1
+
+        context = {key: context[len(context) - key + 1] for key in context}
+
+        return list(context.values())
 
     @staticmethod
-    def __process_multi_word__(definition):
-        result = []
-        for item in definition:
-            result.extend(item.split())
-        return result
+    def map_words_to_indexes(words, word_list):
+        word_map = {}
 
-    def __process_equal_commands__(self, details):
-        equivalents = details.get("equivalents")
-        if equivalents:
-            for equal in equivalents:
-                if not isinstance(equal, tuple):
-                    try:
-                        equal = tuple(equal)
-                    except Exception as e:
-                        raise TypeError("A command equivalent should be either list or a tuple")
+        for index, word in enumerate(words):
+            if word in word_list:
+                word_map[index] = word
 
-                self.add_commands({equal: {"action": details.get("action"),
-                                           "parameters": details.get("parameters"),
-                                           "responses": details.get("responses"),
-                                           "inside_tts": details.get("inside_tts")}})
+        word_map = dict(sorted(word_map.items(), key=lambda item: item[0], reverse=True))
+        return word_map
 
-    def __add_command_recursive__(self, node, command, action, parameters=None, responses=None):
-        """
-        Recursive method to add a command to the CommandTree.
+    def get_matching_commands(self, keyword):
+        commands = []
+        for cmd in self.commands:
+            if keyword == cmd.keywords[0] or keyword in cmd.synonyms.get(cmd.keywords[0], []):
+                commands.append(cmd)
 
-        Parameters:
-        - node: The current node in the tree.
-        - command: The remaining parts of the command (as a tuple).
-        - action: The action associated with the command.
-        - parameters: Additional parameters associated with the command.
-        - synthesize: Speech synthesis information.
-
-        Returns:
-        - The current node after adding the command.
-        """
-        if not command:
-            node.action = action
-            node.parameters = parameters
-            node.command = command  # Assign the original command here
-            node.responses = responses
-            return node  # Return the current node
-
-        part = command[0]
-        if part not in node.children:
-            node.children[part] = CommandNode()
-
-        return self.__add_command_recursive__(node.children[part], command[1:], action, parameters, responses)
-
-    def find_command(self, command):
-        """
-        Finds a command in the CommandTree.
-
-        Parameters:
-        - command: The command to search for (as a list of parts).
-
-        Returns:
-        - A tuple containing the action, parameters, synthesize information, and the full command string.
-        """
-        expanded_command = self.__expand_synonyms__(tuple(command), command)
-        # log.info(f"command for searching: {expanded_command}")
-        node = self.root
-        found_one = 0
-        for part in expanded_command:
-            if part in node.children:
-                found_one += 1
-                node = node.children[part]
-            else:
-                if found_one >= 1 and node.action:
-                    return node.action, node.parameters, node.responses
-                return None  # Command not found
-
-        return node.action, node.parameters, node.responses
-
-    def find_children(self, word):
-        """
-        Finds all children of the specified word in the tree.
-
-        Parameters:
-        - word: The word to search for in the tree.
-
-        Returns:
-        - A list of all children nodes of the specified word.
-        """
-
-        def _find_children_recursive(node, sequence):
-            if sequence in node.children.keys():
-                return node.children[sequence].children
-            children_list = []
-            for child in node.children.values():
-                children_list.extend(_find_children_recursive(child, sequence))
-            return children_list
-
-        children = _find_children_recursive(self.root, word)
-
-        return children if isinstance(children, list) else list(children.keys())
+        return commands
 
 
-tree = TreeAPI()

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from voicesynth import Model, Synthesizer
 
-from utils import parse_and_replace_config, load_yaml, load_lang, called_from
+from utils import parse_config_answers, load_yaml, load_lang, called_from
 
 from data.constants import PROJECT_FOLDER, CONFIG_FILE
 
@@ -35,6 +35,7 @@ class TTS:
 
     def say(self, text, prosody=94):
         if self.active:
+            text = parse_config_answers(text)
             thread = threading.Thread(target=self.synthesizer.say, kwargs={"text": text, "path": f"{PROJECT_FOLDER}/audio/tts/audio.wav", "prosody_rate": prosody, "module": "playsound"})
             thread.start()
 
