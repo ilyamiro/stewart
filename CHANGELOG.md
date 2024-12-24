@@ -1,5 +1,14 @@
 # CHANGELOG
 
+#### v1.7.2 - Command search improvements
+
+1. Added some improvements to the command search system
+- Now the commands can end the same way some other command starts and overlapping will not occur
+2. Added `tell_time`, `tell_day`, `tell_month` actions
+3. Moved `play_startup` function to the plugin `core` and added it as a pre-init hook in the api
+4. Minor bug fixes in the `app/app.py` implementation of adding commands to the `api.manager`.
+- Avoided using tuples and switched to lists completely for commands, since commands are not used as dict keys anymore.
+
 #### v1.7.1 - Scenario system and major improvements
 
 1. Reworked the tree system completely

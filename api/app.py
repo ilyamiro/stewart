@@ -236,18 +236,14 @@ class AppAPI:
         :param index: indicates and index at which the hook will be placed at to modify the queue
         :param func: the hook itself (the link to it)
         """
-        self.__set_hook__(func, self.__post_init_callbacks__, index)
+        self.__post_init_callbacks__.insert(index, func)
 
     def set_pre_init(self, func: types.FunctionType, index: int = -1) -> None:
         """
         :param index: indicates and index at which the hook will be placed at to modify the queue
         :param func: the hook itself (the link to it)
         """
-        self.__set_hook__(func, self.__pre_init_callbacks__, index)
-
-    @staticmethod
-    def __set_hook__(func: types.FunctionType, callback_list, index: int = -1):
-        callback_list.insert(index, func)
+        self.__pre_init_callbacks__.insert(index, func)
 
     @staticmethod
     def __run_hooks__(collection: list):
@@ -255,11 +251,11 @@ class AppAPI:
             try:
                 hook()
             except Exception as e:
-                log.warning(f"Add command hook {hook.__name__} threw an error: {e}")
+                log.warning(f"Hook {hook.__name__} threw an error: {e}")
 
     # < ------------------- Modules ------------------- >
 
-    def add_func_for_search(self, *args: typing.Tuple[types.FunctionType]):
+    def add_func_for_search(self, *args):
         for func in args:
             self.__search_functions__.update({func.__name__: func})
 
@@ -360,7 +356,7 @@ class AppAPI:
 
             data.update(self.config)
             with open(CONFIG_FILE, "w", encoding="utf-8") as file:
-                yaml.dump(data, file, allow_unicode=True)
+                yaml.safe_dump(data, file, allow_unicode=True)
 
     # <! --------------- background processes --------------- !>
     @staticmethod

@@ -4,7 +4,7 @@ from typing import List, Dict, Optional, Any
 
 class Command:
     def __init__(self, keywords: List[str], action: str, synonyms: Dict[str, List[str]] = None, responses: List = None,
-                 parameters: Dict = None, continues: bool = False, equivalents: List = None):
+                 parameters: Dict = None, continues: bool = False, equivalents: List = None, tts: bool = False):
         if synonyms is None:
             synonyms = {}
         if parameters is None:
@@ -21,9 +21,10 @@ class Command:
         self.parameters = parameters
         self.continues = continues
         self.equivalents = equivalents
+        self.tts = tts
 
     def copy(self, keywords):
-        return Command(keywords, self.action, self.synonyms, self.responses, self.parameters, self.continues)
+        return Command(keywords, self.action, self.synonyms, self.responses, self.parameters, self.continues, tts=self.tts)
 
 
 class Manager:
@@ -75,7 +76,6 @@ class Manager:
                     results[index] = command
                     found_command = index + 1
                     constructed = []
-
             for word_index, word in enumerate(words[index:found_command]):
                 if word_index - last_index > 2:
                     break
@@ -102,6 +102,28 @@ class Manager:
         if results and previous_index and results.get(previous_index, None) is not None:
             if results.get(previous_index).continues:
                 results = {previous_index: results.get(previous_index)}
+
+        used_indices = set()
+
+        for start_index in sorted(results.keys()):
+            command = results[start_index]
+            command_keywords = command.keywords
+            temp_used_indices = set()
+            word_index = 0
+
+            for keyword in command_keywords:
+                while word_index < len(words):
+                    if word_index not in used_indices and words[word_index] == keyword:
+                        temp_used_indices.add(word_index)
+                        word_index += 1
+                        break
+                    word_index += 1
+                else:
+                    del results[start_index]
+                    break
+
+            if start_index in results:
+                used_indices.update(temp_used_indices)
 
         sorted_keys = sorted(results.keys())
         number = 1
@@ -158,5 +180,4 @@ class Manager:
                 commands.append(cmd)
 
         return commands
-
 

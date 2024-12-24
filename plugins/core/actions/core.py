@@ -1,6 +1,7 @@
 import logging
 import subprocess as sp
 import os
+from datetime import datetime
 import sys
 import time
 import webbrowser
@@ -167,3 +168,53 @@ def update(**kwargs) -> None:
         app.say(f"Updating {num2words(number_of_lines)} packages, sir")
         sp.run(["sudo", "dnf", "update", "--refresh", "--best", "--allowerasing", "-y"])
         app.say("The system was successfully updated")
+
+
+def tell_time(**kwargs):
+    now = datetime.now()
+    hour = now.hour
+    minute = now.minute
+
+    hour_words = num2words(hour, to='cardinal')
+    minute_words = num2words(minute, to='cardinal')
+
+    phrases = [
+        f"It's {hour_words} {minute_words} at the moment, sir.",
+        f"It's {hour_words} hours and {minute_words} minutes now.",
+        f"The time is currently {hour_words} {minute_words}.",
+        f"Right now, it's {hour_words} {minute_words}.",
+        f"It's exactly {hour_words} {minute_words}.",
+        f"As of now, it's {hour_words} {minute_words}."
+    ]
+
+    app.say(random.choice(phrases))
+
+
+def tell_day(**kwargs):
+    now = datetime.now()
+    day_of_week = now.strftime("%A")
+
+    phrases = [
+        f"Today is {day_of_week}, sir.",
+        f"It's {day_of_week} today.",
+        f"Right now, it's {day_of_week}.",
+        f"Happy {day_of_week}! What can I do for you?",
+        f"As of now, it's {day_of_week}.",
+        f"It's a lovely {day_of_week}, isn't it?"
+    ]
+
+    app.say(random.choice(phrases))
+
+
+def tell_month(**kwargs):
+    now = datetime.now()
+    month = now.strftime("%B")
+
+    phrases = [
+        f"It's {month} right now, sir.",
+        f"The current month is {month}.",
+        f"As of now, it's {month}.",
+        f"It's {month} at the moment.",
+    ]
+
+    app.say(random.choice(phrases))

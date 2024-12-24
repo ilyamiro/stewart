@@ -30,32 +30,21 @@ class App:
     def __init__(self, api):
         self.api = api
 
-    def play_startup(self):
-        if self.config["start-up"]["sound-enable"]:
-            playsound(self.config["start-up"]["sound-path"], block=False)
-            log.info("Played startup sound")
-        if self.config["start-up"]["voice-enable"]:
-            self.api.say(parse_config_answers(random.choice(self.config[f"start-up"]["answers"])))
-            log.info("Played startup voice synthesis")
-
     @staticmethod
     def decorator(func):
         def wrapper(self, *args, **kwargs):
             # <!--------------- pre-init: start ---------------!>
-            self.api.__run_hooks__(self.api.__pre_init_callbacks__)
-
             plugins = find_plugins(PLUGINS_FOLDER)
             import_plugins(plugins)
 
+            self.api.__run_hooks__(self.api.__pre_init_callbacks__)
+
             log.debug(f"Imported plugins: {plugins}")
 
-            self.config = filter_lang_config(load_yaml(CONFIG_FILE), self.api.lang)
+            self.config = self.api.get_config()
             self.lang = self.api.lang
 
             log.info("Configuration file loaded")
-
-            # play sounds
-            self.play_startup()
 
             # <!--------------- pre-init: end ---------------!>
 
@@ -63,6 +52,8 @@ class App:
 
             # <!--------------- post-init: start ---------------!>
             self.api.__run_hooks__(self.api.__post_init_callbacks__)
+
+            self.api.add_func_for_search(self.protocol, self.stop, self.repeat, self.grammar_restrict)
 
             # plugins
             # <!--------------- post-init: end ---------------!>
@@ -125,10 +116,12 @@ class App:
 
             if len(result) == 1:
                 command = result[0]
-                if command.responses:
-                    self.api.say(random.choice(command.responses))
+                if command[0].responses and not command[0].tts:
+                    self.api.say(random.choice(command[0].responses))
                 self.do(command)
             elif len(result) > 1:
+                if all(not command[0].tts for command in result):
+                    self.api.say(random.choice(self.config["answers"]["multi"]))
                 for command in result:
                     self.do(command)
             elif not result:
@@ -187,48 +180,42 @@ class App:
         commands_repeat = data["repeat"]
 
         for command in commands:
-            equiv = command.get(f'equivalents', [])
-            if equiv:
-                for eq in equiv:
-                    equiv[equiv.index(eq)] = tuple(eq)
             self.add_command(
-                tuple(command[f"command"]),
+                command[f"command"],
                 command["action"],
                 command.get("parameters", {}),
                 command.get(f"responses", {}),
                 command.get(f"synonyms", {}),
-                equiv,
-                command.get("inside_tts", False)
+                command.get("equivalents", []),
+                command.get("tts", False)
             )
 
         for repeat in commands_repeat:
             for key in repeat[f"links"]:
                 self.add_command(
-                    (*repeat.get(f"command"), key),
+                    [*repeat.get(f"command"), key],
                     repeat.get("action"),
                     {repeat.get("parameter"): repeat.get(f"links").get(key)},
                     [],
                     repeat.get(f"synonyms"),
                 )
 
-    def add_command(self, com: tuple, action: str, parameters: dict = None, responses: list = None,
-                    synonyms: dict = None, equivalents: list = None, inside_tts: bool = False):
+    def add_command(self, com: list, action: str, parameters: dict = None, responses: list = None,
+                    synonyms: dict = None, equivalents: list = None, tts: bool = False):
         if equivalents is None:
             equivalents = []
 
-        initial = self.api.manager.Command(
-            keywords=list(com),
+        command = self.api.manager.Command(
+            keywords=com,
             action=action,
             parameters=parameters,
             responses=responses,
-            synonyms=synonyms
+            synonyms=synonyms,
+            equivalents=equivalents,
+            tts=tts
         )
-        commands = [initial]
 
-        for eq in equivalents:
-            commands.append(initial.copy(eq))
-
-        self.api.manager.add(*commands)
+        self.api.manager.add(command)
 
     def history_update(self, request):
         """
@@ -260,8 +247,6 @@ class App:
         if name in self.api.__search_functions__.keys():
             log.info(f"Action found: {name}")
             return self.api.__search_functions__.get(name)
-        elif name in dir(self):
-            return getattr(self, name)
 
     def grammar_recognition_restricted_create(self):
         """
