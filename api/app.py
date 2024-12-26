@@ -24,6 +24,7 @@ from audio.tts import TTS
 from utils import load_yaml, filter_lang_config, load_lang, notify
 
 from .tree import Manager
+from .scenarios import Trigger, Timeline, Scenario
 
 log = logging.getLogger("API: app")
 
@@ -205,6 +206,10 @@ class AppAPI:
         self.manager = Manager()
         self.Command = self.manager.Command
 
+        self.Trigger = Trigger
+        self.Timeline = Timeline
+        self.Scenario = Scenario
+
         self.mouse = Mouse()
         self.keyboard = Keyboard()
 
@@ -223,7 +228,7 @@ class AppAPI:
         self.__no_command_callback__ = self.__blank__
         self.__trigger_callback__ = self.__blank__
 
-        self.__search_functions__: dict = {}
+        self.__actions__: dict = {}
 
         self.scenarios: list = []
 
@@ -257,7 +262,8 @@ class AppAPI:
 
     def add_func_for_search(self, *args):
         for func in args:
-            self.__search_functions__.update({func.__name__: func})
+            self.__actions__.update({func.__name__: func})
+            log.info(f"Added {func.__name__}:{func} to actions")
 
     def add_module_for_search(self, path: str = None, module=None, include_private: bool = False):
         """
@@ -287,9 +293,9 @@ class AppAPI:
             }
             if not include_private:
                 filtered_dict = {k: v for k, v in functions.items() if not k.startswith('__')}
-                self.__search_functions__.update(filtered_dict)
+                self.__actions__.update(filtered_dict)
             else:
-                self.__search_functions__.update(functions)
+                self.__actions__.update(functions)
         else:
             log.warning(f"module: {module} is not a module object, try again")
             return

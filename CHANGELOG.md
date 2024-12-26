@@ -1,5 +1,14 @@
 # CHANGELOG
 
+#### v1.7.3 - Small improvements and custom commands
+
+- Renamed some API variables
+- Added custom commands for personal usage to remote repository `plugins/custom/*`
+- Modified some utils for proper functionality
+- Improved command search system even further
+- Modified scenario system to have triggers include `equivalents` and `synonyms`, just as commands
+- Moved scenarios to API instead of utils
+
 #### v1.7.2 - Command search improvements
 
 1. Added some improvements to the command search system

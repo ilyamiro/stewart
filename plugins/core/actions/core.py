@@ -200,7 +200,7 @@ def tell_day(**kwargs):
         f"Right now, it's {day_of_week}.",
         f"Happy {day_of_week}! What can I do for you?",
         f"As of now, it's {day_of_week}.",
-        f"It's a lovely {day_of_week}, isn't it?"
+        f"It's a lovely {day_of_week} today, isn't it?"
     ]
 
     app.say(random.choice(phrases))

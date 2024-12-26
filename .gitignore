@@ -16,7 +16,6 @@ audio/tts/models/
 
 # Configuration Files
 private_config.yaml
-private_commands.yaml
 
 # Local Testing Files
 test.py
@@ -25,12 +24,9 @@ test2.py
 commit.txt
 do.txt
 scripts/py/post_commit.session
-#scripts/py/add_command.py
-#post_commit.session-journal
 
 # Data Files
 data/grammar/
-.cache/*
 
 # Development Files
 dev/voice_activity.py
@@ -39,9 +35,9 @@ api/audio.py
 # Include Directory
 include/
 
-plugins/*
-!plugins/core/
-!plugins/gpt/
+#plugins/*
+#!plugins/core/
+#!plugins/gpt/
 
 gui/*
 

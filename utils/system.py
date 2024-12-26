@@ -304,11 +304,35 @@ def numbers_to_strings(text: str):
     all_numbers = [int(num) if num.isdigit() else float(num) for num in all_numbers]
 
     for number in all_numbers:
-        word = num2words(int(number), lang="en")
+        word = num2words(float(number))
         text = text.replace(str(number), " " + word)
 
     return text
 
+
+def normalize(text: str) -> str:
+    """
+    Normalize the input text by converting numbers to words, removing unwanted characters,
+    reducing spaces, and converting to lowercase.
+
+    Parameters:
+    - text (str): The input text to normalize.
+
+    Returns:
+    str: Normalized text.
+    """
+    # Convert numbers to words
+    text = numbers_to_strings(text)
+
+    text = re.sub(r"[^a-zA-Z.\s]", "", text)
+
+    text = text.lower()
+
+    text = re.sub(r"\s+", " ", text)
+
+    text = text.strip()
+
+    return text
 
 def kelvin_to_c(k):
     """
@@ -382,7 +406,6 @@ def import_modules_from_directory(directory) -> None:
 
 def import_plugins(directory):
     for plugin_dir in directory:
-        # Import all modules from the plugin directory
         import_modules_from_directory(plugin_dir)
 
 

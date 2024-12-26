@@ -33,30 +33,27 @@ class App:
     @staticmethod
     def decorator(func):
         def wrapper(self, *args, **kwargs):
-            # <!--------------- pre-init: start ---------------!>
             plugins = find_plugins(PLUGINS_FOLDER)
             import_plugins(plugins)
 
+            log.debug(f"Imported plugins: {plugins}")
+
             self.api.__run_hooks__(self.api.__pre_init_callbacks__)
 
-            log.debug(f"Imported plugins: {plugins}")
+            log.debug(f"Ran {len(self.api.__pre_init_callbacks__)} pre-init hooks: {self.api.__pre_init_callbacks__}")
 
             self.config = self.api.get_config()
             self.lang = self.api.lang
 
             log.info("Configuration file loaded")
 
-            # <!--------------- pre-init: end ---------------!>
-
             func(self, *args, **kwargs)
 
-            # <!--------------- post-init: start ---------------!>
             self.api.__run_hooks__(self.api.__post_init_callbacks__)
 
-            self.api.add_func_for_search(self.protocol, self.stop, self.repeat, self.grammar_restrict)
+            log.debug(f"Ran {len(self.api.__pre_init_callbacks__)} post-init hooks: {self.api.__pre_init_callbacks__}")
 
-            # plugins
-            # <!--------------- post-init: end ---------------!>
+            self.api.add_func_for_search(self.protocol, self.stop, self.repeat, self.grammar_restrict)
 
         return wrapper
 
@@ -69,15 +66,14 @@ class App:
         self.tree_init()
 
         log.info("Data tree initialized")
+        log.debug(f"Active scenarios: {[scenario.name for scenario in self.api.scenarios]}")
 
         self.history = []
         self.scenario_active = []
 
         if not self.config["settings"]["text-mode"]:
-            # voice recognition
             self.stt = STT(self.api.lang)
 
-            # restricting recognition by adding grammar made of commands
             if self.config["audio"]["stt"]["speech-mode-restricted"]:
                 self.grammar_recognition_restricted_create()
                 self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
@@ -92,14 +88,14 @@ class App:
 
         log.debug("Finished app initialization")
 
-        log.debug(f"Start up time: {time.time() - start_time:.6f}")
+        log.debug(f"Start up time: {datetime.now() - start_time:.6f}")
 
     def run(self):
         if not self.config["settings"]["text-mode"]:
             self.recognition_thread = threading.Thread(target=self.recognition)
             self.recognition_thread.start()
 
-            log.debug(f"Recognition thread started with name: {self.recognition_thread.daemon}")
+            log.debug(f"Recognition thread started with id: {self.recognition_thread.native_id}")
         else:
             while True:
                 self.process_trigger_no_voice(input("Input: "))
@@ -109,7 +105,7 @@ class App:
         self.scan_scenarios()
 
         if (not request or not self.remove_trigger_word(request)) and self.config["settings"]["trigger"]["trigger-mode"] != "disabled" and not any(self.scenario_active):
-            self.api.say(parse_config_answers(self.config[f"answers"]["default"]))
+            self.api.say(parse_config_answers(random.choice(self.config[f"answers"]["default"])))
         else:
             result, execution_time = track_time(lambda: self.api.manager.find(request))
             log.info(f"Command search time: {execution_time:.6f}")
@@ -118,6 +114,8 @@ class App:
                 command = result[0]
                 if command[0].responses and not command[0].tts:
                     self.api.say(random.choice(command[0].responses))
+                elif not command[0].responses and not command[0].tts:
+                    self.api.say(random.choice(self.config["answers"]["multi"]))
                 self.do(command)
             elif len(result) > 1:
                 if all(not command[0].tts for command in result):
@@ -187,7 +185,8 @@ class App:
                 command.get(f"responses", {}),
                 command.get(f"synonyms", {}),
                 command.get("equivalents", []),
-                command.get("tts", False)
+                command.get("tts", False),
+                command.get("continues", False)
             )
 
         for repeat in commands_repeat:
@@ -201,7 +200,7 @@ class App:
                 )
 
     def add_command(self, com: list, action: str, parameters: dict = None, responses: list = None,
-                    synonyms: dict = None, equivalents: list = None, tts: bool = False):
+                    synonyms: dict = None, equivalents: list = None, tts: bool = False, continues: bool = False):
         if equivalents is None:
             equivalents = []
 
@@ -212,7 +211,8 @@ class App:
             responses=responses,
             synonyms=synonyms,
             equivalents=equivalents,
-            tts=tts
+            tts=tts,
+            continues=continues
         )
 
         self.api.manager.add(command)
@@ -244,9 +244,9 @@ class App:
         """
         Find a module that has a function that corresponds to an action that has to be done
         """
-        if name in self.api.__search_functions__.keys():
+        if name in self.api.__actions__.keys():
             log.info(f"Action found: {name}")
-            return self.api.__search_functions__.get(name)
+            return self.api.__actions__.get(name)
 
     def grammar_recognition_restricted_create(self):
         """

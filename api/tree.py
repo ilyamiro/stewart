@@ -66,17 +66,19 @@ class Manager:
                     results = {previous_index: results.get(previous_index)}
 
             previous_index = index
-            matches = self.get_matching_commands(keyword)
+            matches = self.get_matching_commands([keyword])
 
             constructed = []
             keyword_index = 0
             last_index = 0
             for command in matches:
-                if len(command.keywords) == 1 and command.keywords == constructed and not words[index + 1:found_command]:
+                if len(command.keywords) == 1 and not words[index + 1:found_command]:
                     results[index] = command
                     found_command = index + 1
                     constructed = []
+
             for word_index, word in enumerate(words[index:found_command]):
+                matches = self.get_matching_commands(constructed)
                 if word_index - last_index > 2:
                     break
                 for command in matches:
@@ -86,12 +88,11 @@ class Manager:
                         constructed = []
                         break
                     if (word == command.keywords[keyword_index] or word in command.synonyms.get(
-                            command.keywords[keyword_index], [])) and all(
-                            key in command.keywords for key in constructed):
+                            command.keywords[keyword_index], [])) and self.is_constructed(command.keywords, constructed, command.synonyms):
                         keyword_index += 1
                         constructed.append(word)
                         last_index = word_index
-                        if keyword_index == len(command.keywords) and constructed == command.keywords:
+                        if keyword_index == len(command.keywords):
                             results[index] = command
                             found_command = index + 1
                             keyword_index = 1
@@ -105,15 +106,26 @@ class Manager:
 
         used_indices = set()
 
+        def matches_keyword(word1, keyword1, synonyms):
+            if word1 == keyword1:
+                return True
+            if keyword1 in synonyms and word1 in synonyms[keyword1]:
+                return True
+            return False
+
         for start_index in sorted(results.keys()):
             command = results[start_index]
             command_keywords = command.keywords
+            command_synonyms = command.synonyms
             temp_used_indices = set()
             word_index = 0
 
             for keyword in command_keywords:
                 while word_index < len(words):
-                    if word_index not in used_indices and words[word_index] == keyword:
+                    if (
+                            word_index not in used_indices
+                            and matches_keyword(words[word_index], keyword, command_synonyms)
+                    ):
                         temp_used_indices.add(word_index)
                         word_index += 1
                         break
@@ -163,6 +175,19 @@ class Manager:
         return list(context.values())
 
     @staticmethod
+    def is_constructed(keywords, constructed, synonyms):
+        if len(constructed) > len(keywords):
+            return False  # sub_list can't be a subset if it's longer than main_list
+
+        for i, sub_item in enumerate(constructed):
+            main_item = keywords[i]
+            # Check for a direct match or a synonym match
+            if sub_item != main_item and sub_item not in synonyms.get(main_item, []):
+                return False
+
+        return True
+
+    @staticmethod
     def map_words_to_indexes(words, word_list):
         word_map = {}
 
@@ -173,11 +198,12 @@ class Manager:
         word_map = dict(sorted(word_map.items(), key=lambda item: item[0], reverse=True))
         return word_map
 
-    def get_matching_commands(self, keyword):
+    def get_matching_commands(self, keywords):
         commands = []
         for cmd in self.commands:
-            if keyword == cmd.keywords[0] or keyword in cmd.synonyms.get(cmd.keywords[0], []):
+            if self.is_constructed(cmd.keywords, keywords, cmd.synonyms):
                 commands.append(cmd)
 
         return commands
+
 

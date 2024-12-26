@@ -18,10 +18,6 @@ app.update_config(
     {
         "core": {
             "music-download": False,
-            "no-multi-first-words": {
-                "en": ["find", "write", "answer", "play"],
-                "ru": ["найди", "найти", "запиши", "скажи", "ответь"]
-            },
             "usb-default": ["linux foundation", "webcam", "network", "finger"]
         }
     }
