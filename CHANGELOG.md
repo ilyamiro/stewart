@@ -1,5 +1,13 @@
 # CHANGELOG
 
+#### v1.7.4 - Event system and refinements
+
+- Created a `api/events.py` endpoint for better event registering. Made for ChatGPT inference
+- Adjusted Scenario system to the new events endpoint
+- More fixes to the command search system. Now the priority is given to the longest detected commands.
+- Completely reworked VAD (Voice activity detection system). Added features such as "sleep mode" and heavily modified text-mode usage.
+- Other small fixes
+
 #### v1.7.3 - Small improvements and custom commands
 
 - Renamed some API variables

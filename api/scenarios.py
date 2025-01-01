@@ -96,7 +96,8 @@ class Scenario:
         self.active = False
         self.request_since_last_trigger = 0
 
-    def check_scenario(self, request: str, request_history: List[str]) -> bool:
+    def check_scenario(self, request: str, request_history) -> bool:
+        request_history = [event.details.get("request") for event in request_history]
         # Handle inactive scenario
         if not self.active:
             start_triggers = self.timeline.get_current_triggers()

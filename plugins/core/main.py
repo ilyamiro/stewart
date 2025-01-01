@@ -23,14 +23,3 @@ app.update_config(
     }
 )
 
-
-def play_startup():
-    if app.config["start-up"]["sound-enable"]:
-        app.audio.play(app.config["start-up"]["sound-path"])
-        log.info("Played startup sound")
-    if app.config["start-up"]["voice-enable"]:
-        app.say(random.choice(app.get_config()[f"start-up"]["answers"]))
-        log.info("Played startup voice synthesis")
-
-
-app.set_pre_init(play_startup, 0)

@@ -24,7 +24,8 @@ class Command:
         self.tts = tts
 
     def copy(self, keywords):
-        return Command(keywords, self.action, self.synonyms, self.responses, self.parameters, self.continues, tts=self.tts)
+        return Command(keywords, self.action, self.synonyms, self.responses, self.parameters, self.continues,
+                       tts=self.tts)
 
 
 class Manager:
@@ -44,6 +45,39 @@ class Manager:
             else:
                 raise TypeError(f"Expected Command instance, got {type(command).__name__}")
 
+    def construct_recognizer_string(self):
+        words = []
+        for command in self.commands:
+            words.extend(command.keywords)
+            for synonyms in command.synonyms.values():
+                words.extend(synonyms)
+        return " ".join(set(words))
+
+    # def find(self, request: str):
+    #     request = request.lower().strip()
+    #     words = request.split()
+    #
+    #     results = []
+    #
+    #     first_keywords = {}
+    #     for command in self.commands:
+    #         first_keywords[command.keywords[0]] = command
+    #         for synonym in command.synonyms.get(command.keywords[0], []):
+    #             first_keywords[synonym] = command
+    #
+    #     mapping = self.map_words_to_indexes(words, first_keywords)
+    #     last = len(words)
+    #
+    #     for index, keyword in mapping.items():
+    #         constructed_command = [keyword]
+    #         matches = self.get_matching_commands(constructed_command)
+    #
+    #         for match in matches:
+    #             for word in words[index:last]:
+    #                 if word
+    #
+    #     return None
+
     def find(self, request: str):
         request = request.lower().strip()
         words = request.split()
@@ -61,46 +95,54 @@ class Manager:
         previous_index = None
 
         for index, keyword in mapping.items():
-            if results and previous_index and results.get(previous_index, None) is not None:
+            if results and previous_index is not None and results.get(previous_index, None) is not None:
                 if results.get(previous_index).continues:
                     results = {previous_index: results.get(previous_index)}
 
             previous_index = index
-            matches = self.get_matching_commands([keyword])
+            constructed = [keyword]
 
-            constructed = []
-            keyword_index = 0
+            matches = self.get_matching_commands(constructed)
+
+            keyword_index = 1
             last_index = 0
             for command in matches:
-                if len(command.keywords) == 1 and not words[index + 1:found_command]:
+                if len(command.keywords) == 1 and not words[index + 1:found_command] and self.is_constructed(
+                        command.keywords, constructed, command.synonyms):
                     results[index] = command
                     found_command = index + 1
                     constructed = []
 
-            for word_index, word in enumerate(words[index:found_command]):
+            for word_index, word in enumerate(words[index + 1:found_command]):
                 matches = self.get_matching_commands(constructed)
+                matches.sort(key=lambda cmd: len(cmd.keywords), reverse=True)
+
+                found_word = False
                 if word_index - last_index > 2:
                     break
                 for command in matches:
-                    if len(command.keywords) == 1:
+                    if found_word:
+                        break
+                    if len(command.keywords) == 1 and self.is_constructed(command.keywords, constructed,
+                                                                          command.synonyms):
                         results[index] = command
                         found_command = index + 1
-                        constructed = []
+                        keyword_index = 1
                         break
                     if (word == command.keywords[keyword_index] or word in command.synonyms.get(
-                            command.keywords[keyword_index], [])) and self.is_constructed(command.keywords, constructed, command.synonyms):
+                            command.keywords[keyword_index], [])) and self.is_constructed(command.keywords, constructed,
+                                                                                          command.synonyms):
                         keyword_index += 1
                         constructed.append(word)
                         last_index = word_index
+                        found_word = True
                         if keyword_index == len(command.keywords):
                             results[index] = command
                             found_command = index + 1
                             keyword_index = 1
-                            constructed = []
                             break
-                        break
 
-        if results and previous_index and results.get(previous_index, None) is not None:
+        if results and previous_index is not None and results.get(previous_index, None) is not None:
             if results.get(previous_index).continues:
                 results = {previous_index: results.get(previous_index)}
 
@@ -160,7 +202,7 @@ class Manager:
                     found = True
                     context[number] = [result, context.get(number)[1] + " " + word]
                 else:
-                    track_command.append(word)
+                    track_command.append(next((key for key, value in result.synonyms.items() if word in value), word))
                     if word in track_command and result.keywords[:len(track_command)] != track_command:
                         found = True
                         context[number] = [result, context.get(number)[1] + " " + word]
@@ -176,6 +218,9 @@ class Manager:
 
     @staticmethod
     def is_constructed(keywords, constructed, synonyms):
+        # if not constructed:
+        #     return False
+
         if len(constructed) > len(keywords):
             return False  # sub_list can't be a subset if it's longer than main_list
 
@@ -199,11 +244,11 @@ class Manager:
         return word_map
 
     def get_matching_commands(self, keywords):
+        if not keywords:
+            return self.commands
         commands = []
         for cmd in self.commands:
             if self.is_constructed(cmd.keywords, keywords, cmd.synonyms):
                 commands.append(cmd)
 
         return commands
-
-

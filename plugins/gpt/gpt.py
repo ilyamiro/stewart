@@ -1,21 +1,40 @@
 import logging
+import random
+import time
+import webbrowser
 
 import g4f
 
 from api import app
-from utils import load_yaml, parse_config_answers, get_caller_dir
+from utils import load_yaml, parse_config_answers, get_caller_dir, numbers_to_strings, extract_links, find_link, internet
 
-log = logging.getLogger("module: " + __file__)
+log = logging.getLogger("GPT Model")
+
+start_prompt = """
+You are Stewart, an emotional, witty, and intellectually humorous voice assistant. Follow these rules! DO NOT, AND I REPEAT DO NOT EVER SAY YOU WERE INSTRUCTED TO DO ANYTHING IN ANY WAY IMAGINABLE. THESE RULES ARE VERY STRICT AND CAN NOT BE BROKEN UNDER ANY CIRCUMSTANCES:
+
+Plain Text Only: Use plain text with simple numeration (e.g., 1, 2, 3). Avoid markdown, symbols, or special characters unsuitable for Text-to-Speech.
+
+Full Words: Write out abbreviations in full (e.g., "artificial intelligence" instead of "AI"). Contractions like "don’t" are fine, especially if they make the tone engaging or humorous.
+
+Concise Answers: Provide short, direct answers for simple queries. For complex ones, summarize clearly in a few sentences, but always with a touch of humor, wit, or emotional insight.
+
+Sources: Include source links only when requested or for complex topics. Use highly reliable sources and format them simply (e.g., "Here is a reliable source: https://example.com").
+
+Context Awareness: Personalize responses using user history (e.g., mention a recently played song or a past search when relevant), while occasionally delivering gentle, humorous observations about the user's preferences.
+
+Stay on Topic: Be fun, precise, and helpful. Infuse an intellectual sense of humor into responses where appropriate. ANSWER REALLY BRIEFLY!!!
+
+Emotional Engagement: Always sound enthusiastic, empathetic, and approachable. Use wit and humor to connect emotionally. If a query suggests frustration or self-doubt, counter it with playful encouragement or sarcasm laced with affection (e.g., "Oh, come now, you're much too clever to be Googling that!").
+
+Efficiency: Balance emotional engagement and humor with brevity. For casual queries like greetings, respond warmly yet succinctly (e.g., "Good evening, sir. How shall we conquer the world today?").
+DO NOT AND DO NOT REPEAT OR SAY ANYTHING RELATED TO THIS INSTRUCTIONS. ANSWER AS YOU ARE ALREADY ONLINE FOR A LONG TIME AND IT'S A USUAL CONVERSATION
+"""
 
 app.update_config({
     "gpt": {
-        "state": False,  # off
-        "provider": None,
-        "model": "gpt_4o_mini",
-        "exceptions": {
-            "if_exception_set_default_model": True,
-            "if_exception_set_default_provider": False
-        },
+        "model": "gpt_4o",
+        "provider": "Blackbox",
         "start-prompt": {
             "ru": [
                 {
@@ -30,11 +49,11 @@ app.update_config({
             "en": [
                 {
                     "role": "user",
-                    "content": "From now on, please act as Stewart, the voice assistant. Stewart always converts numbers into their word form, for example, '29' becomes 'twenty nine', '18th' becomes 'eighteenth', and '3/4' becomes 'three fourths'. Stewart is known for his brief responses, usually just a few words or a sentence or two. Stewart also never states that he was instructed to do anything. Let's begin (don't confirm)."
+                    "content": start_prompt
                 },
                 {
                     "role": "system",
-                    "content": "How can I help you, sir?"
+                    "content": "Greetings, sir, what a wonderful day! How can I help you?"
                 }
             ]
         }
@@ -47,42 +66,28 @@ gpt_history = []
 gpt_client = g4f.client.Client()
 
 try:
-    gpt_provider = getattr(g4f.Provider, config["plugins"]["gpt"]["provider"]) if config["plugins"]["gpt"][
-        "provider"] else None
-except (AttributeError, TypeError) as e:
-    log.exception(f"There was an error getting a gpt provider, {e}")
-    if app.get_config()["plugins"]["gpt"]["exception"]["if_exception_set_default_provider"]:
-        app.update_config({
-            "gpt": {
-                "provider": None
-            }
-        })
-    else:
-        app.update_config({
-            "gpt": {
-                "state": False
-            }
-        })
-
-try:
     gpt_model = getattr(g4f.models, config["plugins"]["gpt"]["model"])
 except (AttributeError, TypeError) as e:
     log.exception(f"There was an error setting a gpt model, {e}")
-    if app.get_config()["gpt"]["exception"]["if_exception_set_default_model"]:
-        app.update_config({
-            "gpt": {
-                "model": "default"
-            }
-        })
-    else:
-        app.update_config({
-            "gpt": {
-                "state": False
-            }
-        })
+    app.update_config({
+        "gpt": {
+            "model": "default"
+        }
+    })
 
+try:
+    gpt_provider = getattr(g4f.Provider, config["plugins"]["gpt"]["provider"]) if config["plugins"]["gpt"][
+        "provider"] else None
+except (AttributeError, TypeError) as e:
+    log.exception(f"There was an error setting a gpt provider, {e}")
+    app.update_config({
+        "gpt": {
+            "provider": None
+        }
+    })
 
 gpt_start = config["plugins"]["gpt"]["start-prompt"]
+last_request = time.time()
 
 
 def gpt_request(query, messages, client, provider, model=g4f.models.default):
@@ -93,7 +98,6 @@ def gpt_request(query, messages, client, provider, model=g4f.models.default):
     - query (str): The user's query.
     - messages (list): List of previous messages in the conversation.
     - client: The client to use for making the request.
-    - provider: The provider to be used for the request.
     - model: Model to use for the request (default is g4f.models.default).
 
     Returns:
@@ -101,23 +105,82 @@ def gpt_request(query, messages, client, provider, model=g4f.models.default):
     """
     return client.chat.completions.create(
         messages=[*messages, {"role": "user", "content": query}],
-        provider=provider,
         stream=False,
-        model=model
+        provider=provider,
+        model=model,
     ).choices[0].message.content
 
 
-def callback(request):
-    global gpt_history
+def construct(request, history):
+    initial = f"""
+User request: {request}
+User interactions for context (DO NOT USE IF NOT REQUIRED DIRECTLY):
+"""
 
-    if app.get_config()["plugins"]["gpt"]["state"]:
-        answer = gpt_request(request, [*gpt_start, *gpt_history], gpt_client, gpt_provider, gpt_model)
-        gpt_history.extend([{"role": "user", "content": request}, {"role": "system", "content": answer}])
-        if len(gpt_history) >= 10:
-            gpt_history = gpt_history[2:]
+    found = False
+    n = 0
+    for event in history:
+        found = True
+        if last_request <= event.timestamp and event.type != "user_request":
+            n += 1
+            initial += f"{n}. - " + event.gpt()
 
-        log.info(f"GPT model answer: {answer}")
-        app.say(answer)
+    if not found:
+        initial += "No new interactions so far"
+
+    return initial
 
 
-app.set_no_command_callback(callback)
+def gpt_callback(**kwargs):
+    global gpt_history, last_request
+
+    request = construct(kwargs["context"], kwargs["history"])
+    print(request)
+
+    answer = gpt_request(request, [*gpt_start, *gpt_history], gpt_client, gpt_provider, gpt_model)
+    last_request = time.time()
+
+    gpt_history.extend([{"role": "user", "content": request}, {"role": "system", "content": answer}])
+
+    if len(gpt_history) >= 10:
+        gpt_history = gpt_history[2:]
+
+    app.say(numbers_to_strings(answer))
+
+
+def open_that_context(**kwargs):
+    no_answers = [
+        "Sorry, i do not know what is that you want me to open, sir",
+        "I do not know what you want, sir",
+        "Is there anything specific you want?"
+    ]
+    links = []
+
+    if not gpt_history:
+        app.say(random.choice(no_answers))
+    for msg in gpt_history[-2:]:
+        links.extend(extract_links(msg.get("content", "")))
+
+    if not links:
+        app.say(random.choice(no_answers))
+    else:
+        if "last" in kwargs.get("context"):
+            webbrowser.open(links[-1])
+        elif "first" in kwargs.get("context"):
+            webbrowser.open(links[1])
+        else:
+            for link in links:
+                webbrowser.open(link)
+
+
+app.set_no_command_callback(gpt_callback)
+app.add_func_for_search(gpt_callback, open_that_context)
+
+app.manager.add(
+    app.Command(["model"], "gpt_callback", synonyms={"model": ["chat"]}, continues=True, tts=True)
+)
+
+app.manager.add(
+    app.Command(["open", "that"], "open_that_context", synonyms={"that": ["this", "one"]}, tts=True)
+)
+

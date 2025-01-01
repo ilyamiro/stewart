@@ -12,7 +12,7 @@ from pathlib import Path
 
 from playsound import playsound
 
-from audio.input import STT
+# from audio.input import STT
 from utils import *
 from data.constants import CONFIG_FILE, PROJECT_FOLDER, PLUGINS_FOLDER
 
@@ -51,9 +51,9 @@ class App:
 
             self.api.__run_hooks__(self.api.__post_init_callbacks__)
 
-            log.debug(f"Ran {len(self.api.__pre_init_callbacks__)} post-init hooks: {self.api.__pre_init_callbacks__}")
+            log.debug(f"Ran {len(self.api.__post_init_callbacks__)} post-init hooks: {self.api.__post_init_callbacks__}")
 
-            self.api.add_func_for_search(self.protocol, self.stop, self.repeat, self.grammar_restrict)
+            self.api.add_func_for_search(self.protocol, self.stop, self.repeat, self.grammar_restrict, self.sleep)
 
         return wrapper
 
@@ -68,18 +68,7 @@ class App:
         log.info("Data tree initialized")
         log.debug(f"Active scenarios: {[scenario.name for scenario in self.api.scenarios]}")
 
-        self.history = []
         self.scenario_active = []
-
-        if not self.config["settings"]["text-mode"]:
-            self.stt = STT(self.api.lang)
-
-            if self.config["audio"]["stt"]["speech-mode-restricted"]:
-                self.grammar_recognition_restricted_create()
-                self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
-                                                           self.stt.create_new_recognizer())
-
-            log.debug("Speech to text instance initialized")
 
         self.recognition_thread = None
         self.running = True
@@ -88,51 +77,100 @@ class App:
 
         log.debug("Finished app initialization")
 
-        log.debug(f"Start up time: {datetime.now() - start_time:.6f}")
+        log.debug(f"Start up time: {time.time() - start_time:.6f}")
 
-    def run(self):
+    def run(self, stt=None, last_time=None):
         if not self.config["settings"]["text-mode"]:
-            self.recognition_thread = threading.Thread(target=self.recognition)
-            self.recognition_thread.start()
+            self.stt = stt
+            self.last_time = time.time() if not last_time else last_time
 
-            log.debug(f"Recognition thread started with id: {self.recognition_thread.native_id}")
+            if self.config["audio"]["stt"]["speech-mode-restricted"]:
+                self.grammar_recognition_restricted_create()
+                self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
+                                                           self.stt.create_new_recognizer())
+
+            log.debug("Speech to text instance initialized")
+
+            self.recognition()
         else:
-            while True:
+            while self.running:
                 self.process_trigger_no_voice(input("Input: "))
 
+    def recognition(self):
+        threshold = int(config["settings"]["inactivity-threshold"])
+        while self.running:
+            if time.time() - self.last_time > threshold:
+                log.debug(
+                    f"Going into sleep mode due to inactivity for {threshold} seconds (~{threshold / 60} minutes)")
+                self.running = False
+            data = self.stt.stream.read(4000, exception_on_overflow=False)
+            for word in self.stt.listen(data):
+                self.process_trigger(word)
+
     def handle(self, request):
-        self.history_update(request)
-        self.scan_scenarios()
+        self.api.eventLogger.record(self.api.Event(
+            "user_request",
+            {"request": request}
+        ))
+
+        self.scan_scenarios(request)
 
         if (not request or not self.remove_trigger_word(request)) and self.config["settings"]["trigger"]["trigger-mode"] != "disabled" and not any(self.scenario_active):
-            self.api.say(parse_config_answers(random.choice(self.config[f"answers"]["default"])))
+            answer = random.choice(self.config[f"answers"]["default"])
+            self.api.say(parse_config_answers(answer))
+
+            self.api.eventLogger.record(self.api.Event(
+                "wake_word_used",
+                {"answer": answer}
+            ))
         else:
             result, execution_time = track_time(lambda: self.api.manager.find(request))
-            log.info(f"Command search time: {execution_time:.6f}")
+            if result:
+                self.last_time = time.time()
 
-            if len(result) == 1:
-                command = result[0]
-                if command[0].responses and not command[0].tts:
-                    self.api.say(random.choice(command[0].responses))
-                elif not command[0].responses and not command[0].tts:
-                    self.api.say(random.choice(self.config["answers"]["multi"]))
-                self.do(command)
-            elif len(result) > 1:
-                if all(not command[0].tts for command in result):
-                    self.api.say(random.choice(self.config["answers"]["multi"]))
-                for command in result:
+                result_visual = {" ".join(cmd[0].keywords): cmd[1] for cmd in result}
+                log.info(f"Command search time: {execution_time:.6f}")
+                log.debug(f"Recognized commands: {result_visual}")
+
+                answer = None
+
+                if len(result) == 1:
+                    command = result[0]
+                    if command[0].responses and not command[0].tts:
+                        answer = random.choice(command[0].responses)
+                    elif not command[0].responses and not command[0].tts:
+                        answer = random.choice(self.config["answers"]["multi"])
+
+                    self.api.say(answer)
+
+                    self.api.eventLogger.record(self.api.Event(
+                        "command_detected",
+                        {
+                            "user_request": request,
+                            "commands": result_visual,
+                        }
+                    ))
+
                     self.do(command)
-            elif not result:
-                self.api.__no_command_callback__(request)
+                elif len(result) > 1:
+                    if all(not command[0].tts for command in result):
+                        answer = random.choice(self.config["answers"]["multi"])
+                        self.api.say(answer)
 
-    def recognition(self):
-        """
-        Voice recognition
-        """
-        while self.running:
-            if self.stt.stream.is_active():
-                for word in self.stt.listen():
-                    self.process_trigger(word)
+                        self.api.eventLogger.record(self.api.Event(
+                            "command_detected",
+                            {
+                                "user_request": request,
+                                "commands": result_visual,
+                            }
+                        ))
+                    for command in result:
+                        self.do(command)
+
+            elif not result and not self.scenario_active:
+                self.api.__no_command_callback__(context=request, history=self.api.eventLogger.history)
+
+        self.api.eventLogger.length(self.config["settings"]["max-history-length"])
 
     def process_trigger(self, request):
         if self.trigger_timed_needed:
@@ -217,19 +255,16 @@ class App:
 
         self.api.manager.add(command)
 
-    def history_update(self, request):
-        """
-        Update history of requests
-        """
-        if len(self.history) > self.config["settings"]["max-history-length"]:
-            self.history.pop(0)
+    def scan_scenarios(self, request):
+        user_requests = [event for event in self.api.eventLogger.history if event.type == "user_request"]
 
-        self.history.append(request)
+        updated_scenarios = []
 
-    def scan_scenarios(self):
-        for request in self.history:
-            for scenario in self.api.scenarios:
-                self.scenario_active.append(scenario.check_scenario(request, self.history))
+        for scenario in self.api.scenarios:
+            if scenario.check_scenario(request, user_requests):
+                updated_scenarios.append(scenario)
+
+        self.scenario_active = updated_scenarios
 
     def do(self, command):
         """
@@ -237,7 +272,9 @@ class App:
         """
         action = self.find_action(command[0].action)
         thread = threading.Thread(target=action,
-                                  kwargs={"command": command[0], "context": command[1]})
+                                  kwargs={"command": command[0], "context": command[1]},
+                                  daemon=True
+                                  )
         thread.start()
 
     def find_action(self, name):
@@ -247,6 +284,9 @@ class App:
         if name in self.api.__actions__.keys():
             log.info(f"Action found: {name}")
             return self.api.__actions__.get(name)
+        else:
+            log.info(f"Action not found: {name}")
+            return self.api.__blank__
 
     def grammar_recognition_restricted_create(self):
         """
@@ -256,7 +296,7 @@ class App:
         with open(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt", "w") as file:
             file.write('["' + " ".join(self.config["settings"]["trigger"].get(f"triggers")))
             file.write(self.config["audio"]["stt"].get(f"restricted-add-line"))
-            file.write(self.tree.recognizer_string + '"]')
+            file.write(" " + self.api.manager.construct_recognizer_string() + '"]')
 
     # below methods are actions that need access to the main app instance
     # <!--------------------------------------------------------------------!>
@@ -265,13 +305,16 @@ class App:
         """
         An action function inside an app class that enables or disables 'improved but limited' speech recognition
         """
-        match kwargs["parameters"]["way"]:
-            case "on":
-                self.stt.recognizer = self.stt.create_new_recognizer()
-            case "off":
-                self.stt.recognizer = self.stt.set_grammar(
-                    f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
-                    self.stt.create_new_recognizer())
+        if not self.config["settings"]["text-mode"]:
+            match kwargs["command"].parameters["way"]:
+                case "on":
+                    self.stt.recognizer = self.stt.create_new_recognizer()
+                case "off":
+                    self.stt.recognizer = self.stt.set_grammar(
+                        f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
+                        self.stt.create_new_recognizer())
+        else:
+            self.api.say("voice recognition is not active, sir")
 
     def repeat(self, **kwargs):
         """
@@ -279,10 +322,13 @@ class App:
         """
         self.handle(self.history[-1].get("request"))
 
-    def stop(self, **kwargs):
-        self.running = False
+    @staticmethod
+    def stop(**kwargs):
         os.kill(os.getpid(), signal.SIGKILL)
 
+    def sleep(self, **kwargs):
+        self.running = False
+
     def protocol(self, **kwargs):
-        for command in kwargs["parameters"]["protocol"]:
-            self.find_exec(command["action"])(parameters=command["parameters"])
+        for command in kwargs["command"].parameters["protocol"]:
+            self.find_action(command["action"])(parameters=command["parameters"])

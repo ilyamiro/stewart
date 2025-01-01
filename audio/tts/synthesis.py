@@ -34,7 +34,7 @@ class TTS:
         self.active = ENABLE
 
     def say(self, text, prosody=94):
-        if self.active:
+        if self.active and text is not None:
             text = parse_config_answers(text)
             thread = threading.Thread(target=self.synthesizer.say, kwargs={"text": text, "path": f"{PROJECT_FOLDER}/audio/tts/audio.wav", "prosody_rate": prosody, "module": "playsound"})
             thread.start()

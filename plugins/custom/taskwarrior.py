@@ -66,6 +66,7 @@ def tell_task(**kwargs):
         n = 1
         for task in result:
             beginning += f". {num2words(n)}. " + normalize(task.get("description")) + " " + time_left(task.get("due"))
+            n += 1
         app.say(beginning)
 
 

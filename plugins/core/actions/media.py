@@ -56,19 +56,19 @@ def mute_volume(**kwargs):
 
 
 def volume(**kwargs):
-    num = find_num_in_list(kwargs["context"])
-    current = os.popen('amixer get Master | grep -oP "\[\d+%\]"').read()
-    current = int(current.split()[0][1:-2])
-    if_up = kwargs["command"].parameters["command"] == "up"
-    if num:
-        if kwargs["parameters"]["command"] == "set":
-            os.system(f"amixer set 'Master' {num}% /dev/null 2>&1")
-        else:
-            os.system(
-                f"amixer set 'Master' {current + num if if_up else current - num}% > /dev/null 2>&1")
+    num = find_num(kwargs["context"])
+    print(num)
+    command = kwargs["command"].parameters["command"]
+    current = int(os.popen('amixer get Master | grep -oP "\[\d+%\]"').read().split()[0][1:-2])
+    adjustment = num if num else 25
+    new_volume = current + adjustment if command == "up" else current - adjustment
+
+    if command == "set" and num:
+        os.system(f"amixer set 'Master' {num}% > /dev/null 2>&1")
+        log.info(f"Set system volume to {num}")
     else:
-        os.system(
-            f'amixer set "Master" {current + 25 if if_up else current - 25}% > /dev/null 2>&1')
+        os.system(f"amixer set 'Master' {new_volume}% > /dev/null 2>&1")
+        log.info(f"Set system volume to {new_volume}")
 
 
 def save_song(href, title):
@@ -79,6 +79,7 @@ def save_song(href, title):
 
     download = config["plugins"]["core"]["music-download"]
     filename = os.path.join(music_folder, sanitize_filename(title))
+    max_file_size = 20 * 1024 * 1024
     url = None
 
     ydl_opts = {
@@ -102,12 +103,10 @@ def save_song(href, title):
                         f.get('filesize', 0) for f in info.get('formats', []) if f.get('filesize')
                     )
 
-                    # Convert size to MB and skip if greater than 20 MB
-                    if file_size and file_size > 20 * 1024 * 1024:
+                    if file_size and file_size > max_file_size:
                         log.info(f"Skipping {title} as it exceeds 20 MB.")
-                        return None  # Indicate to skip this song
+                        return None
 
-                    # Download the song if it's within size limit
                     ydl.download([href])
 
                 except Exception as e:
@@ -191,8 +190,25 @@ def find_video(**kwargs):
         app.say("Sorry, I have not found a matching video, sir, please try again")
 
 
+def find(**kwargs):
+    to_find = kwargs.get("context")
+    app.say("That's what I could find for " + to_find)
+
+    encoded_query = urllib.parse.quote(to_find)
+
+    if "youtube" in to_find:
+        webbrowser.open("https://www.youtube.com/results?search_query=" + encoded_query, autoraise=True)
+    else:
+        webbrowser.open("https://www.google.com/search?q=" + encoded_query, autoraise=True)
+
+
+def find_open(**kwargs):
+    find_link(kwargs.get("context"))
+
+
 def stream(**kwargs):
     link = kwargs["parameters"]["link"]
     app.play(link)
+
 
 

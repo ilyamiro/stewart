@@ -1,4 +1,5 @@
 import json
+import spacy
 import os
 import subprocess
 import logging
@@ -7,6 +8,7 @@ import platform
 import sys
 import inspect
 import re
+import webbrowser
 import time
 from pathlib import Path
 from importlib import import_module
@@ -14,6 +16,9 @@ from importlib import import_module
 import requests
 import yaml
 import g4f
+from bs4 import BeautifulSoup
+import lxml
+import requests
 
 from num2words import num2words
 from plyer import notification
@@ -21,6 +26,8 @@ from plyer import notification
 from data.constants import CONFIG_FILE, PROJECT_FOLDER, LANG_FILE
 
 log = logging.getLogger("utils")
+
+nlp = spacy.load("en_core_web_sm")
 
 
 # --------------- Inspection Functions ---------------
@@ -51,7 +58,8 @@ def called_from():
     caller_line_number = caller_of_caller_frame.f_lineno
     caller_filename = caller_of_caller_frame.f_code.co_filename
 
-    log.info(f"'{function_name}' was called by {caller_function_name} on line {caller_line_number} in {caller_filename}.")
+    log.info(
+        f"'{function_name}' was called by {caller_function_name} on line {caller_line_number} in {caller_filename}.")
 
 
 # --------------- Configuration Functions ---------------
@@ -285,6 +293,27 @@ def issubset(list_of_lists1, list_of_lists2):
     return False
 
 
+def extract_links(text):
+    markdown_pattern = r'\[([^\]]+)\]\((http[s]?://[^\)]+)\)'
+    url_pattern = r'http[s]?://[^\s()]+(?:\([^\)]*\))?'
+
+    markdown_links = re.findall(markdown_pattern, text)
+
+    normal_links = re.findall(url_pattern, text)
+
+    all_links = [link[1] for link in markdown_links] + normal_links
+
+    return all_links
+
+
+def extract_entities(text):
+    doc = nlp(text)
+
+    entities = [ent.text for ent in doc.ents]
+
+    return entities
+
+
 def remove_non_letters(input_string):
     cleaned_string = re.sub(r'[^a-zA-Z\s]', '', input_string)
     return cleaned_string
@@ -305,7 +334,7 @@ def numbers_to_strings(text: str):
 
     for number in all_numbers:
         word = num2words(float(number))
-        text = text.replace(str(number), " " + word)
+        text = text.replace(str(number), word)
 
     return text
 
@@ -333,6 +362,7 @@ def normalize(text: str) -> str:
     text = text.strip()
 
     return text
+
 
 def kelvin_to_c(k):
     """
@@ -474,3 +504,22 @@ def track_time(func, *args, **kwargs):
 
     execution_time = end_time - start_time  # Calculate execution time
     return result, execution_time
+
+
+def find_link(search):
+    url = "https://www.google.com/search?"
+    params = {'q': search}
+
+    def fetch_first_link(a, symbol):
+        params['q'] = params['q'].format(symbol)
+        res = a.get(url, params=params, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36'
+        })
+        soup = BeautifulSoup(res.text, "lxml")
+        link = soup.select_one("a:has(h3)")
+        return link['href'] if link else "https://google.com/"
+
+    with requests.Session() as s:
+        webbrowser.open(fetch_first_link(s, search))
+
+

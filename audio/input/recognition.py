@@ -70,11 +70,6 @@ class STT:
         # -------- Recognizer Initialization --------
         self.recognizer = self.create_new_recognizer()
 
-        # -------- Listener Configuration --------
-        self.listen = self.listen_vad if config["audio"]["stt"]["activity-detection"] else self.listen_no_vad
-        self.voice_activity = not config["audio"]["stt"]["activity-detection"]
-        self.add_data = b""
-
     # -------- Initialization Helpers --------
     def _initialize_audio_stream(self):
         """
@@ -120,34 +115,15 @@ class STT:
         log.debug("VAD model loaded")
         return vad_model
 
-    def listen_no_vad(self):
+    def listen(self, data):
         """
         Listen without voice activity detection.
 
         Reads data in 4k chunks and processes it.
         """
-        data = self.stream.read(4000, exception_on_overflow=False)
         result = self.process(data)
         if result:
             yield result
-
-    def listen_vad(self):
-        """
-        Listen with voice activity detection (VAD).
-
-        Processes chunks or waits for voice activity.
-        """
-        if self.voice_activity:
-            data = self.add_data + self.stream.read(4000, exception_on_overflow=False)
-            self.add_data = b""
-            result = self.process(data)
-            if result:
-                yield result
-        else:
-            data = self.stream.read(512, exception_on_overflow=False)
-            if self.voice_activity_detected(data):
-                self.add_data = data
-                self.count_voice_activity(15)
 
     def process(self, data):
         """
@@ -159,14 +135,24 @@ class STT:
             answer = json.loads(self.recognizer.Result())
             if "spk" in answer:
                 distance = cosine_dist(spk_sig, answer["spk"])
-                if distance < 0.65 and answer["text"]:
+                if distance < 0.6 and answer["text"]:
                     log.info(f"Text recognized: {answer['text']}, speaker distance: {distance}")
                     return answer["text"]
                 else:
                     log.info(f"Speaker distance ({distance}) exceeds threshold. Ignoring result.")
 
+    def check_speaker(self, data):
+        if self.recognizer.AcceptWaveform(data):
+            answer = json.loads(self.recognizer.Result())
+            if "spk" in answer:
+                distance = cosine_dist(spk_sig, answer["spk"])
+                if distance < 0.6:
+                    yield True
+                else:
+                    yield False
+
     # -------- Voice Activity Detection --------
-    def voice_activity_detected(self, data):
+    def vad(self, data):
         """
         Detect voice activity using VAD model.
 
@@ -176,27 +162,8 @@ class STT:
         audio_float32 = int2float(audio_int16)
         vad_confidence = self.vad_model(torch.from_numpy(audio_float32), 16000).item()
         if vad_confidence > 0.85:
-            log.info("Detected voice activity")
             return True
         return False
-
-    def count_voice_activity(self, times):
-        """
-        Start timer for voice activity period.
-
-        Resets voice activity after set duration.
-        """
-        self.voice_activity = True
-        thread = threading.Timer(times, self.voice_activity_set)
-        thread.start()
-
-    def voice_activity_set(self):
-        """
-        Reset voice activity status.
-
-        Used after timer elapses.
-        """
-        self.voice_activity = False
 
     def create_new_recognizer(self):
         """

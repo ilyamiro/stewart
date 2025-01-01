@@ -24,16 +24,26 @@ number_dict = {
     "eighty one": 81, "eighty two": 82, "eighty three": 83, "eighty four": 84, "eighty five": 85,
     "eighty six": 86, "eighty seven": 87, "eighty eight": 88, "eighty nine": 89, "ninety": 90,
     "ninety one": 91, "ninety two": 92, "ninety three": 93, "ninety four": 94, "ninety five": 95,
-    "ninety six": 96, "ninety seven": 97, "ninety eight": 98, "ninety nine": 99, "one hundred": 100, "hundred": 100
+    "ninety six": 96, "ninety seven": 97, "ninety eight": 98, "ninety nine": 99, "hundred": 100
 }
 
 
-def find_num_in_list(lst):
-    string = " ".join(lst)
+def find_num(context):
     for num in number_dict.keys().__reversed__():
-        if num in string:
+        if num in context:
             return number_dict.get(num)
     return None
+
+
+def format_time_passed(seconds):
+    if seconds < 60:
+        return f"{int(seconds)} seconds"
+    elif seconds < 3600:
+        return f"{int(seconds // 60)} minutes"
+    else:
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        return f"{hours} hours and {minutes} minutes"
 
 
 def get_part_of_day():

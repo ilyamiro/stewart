@@ -6,7 +6,6 @@ import subprocess
 import socket
 import inspect
 import threading
-import yaml
 import types
 import typing
 from importlib import import_module
@@ -18,6 +17,7 @@ from pynput.mouse import Controller as Mouse
 from pynput.mouse import Button as MouseButton
 
 import mpv
+import yaml
 
 from data.constants import PROJECT_FOLDER, CONFIG_FILE
 from audio.tts import TTS
@@ -25,6 +25,7 @@ from utils import load_yaml, filter_lang_config, load_lang, notify
 
 from .tree import Manager
 from .scenarios import Trigger, Timeline, Scenario
+from .events import Event, EventLogger
 
 log = logging.getLogger("API: app")
 
@@ -210,6 +211,8 @@ class AppAPI:
         self.Timeline = Timeline
         self.Scenario = Scenario
 
+        self.Event = Event
+
         self.mouse = Mouse()
         self.keyboard = Keyboard()
 
@@ -218,7 +221,7 @@ class AppAPI:
         self.Button = MouseButton
         self.Key = KeyboardKey
 
-        self.lang = self.__get_lang__()
+        self.lang = self.get_lang()
 
         self.config = load_yaml(CONFIG_FILE)
 
@@ -230,10 +233,12 @@ class AppAPI:
 
         self.__actions__: dict = {}
 
+        self.eventLogger = EventLogger()
+
         self.scenarios: list = []
 
     @staticmethod
-    def __blank__(value=None):
+    def __blank__(context, history):
         pass
 
     def set_post_init(self, func: types.FunctionType, index: int = -1) -> None:
@@ -263,7 +268,7 @@ class AppAPI:
     def add_func_for_search(self, *args):
         for func in args:
             self.__actions__.update({func.__name__: func})
-            log.info(f"Added {func.__name__}:{func} to actions")
+            log.info(f"Added func <{func.__name__}> to actions")
 
     def add_module_for_search(self, path: str = None, module=None, include_private: bool = False):
         """
@@ -294,8 +299,10 @@ class AppAPI:
             if not include_private:
                 filtered_dict = {k: v for k, v in functions.items() if not k.startswith('__')}
                 self.__actions__.update(filtered_dict)
+                log.info(f"Added functions to actions: {list(filtered_dict.keys())}")
             else:
                 self.__actions__.update(functions)
+                log.info(f"Added functions to actions: {list(functions.keys())}")
         else:
             log.warning(f"module: {module} is not a module object, try again")
             return
@@ -329,9 +336,13 @@ class AppAPI:
         """A function that will run when a command was recognized"""
         self.__trigger_callback__ = func
 
+    def endpoint(self, func: types.FunctionType):
+        self.__setattr__(func.__name__, func)
+        log.info(f"Added API endpoint: {func.__name__}")
+
     # <! ----------------------- get ----------------------- !>
     @staticmethod
-    def __get_lang__():
+    def get_lang():
         """
         Returns language settings
         """
