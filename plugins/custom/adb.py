@@ -83,8 +83,8 @@ if app.lang == "en":
             "battery_check",
             equivalents=[
                         ["phone", "charge"],
-                        ["phone", "battery", "charge"]
             ],
+            tts=True
         )
     )
 

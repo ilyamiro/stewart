@@ -39,6 +39,9 @@ class Manager:
         """
         for command in commands:
             if isinstance(command, Command):
+                for cmd in self.commands[:]:
+                    if cmd.keywords == command.keywords:
+                        self.commands.remove(cmd)
                 self.commands.append(command)
                 for equivalent in command.equivalents:
                     self.commands.append(command.copy(equivalent))

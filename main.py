@@ -1,5 +1,8 @@
 import logging
 import random
+import subprocess
+import threading
+import os
 import time
 import sys
 import traceback
@@ -15,10 +18,10 @@ if admin():
 
 from data.constants import PLUGINS_FOLDER
 from audio.input import STT
+from gui.animation import animation
 
 
 def main():
-    # noinspection PyBroadException
     try:
         log.debug("Started running...")
 
@@ -40,7 +43,20 @@ def main():
             stt = STT(app.api.lang)
             app.start(start_time)
 
+            if config["start-up"]["sound-enable"]:
+                app.api.audio.play(config["start-up"]["sound-path"])
+                log.info("Played startup sound")
+            if config["start-up"]["voice-enable"]:
+                app.api.say(random.choice(config[f"start-up"]["answers"]))
+                log.info("Played startup voice synthesis")
+
             last_time = None
+
+            thread = threading.Thread(target=animation)
+            thread.daemon = True
+            thread.start()
+
+            app.run(stt, None)
 
             buffer = b""
             while True:
@@ -48,36 +64,28 @@ def main():
                 if stt.vad(data):
                     buffer += data
                 else:
-                    if len(buffer) > 10000:
+                    if len(buffer) > 12000:
                         result = stt.check_speaker(buffer)
                         if result:
-                            if not last_time:
-                                if config["start-up"]["sound-enable"]:
-                                    app.api.audio.play(config["start-up"]["sound-path"])
-                                    log.info("Played startup sound")
-                                if config["start-up"]["voice-enable"]:
-                                    app.api.say(random.choice(config[f"start-up"]["answers"]))
-                                    log.info("Played startup voice synthesis")
+                            elapsed_time = time.time() - last_time
+                            if elapsed_time < 600:
+                                app.api.say(random.choice(config["answers"]["default"]))
+                            elif elapsed_time < 3600:
+                                app.api.say(random.choice(config["answers"]["short_away"]))
+                            elif elapsed_time < 7200:
+                                app.api.say(random.choice(config["answers"]["under_hour"]))
+                            elif elapsed_time < 21600:
+                                app.api.say(random.choice(config["answers"]["over_hour"]))
+                            elif elapsed_time < 43200:
+                                app.api.say(random.choice(config["answers"]["multiple_hours"]))
                             else:
-                                elapsed_time = time.time() - last_time
-                                if elapsed_time < 600:
-                                    app.api.say(random.choice(config["answers"]["default"]))
-                                elif elapsed_time < 3600:
-                                    app.api.say(random.choice(config["answers"]["short_away"]))
-                                elif elapsed_time < 7200:
-                                    app.api.say(random.choice(config["answers"]["under_hour"]))
-                                elif elapsed_time < 21600:
-                                    app.api.say(random.choice(config["answers"]["over_hour"]))
-                                elif elapsed_time < 43200:
-                                    app.api.say(random.choice(config["answers"]["multiple_hours"]))
-                                else:
-                                    app.api.say(random.choice(config["answers"]["half_day"]))
+                                app.api.say(random.choice(config["answers"]["half_day"]))
 
                             app.run(stt, last_time)
 
                             log.info("Successfully went into sleeping mode")
 
-                            last_time = time.time() - int(config["settings"]["inactivity-threshold"])
+                            last_time = app.last_time
 
                     buffer = b""
 

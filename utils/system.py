@@ -18,12 +18,13 @@ import yaml
 import g4f
 from bs4 import BeautifulSoup
 import lxml
+
 import requests
 
 from num2words import num2words
 from plyer import notification
 
-from data.constants import CONFIG_FILE, PROJECT_FOLDER, LANG_FILE
+from data.constants import *
 
 log = logging.getLogger("utils")
 
@@ -520,6 +521,21 @@ def find_link(search):
         return link['href'] if link else "https://google.com/"
 
     with requests.Session() as s:
-        webbrowser.open(fetch_first_link(s, search))
+        webbrowser.open(fetch_first_link(s, search), autoraise=True)
 
 
+def fetch_weather():
+    params = {
+        "lat": MY_CITY_LAT,
+        "lon": MY_CITY_LON,
+        "appid": OPENWEATHER_API_KEY,
+        "units": "metric",
+        "lang": config["lang"]["prefix"]
+    }
+
+    try:
+        response = requests.get(OPENWEATHER_API, params=params)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException:
+        return None

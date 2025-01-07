@@ -24,7 +24,7 @@
 
 ## About
 
-Lines of code: **6570** 
+Lines of code: **6465** 
 
 A desktop-based voice assistant build with python.
 

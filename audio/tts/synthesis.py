@@ -14,9 +14,10 @@ config = load_yaml(CONFIG_FILE)
 
 
 LANG = load_lang()
+
 SEX = config["audio"]["tts"]["sex"]
-SPEAKER = config["audio"]["tts"][LANG][SEX]
-MODEL = config["audio"]["tts"][LANG]["model"]
+SPEAKER = config["audio"]["tts"][SEX]
+MODEL = config["audio"]["tts"]["model"]
 ENABLE = config["audio"]["tts"]["enable"]
 
 log = logging.getLogger("tts")
@@ -34,7 +35,10 @@ class TTS:
         self.active = ENABLE
 
     def say(self, text, prosody=94):
-        if self.active and text is not None:
+        if self.active:
+            if not text:
+                return
+
             text = parse_config_answers(text)
             thread = threading.Thread(target=self.synthesizer.say, kwargs={"text": text, "path": f"{PROJECT_FOLDER}/audio/tts/audio.wav", "prosody_rate": prosody, "module": "playsound"})
             thread.start()

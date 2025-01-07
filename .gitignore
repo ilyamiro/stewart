@@ -13,6 +13,7 @@ venv/
 # Audio Output
 audio/tts/audio.wav
 audio/tts/models/
+audio/input/vector.txt
 
 # Configuration Files
 private_config.yaml
@@ -30,7 +31,6 @@ data/grammar/
 
 # Development Files
 dev/voice_activity.py
-api/audio.py
 
 # Include Directory
 include/
@@ -40,6 +40,8 @@ include/
 #!plugins/gpt/
 
 gui/*
+!gui/animation.py
 
 har_and_cookies
+.env
 

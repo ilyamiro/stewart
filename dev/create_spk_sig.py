@@ -13,8 +13,8 @@ SPK_MODEL_PATH = f"{PARENT}/audio/input/models/vosk-model-speaker-recognition"
 SAMPLE_RATE = 16000
 CHANNELS = 1
 FRAMES_PER_BUFFER = 8000
-XVECTOR_BUFFER_MAXLEN = 40
-OUTPUT_FILE = "vector.txt"
+XVECTOR_BUFFER_MAXLEN = 50
+OUTPUT_FILE = "vector_combine.txt"
 
 
 def check_model_paths(model_path, spk_model_path):
@@ -61,6 +61,9 @@ def process_audio_data(recognizer, stream, xvector_buffer):
 
         if "spk" in result:
             xvector_buffer.append(result["spk"])
+
+        # Display how many samples have been recorded out of XVECTOR_BUFFER_MAXLEN
+        print(f"Recorded {len(xvector_buffer)} out of {XVECTOR_BUFFER_MAXLEN} samples.")
 
         if len(xvector_buffer) == xvector_buffer.maxlen:
             return np.mean(np.array(xvector_buffer), axis=0)

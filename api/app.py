@@ -224,6 +224,7 @@ class AppAPI:
         self.lang = self.get_lang()
 
         self.config = load_yaml(CONFIG_FILE)
+        self.config = self.get_config()
 
         self.__pre_init_callbacks__: list = []
         self.__post_init_callbacks__: list = []
@@ -266,9 +267,9 @@ class AppAPI:
     # < ------------------- Modules ------------------- >
 
     def add_func_for_search(self, *args):
+        log.info(f"Added functions to actions: {args}")
         for func in args:
             self.__actions__.update({func.__name__: func})
-            log.info(f"Added func <{func.__name__}> to actions")
 
     def add_module_for_search(self, path: str = None, module=None, include_private: bool = False):
         """
@@ -370,7 +371,6 @@ class AppAPI:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, "r", encoding="utf-8") as file:
                 data = yaml.safe_load(file)
-
             data.update(self.config)
             with open(CONFIG_FILE, "w", encoding="utf-8") as file:
                 yaml.safe_dump(data, file, allow_unicode=True)
@@ -384,8 +384,17 @@ class AppAPI:
 
     # <! --------------- scenarios --------------- !>
     def add_scenario(self, scenario):
-        if hasattr(scenario, "name"):
-            self.scenarios.append(scenario)
+        for el in self.scenarios[:]:
+            if el.name == scenario.name:
+                self.scenarios.insert(self.scenarios.index(el), scenario)
+                self.scenarios.remove(el)
+                return
+        self.scenarios.append(scenario)
+
+    def remove_scenario(self, name):
+        for el in self.scenarios[:]:
+            if el.name == name:
+                self.scenarios.remove(el)
 
 
 app = AppAPI()

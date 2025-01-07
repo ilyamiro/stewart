@@ -12,7 +12,6 @@ from pathlib import Path
 
 from playsound import playsound
 
-# from audio.input import STT
 from utils import *
 from data.constants import CONFIG_FILE, PROJECT_FOLDER, PLUGINS_FOLDER
 
@@ -22,11 +21,6 @@ log = logging.getLogger("app")
 
 
 class App:
-    """
-    Main running instance of an application behind the GUI (plan)
-    For further reference, VA = Voice Assistant
-    """
-
     def __init__(self, api):
         self.api = api
 
@@ -65,13 +59,9 @@ class App:
 
         self.tree_init()
 
-        log.info("Data tree initialized")
         log.debug(f"Active scenarios: {[scenario.name for scenario in self.api.scenarios]}")
 
         self.scenario_active = []
-
-        self.recognition_thread = None
-        self.running = True
 
         self.api.__save_config__()
 
@@ -80,6 +70,8 @@ class App:
         log.debug(f"Start up time: {time.time() - start_time:.6f}")
 
     def run(self, stt=None, last_time=None):
+        self.running = True
+
         if not self.config["settings"]["text-mode"]:
             self.stt = stt
             self.last_time = time.time() if not last_time else last_time
@@ -115,7 +107,7 @@ class App:
 
         self.scan_scenarios(request)
 
-        if (not request or not self.remove_trigger_word(request)) and self.config["settings"]["trigger"]["trigger-mode"] != "disabled" and not any(self.scenario_active):
+        if (not request or not self.remove_trigger_word(request)) and self.config["settings"]["trigger"]["trigger-mode"] != "disabled" and not self.scenario_active:
             answer = random.choice(self.config[f"answers"]["default"])
             self.api.say(parse_config_answers(answer))
 
@@ -178,10 +170,10 @@ class App:
             if result != "blank":
                 if self.config["settings"]["trigger"]["trigger-mode"] == "timed":
                     self.trigger_timed_needed = False
-                    self.trigger_counter(self.config["trigger"]["trigger-time"])
+                    self.trigger_counter(int(self.config["settings"]["trigger"]["trigger-time"]))
                 self.handle(result)
         else:
-            self.handle(word)
+            self.handle(request)
 
     def process_trigger_no_voice(self, request):
         trigger, result = self.remove_trigger_word(request)
@@ -237,6 +229,8 @@ class App:
                     repeat.get(f"synonyms"),
                 )
 
+        log.info("Command manager initialized")
+
     def add_command(self, com: list, action: str, parameters: dict = None, responses: list = None,
                     synonyms: dict = None, equivalents: list = None, tts: bool = False, continues: bool = False):
         if equivalents is None:
@@ -272,7 +266,7 @@ class App:
         """
         action = self.find_action(command[0].action)
         thread = threading.Thread(target=action,
-                                  kwargs={"command": command[0], "context": command[1]},
+                                  kwargs={"command": command[0], "context": command[1], "history": self.api.eventLogger.history},
                                   daemon=True
                                   )
         thread.start()
@@ -328,6 +322,7 @@ class App:
 
     def sleep(self, **kwargs):
         self.running = False
+        time.sleep(0.5)
 
     def protocol(self, **kwargs):
         for command in kwargs["command"].parameters["protocol"]:

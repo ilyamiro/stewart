@@ -2,7 +2,7 @@ from datetime import datetime
 from num2words import num2words
 import requests
 import random
-
+from utils.system import fetch_weather
 
 number_dict = {
     "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
@@ -56,27 +56,6 @@ def get_part_of_day():
         return "afternoon"
     elif 16 < hour <= 23:
         return "evening"
-
-
-API_KEY = "b7aa64e8dc28ccf8945c685151aed1fc"
-CITY = "Aarhus"
-
-
-def fetch_weather():
-    """
-    Fetch weather data from the OpenWeather API.
-
-    Returns:
-    dict: Parsed JSON response from the API.
-    """
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={CITY}&appid={API_KEY}&units=metric"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching weather data: {e}")
-        return None
 
 
 def get_weather_description():

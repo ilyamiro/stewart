@@ -1,5 +1,13 @@
 # CHANGELOG
 
+#### v1.7.5 - Small improvements and animation
+
+- Create a terminal "gui" animation out of terminal symbols
+- Added weather commands
+- Added `fetch_weather` to utils
+- Modified GPT prompt 
+- Small fixes for `api` and `voice recognition`
+
 #### v1.7.4 - Event system and refinements
 
 - Created a `api/events.py` endpoint for better event registering. Made for ChatGPT inference
