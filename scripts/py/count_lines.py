@@ -22,7 +22,6 @@ def count_lines_in_python_files(directory, skip_files=None, skip_dirs=None, add_
     file_dict = {}
 
     for root, dirs, files in os.walk(directory):
-        # Skip directories
         dirs[:] = [d for d in dirs if d not in skip_dirs]
 
         for file in files:
@@ -35,9 +34,9 @@ def count_lines_in_python_files(directory, skip_files=None, skip_dirs=None, add_
     return str(total_lines)
 
 
-skip_files_list = ['test.py']
-add_files_list = ["README.md", "config.yaml", "requirements.txt", "private_config.yaml"]
-skip_dirs_list = ['venv', 'models',  "__pycache__", ".git", ".idea", "app_log", "sounds", "images", "grammar", "animations", "include"]
+skip_files_list = ['test.py', 'test2.py']
+add_files_list = ["README.md", "requirements.txt", ]
+skip_dirs_list = ['venv', 'models',  "__pycache__", ".git", ".idea", "app_log", "sounds", "images", "grammar", "animations"]
 
 lines_of_code = count_lines_in_python_files(PROJECT_FOLDER, skip_files_list, skip_dirs_list, add_files_list)
 
