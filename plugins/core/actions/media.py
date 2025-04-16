@@ -56,8 +56,7 @@ def mute_volume(**kwargs):
 
 
 def volume(**kwargs):
-    num = find_num(kwargs["context"])
-    print(num)
+    num = find_num(kwargs["context"])[0]
     command = kwargs["command"].parameters["command"]
     current = int(os.popen('amixer get Master | grep -oP "\[\d+%\]"').read().split()[0][1:-2])
     adjustment = num if num else 25

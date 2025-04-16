@@ -1,7 +1,7 @@
 from num2words import num2words
 import re
 
-from api import app, tree
+from api import app
 from data.constants import PROJECT_FOLDER
 
 from utils import run_stdout, notify
@@ -74,7 +74,7 @@ def check_adb():
 
 app.add_func_for_search(battery_check)
 
-if app.lang == "en":
+if app.lang == "en":  # TODO MAKE COMMANDS LANGUAGE DEPENDENT
     app.manager.add(
         app.Command(
             [

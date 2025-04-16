@@ -10,12 +10,8 @@ import inspect
 from datetime import datetime
 from pathlib import Path
 
-from playsound import playsound
-
 from utils import *
 from data.constants import CONFIG_FILE, PROJECT_FOLDER, PLUGINS_FOLDER
-
-logging.getLogger("playsound").setLevel(logging.ERROR)
 
 log = logging.getLogger("app")
 
@@ -36,7 +32,7 @@ class App:
 
             log.debug(f"Ran {len(self.api.__pre_init_callbacks__)} pre-init hooks: {self.api.__pre_init_callbacks__}")
 
-            self.config = self.api.get_config()
+            self.config = self.api.config
             self.lang = self.api.lang
 
             log.info("Configuration file loaded")
@@ -63,7 +59,7 @@ class App:
 
         self.scenario_active = []
 
-        self.api.__save_config__()
+        # self.api.__save_config__()
 
         log.debug("Finished app initialization")
 
@@ -202,10 +198,8 @@ class App:
         log.info("Trigger countdown ended")
 
     def tree_init(self):
-        data = filter_lang_config(self.config["commands"], self.lang)
-
-        commands = data["default"]
-        commands_repeat = data["repeat"]
+        commands = self.config["commands"]["default"]
+        commands_repeat = self.config["commands"]["repeat"]
 
         for command in commands:
             self.add_command(
@@ -221,8 +215,9 @@ class App:
 
         for repeat in commands_repeat:
             for key in repeat[f"links"]:
+                add = [key,] if key.count(" ") == 0 else key.split()
                 self.add_command(
-                    [*repeat.get(f"command"), key],
+                    [*repeat.get(f"command"), *add],
                     repeat.get("action"),
                     {repeat.get("parameter"): repeat.get(f"links").get(key)},
                     [],
@@ -326,4 +321,8 @@ class App:
 
     def protocol(self, **kwargs):
         for command in kwargs["command"].parameters["protocol"]:
-            self.find_action(command["action"])(parameters=command["parameters"])
+            self.find_action(command["action"])(command=self.api.Command(
+                keywords=kwargs["command"].keywords,
+                action=command["action"],
+                parameters=command["parameters"]
+            ))

@@ -20,115 +20,93 @@ def generate_weather_sentence():
     if "clear" in weather_description.lower():
         if temperature > 25:
             templates.append(
-                f"Wow, it's a scorcher! A clear sky and {temperature:.1f} degrees today. Feels like {feels_like:.1f}°C – better grab your sunglasses and sunscreen! Winds are at {wind_speed} m/s, so no breezes to cool you down.")
+                f"Wow, it's a scorcher! A clear sky and {temperature:.1f} degrees today. Feels like {feels_like:.1f} degrees – better grab your sunglasses and sunscreen! Winds are at {wind_speed} meters per second, so no breezes to cool you down.")
         elif temperature > 15:
             templates.append(
-                f"The sun's out and the sky’s clear. It’s a lovely {temperature:.1f} degrees, but it feels like {feels_like:.1f}°C. Ideal weather for a walk outside, with winds just gently blowing at {wind_speed} m/s.")
+                f"The sun's out and the sky’s clear. It’s a lovely {temperature:.1f} degrees, but it feels like {feels_like:.1f} degrees. Ideal weather for a walk outside, with winds just gently blowing at {wind_speed} meters per second.")
         elif temperature > 5:
             templates.append(
-                f"A beautiful clear sky, but it’s a bit chilly at {temperature:.1f} degrees. Feels like {feels_like:.1f}°C, so you might want to layer up. The wind’s making its presence known at {wind_speed} m/s.")
+                f"A beautiful clear sky, but it’s a bit chilly at {temperature:.1f} degrees. Feels like {feels_like:.1f} degrees, so you might want to layer up. The wind’s making its presence known at {wind_speed} meters per second.")
         else:
             templates.append(
-                f"Clear skies, but it’s cold out there! It’s only {temperature:.1f} degrees, and it feels like {feels_like:.1f}°C. The wind is kicking up at {wind_speed} m/s, so don’t forget your jacket!")
+                f"Clear skies, but it’s cold out there! It’s only {temperature:.1f} degrees, and it feels like {feels_like:.1f} degrees. The wind is kicking up at {wind_speed} meters per second, so don’t forget your jacket!")
     elif "cloud" in weather_description.lower():
         if temperature > 20:
             templates.append(
-                f"Cloudy skies, but the temperature is nice at {temperature:.1f} degrees. Feels like {feels_like:.1f}°C though, so you might still want a light jacket. The wind is calm at {wind_speed} m/s, so it’s a good day for a stroll.")
+                f"Cloudy skies, but the temperature is nice at {temperature:.1f} degrees. Feels like {feels_like:.1f} degrees though, so you might still want a light jacket. The wind is calm at {wind_speed} meters per second, so it’s a good day for a stroll.")
         elif temperature > 10:
             templates.append(
-                f"Overcast today with {temperature:.1f} degrees, but it feels like {feels_like:.1f}°C. The clouds are keeping the sun at bay, and the wind is blowing at {wind_speed} m/s – nothing too strong.")
+                f"Overcast today with {temperature:.1f} degrees, but it feels like {feels_like:.1f} degrees. The clouds are keeping the sun at bay, and the wind is blowing at {wind_speed} meters per second – nothing too strong.")
         else:
             templates.append(
-                f"Cloudy skies with a chilly {temperature:.1f} degrees. Feels like {feels_like:.1f}°C. The wind's picking up at {wind_speed} m/s, so maybe stay inside with a hot drink!")
+                f"Cloudy skies with a chilly {temperature:.1f} degrees. Feels like {feels_like:.1f} degrees. The wind's picking up at {wind_speed} meters per second, so maybe stay inside with a hot drink!")
     elif "rain" in weather_description.lower():
         if temperature > 20:
             templates.append(
-                f"Don’t forget your umbrella! It’s {weather_description} with {temperature:.1f} degrees, but it feels like {feels_like:.1f}°C. The wind’s picking up a bit at {wind_speed} m/s, so hold on tight!")
+                f"Don’t forget your umbrella! It’s {weather_description} with {temperature:.1f} degrees, but it feels like {feels_like:.1f} degrees. The wind’s picking up a bit at {wind_speed} meters per second, so hold on tight!")
         elif temperature > 10:
             templates.append(
-                f"Rainy and mild at {temperature:.1f} degrees. Feels like {feels_like:.1f}°C, so maybe skip the shorts today. The wind’s blowing at {wind_speed} m/s – just enough to make things interesting.")
+                f"Rainy and mild at {temperature:.1f} degrees. Feels like {feels_like:.1f} degrees, so maybe skip the shorts today. The wind’s blowing at {wind_speed} meters per second – just enough to make things interesting.")
         else:
             templates.append(
-                f"Rain, rain, go away... It's {temperature:.1f} degrees and feels like {feels_like:.1f}°C. Definitely a good day for a hot cup of tea, with winds of {wind_speed} m/s making things a bit gloomy.")
+                f"Rain, rain, go away... It's {temperature:.1f} degrees and feels like {feels_like:.1f} degrees. Definitely a good day for a hot cup of tea, with winds of {wind_speed} meters per second making things a bit gloomy.")
     # Snow
     elif "snow" in weather_description.lower():
         if temperature > 0:
             templates.append(
-                f"Snow is falling and it’s a bit warmer than usual at {temperature:.1f} degrees. Feels like {feels_like:.1f}°C, but still chilly. The wind is making snowflakes dance at {wind_speed} m/s!")
+                f"Snow is falling and it’s a bit warmer than usual at {temperature:.1f} degrees. Feels like {feels_like:.1f} degrees, but still chilly. The wind is making snowflakes dance at {wind_speed} meters per second!")
         elif temperature > -5:
             templates.append(
-                f"Snowy and cold at {temperature:.1f} degrees, with a chilly {feels_like:.1f}°C. Winds are whipping at {wind_speed} m/s, so it’s a perfect day for a snowball fight!")
+                f"Snowy and cold at {temperature:.1f} degrees, with a chilly {feels_like:.1f} degrees. Winds are whipping at {wind_speed} meters per second, so it’s a perfect day for a snowball fight!")
         else:
             templates.append(
-                f"It’s a winter wonderland out there with {temperature:.1f} degrees and {feels_like:.1f}°C. Bundle up, because the wind’s blowing at {wind_speed} m/s – perfect for a hot cocoa indoors!")
+                f"It’s a winter wonderland out there with {temperature:.1f} degrees and {feels_like:.1f} degrees. Bundle up, because the wind’s blowing at {wind_speed} meters per second – perfect for a hot cocoa indoors!")
     elif "thunderstorm" in weather_description.lower():
         if temperature > 25:
             templates.append(
-                f"Boom! A thunderstorm is brewing with a hot {temperature:.1f} degrees. Feels like {feels_like:.1f}°C. With wind speeds at {wind_speed} m/s, I wouldn’t stand too close to a tree!")
+                f"Boom! A thunderstorm is brewing with a hot {temperature:.1f} degrees. Feels like {feels_like:.1f} degrees. With wind speeds at {wind_speed} meters per second, I wouldn’t stand too close to a tree!")
         elif temperature > 15:
             templates.append(
-                f"Thunderstorms rolling in at {temperature:.1f} degrees. Feels like {feels_like:.1f}°C, and the wind’s blowing at {wind_speed} m/s – it's going to get loud!")
+                f"Thunderstorms rolling in at {temperature:.1f} degrees. Feels like {feels_like:.1f} degrees, and the wind’s blowing at {wind_speed} meters per second – it's going to get loud!")
         else:
             templates.append(
-                f"A storm is coming with {temperature:.1f} degrees and {feels_like:.1f}°C. The wind’s blowing at {wind_speed} m/s, so stay indoors if you can. The thunder's really giving us a show!")
+                f"A storm is coming with {temperature:.1f} degrees and {feels_like:.1f} degrees. The wind’s blowing at {wind_speed} meters per second, so stay indoors if you can. The thunder's really giving us a show!")
     elif "fog" in weather_description.lower():
         if temperature > 10:
             templates.append(
-                f"Everything’s a little mysterious today with {weather_description}. The temperature’s {temperature:.1f} degrees, but it feels like {feels_like:.1f}°C. Winds are at a mild {wind_speed} m/s – keeping things spooky.")
+                f"Everything’s a little mysterious today with {weather_description}. The temperature’s {temperature:.1f} degrees, but it feels like {feels_like:.1f} degrees. Winds are at a mild {wind_speed} meters per second – keeping things spooky.")
         elif temperature > 0:
             templates.append(
-                f"The fog’s rolling in, making everything look eerie. It's {temperature:.1f} degrees, but it feels like {feels_like:.1f}°C. Winds are whispering at {wind_speed} m/s.")
+                f"The fog’s rolling in, making everything look eerie. It's {temperature:.1f} degrees, but it feels like {feels_like:.1f} degrees. Winds are whispering at {wind_speed} meters per second.")
         else:
             templates.append(
-                f"Foggy and cold out there at {temperature:.1f} degrees, and it feels like {feels_like:.1f}°C. Wind speed’s {wind_speed} m/s – the perfect day to curl up with a book.")
+                f"Foggy and cold out there at {temperature:.1f} degrees, and it feels like {feels_like:.1f} degrees. Wind speed’s {wind_speed} meters per second – the perfect day to curl up with a book.")
     elif "haze" in weather_description.lower():
         if temperature > 25:
             templates.append(
-                f"Hot and hazy today with {temperature:.1f} degrees, feeling like {feels_like:.1f}°C. Winds are calm at {wind_speed} m/s, so it's a bit of a lazy day!")
+                f"Hot and hazy today with {temperature:.1f} degrees, feeling like {feels_like:.1f} degrees. Winds are calm at {wind_speed} meters per second, so it's a bit of a lazy day!")
         elif temperature > 15:
             templates.append(
-                f"The haze is giving everything a soft glow today. It’s {temperature:.1f} degrees, and it feels like {feels_like:.1f}°C. Wind’s barely noticeable at {wind_speed} m/s.")
+                f"The haze is giving everything a soft glow today. It’s {temperature:.1f} degrees, and it feels like {feels_like:.1f} degrees. Wind’s barely noticeable at {wind_speed} meters per second.")
         else:
             templates.append(
-                f"It’s a hazy, cool day with {temperature:.1f} degrees. Feels like {feels_like:.1f}°C, with the wind lazily blowing at {wind_speed} m/s.")
+                f"It’s a hazy, cool day with {temperature:.1f} degrees. Feels like {feels_like:.1f} degrees, with the wind lazily blowing at {wind_speed} meters per second.")
     else:
         templates.append(
-            f"Today's weather is {weather_description}. It’s {temperature:.1f} degrees, but feels like {feels_like:.1f}°C. Winds are moving at {wind_speed} m/s – not too strong, but enough to make things feel a bit fresh.")
+            f"Today's weather is {weather_description}. It’s {temperature:.1f} degrees, but feels like {feels_like:.1f} degrees. Winds are moving at {wind_speed} meters per second – not too strong, but enough to make things feel a bit fresh.")
 
     return random.choice(templates)
 
 
-def say_weather():
+def say_weather(**kwargs):
     weather_sentence = numbers_to_strings(generate_weather_sentence())
     app.say(weather_sentence)
 
 
-# def callback(request):
-#     app.say("Would you like me to fetch the weather, sir?")
-
-
-# test_timeline = app.Timeline([
-#     [
-#         app.Trigger(["weather"], callback, synonyms={"weather": ["temperature"]})
-#     ],
-#     [
-#         app.Trigger(["yes"], say_weather)
-#     ],
-# ])
-#
-# test_scenario = app.Scenario(
-#     "weather",
-#     timeline=test_timeline,
-#     max_gap=2
-# )
-
-# app.add_scenario(test_scenario)
-
 def temperature(**kwargs):
     data = fetch_weather()
-    temperature = data["main"]["temp"]
+    temperature = round(data["main"]["temp"], 1)
 
-    # Define responses for different temperature ranges
     responses = {
         "freezing": [
             f"Brrr! It's {temperature} degrees. Colder than a snowman's toes!",
@@ -162,7 +140,6 @@ def temperature(**kwargs):
         ],
     }
 
-    # Select range based on temperature
     if temperature <= 0:
         category = "freezing"
     elif 0 <= temperature <= 10:
@@ -180,7 +157,7 @@ def temperature(**kwargs):
     app.say(numbers_to_strings(response))
 
 
-app.add_func_for_search(temperature)
+app.add_func_for_search(temperature, say_weather)
 
 app.manager.add(
     app.Command(

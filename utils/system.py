@@ -12,6 +12,7 @@ import webbrowser
 import time
 from pathlib import Path
 from importlib import import_module
+from copy import deepcopy
 
 import requests
 import yaml
@@ -539,3 +540,6 @@ def fetch_weather():
         return response.json()
     except requests.exceptions.RequestException:
         return None
+
+
+

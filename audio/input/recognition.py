@@ -146,6 +146,7 @@ class STT:
             answer = json.loads(self.recognizer.Result())
             if "spk" in answer:
                 distance = cosine_dist(spk_sig, answer["spk"])
+                log.info(f"Speaker recognized with distance: {distance}")
                 if distance < 0.45:
                     yield True
                 else:

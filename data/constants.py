@@ -8,9 +8,9 @@ load_dotenv()
 PROJECT_FOLDER = Path(__file__).resolve().parent.parent
 
 # config
-CONFIG_DIR = PROJECT_FOLDER
+CONFIG_DIR = f"{PROJECT_FOLDER}/config"
 
-CONFIG_FILE = f"{CONFIG_DIR}/private_config.yaml"
+CONFIG_FILE = f"{CONFIG_DIR}/config.yaml"
 LANG_FILE = f"{CONFIG_DIR}/lang.txt"
 
 # plugins

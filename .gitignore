@@ -16,7 +16,7 @@ audio/tts/models/
 audio/input/vector.txt
 
 # Configuration Files
-private_config.yaml
+old_conf.yaml
 
 # Local Testing Files
 test.py

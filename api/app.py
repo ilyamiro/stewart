@@ -19,7 +19,7 @@ from pynput.mouse import Button as MouseButton
 import mpv
 import yaml
 
-from data.constants import PROJECT_FOLDER, CONFIG_FILE
+from data.constants import PROJECT_FOLDER, CONFIG_FILE, CONFIG_DIR
 from audio.tts import TTS
 from utils import load_yaml, filter_lang_config, load_lang, notify
 
@@ -223,7 +223,6 @@ class AppAPI:
 
         self.lang = self.get_lang()
 
-        self.config = load_yaml(CONFIG_FILE)
         self.config = self.get_config()
 
         self.__pre_init_callbacks__: list = []
@@ -349,13 +348,34 @@ class AppAPI:
         """
         return load_lang()
 
-    def get_config(self):
-        return filter_lang_config(self.config, self.lang)
-
     # <! ----------------------- config ----------------------- !>
+    @staticmethod
+    def deep_merge(base: dict, lang: dict):
+        merged = base.copy()
+        specs = lang.get("specifications")
+
+        merged["audio"]["stt"].update(specs.get("audio").get("stt"))
+        merged["settings"]["trigger"]["triggers"] = (specs.get("triggers"))
+        merged["settings"]["user"] = specs.get("user")
+        merged["start-up"].update(specs.get("start-up"))
+        merged["answers"] = lang.get("answers")
+        merged["commands"] = lang.get("commands")
+
+        return merged
+
+    def get_config(self):
+        base_config = load_yaml(CONFIG_FILE)
+        lang_config_path = f'{CONFIG_DIR}/langs/{self.lang}.yaml'
+
+        if os.path.exists(lang_config_path):
+            lang_config = load_yaml(lang_config_path)
+            return self.deep_merge(base_config, lang_config)
+
+        return self.deep_merge(base_config, load_yaml(f'{CONFIG_DIR}/langs/en.yaml'))  # TODO MAKE A DEFAULT ROLLBACK LANGUAGE
+
     def update_config(self, config: dict):
         self.config["plugins"].update(config)
-        self.__save_config__()
+        self.__save_config_plugins__()
 
     def update_config_with_yaml_file(self, path):
         if os.path.exists(path):
@@ -363,15 +383,14 @@ class AppAPI:
                 data = yaml.safe_load(file)
 
             self.config.update(data)
-            self.__save_config__()
         else:
             raise FileNotFoundError()
 
-    def __save_config__(self):
+    def __save_config_plugins__(self):
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, "r", encoding="utf-8") as file:
                 data = yaml.safe_load(file)
-            data.update(self.config)
+            data["plugins"].update(self.config["plugins"])
             with open(CONFIG_FILE, "w", encoding="utf-8") as file:
                 yaml.safe_dump(data, file, allow_unicode=True)
 

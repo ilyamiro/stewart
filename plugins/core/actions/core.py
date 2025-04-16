@@ -10,11 +10,13 @@ import pyautogui
 from num2words import num2words
 
 from utils import *
-from data.constants import CONFIG_FILE
+from data.constants import CONFIG_FILE, PROJECT_FOLDER
 
 from api import app
 
 log = logging.getLogger("module: " + __file__)
+
+stopwatch_start_time = None
 
 
 def subprocess(**kwargs) -> None:
@@ -104,7 +106,7 @@ def power_reload(**kwargs) -> None:
     context = kwargs["context"]
 
     if way == "off":
-        num = find_num_in_list(context)
+        num = find_num(context)[0]
         if num:
             minutes = num2words(num, lang="en")
             app.say(f"Computer will be reloaded in {minutes} minutes, sir.")
@@ -138,7 +140,7 @@ def power_off(**kwargs) -> None:
     context = kwargs["context"]
 
     if way == "off":
-        num = find_num_in_list(context)
+        num = find_num(context)[0]
         if num:
             minutes = num2words(num, lang="en")
             app.say(f"System will shut down in {minutes} minutes, sir.")
@@ -218,5 +220,102 @@ def tell_month(**kwargs):
     ]
 
     app.say(random.choice(phrases))
+
+
+def battery(**kwargs):
+    battery_path = "/sys/class/power_supply/BAT0/capacity"
+    charging_path = "/sys/class/power_supply/BAT0/status"
+
+    try:
+        with open(battery_path, "r") as f:
+            percentage = num2words(int(f.read().strip()))
+
+        with open(charging_path, "r") as f:
+            status = f.read().strip()
+
+        if status.lower() == "charging":
+            if percentage >= 80:
+                app.say(f"Your laptop is charging and already at {percentage} percent. You might consider unplugging soon.")
+            elif percentage >= 50:
+                app.say(f"Your laptop is charging and currently at {percentage} percent. Keep it plugged in for now.")
+            else:
+                app.say(f"Your laptop is charging and only at {percentage} percent. Let it charge longer.")
+        else:  # Not charging
+            if percentage >= 80:
+                app.say(f"Your battery is at {percentage} percent. You're good to go!")
+            elif percentage >= 50:
+                app.say(f"Your battery is at {percentage} percent. You might want to charge it soon.")
+            elif percentage >= 20:
+                app.say(f"Your battery is getting low at {percentage} percent. Please find a charger.")
+            else:
+                app.say(f"Warning! Your battery is critically low at {percentage} percent. Plug in your charger immediately!")
+    except FileNotFoundError:
+        app.say("No battery detected or unable to read battery information.")
+
+
+def timer(**kwargs):
+    """
+    Extracts multiple numbers from kwargs["context"] (e.g., hours, minutes, and seconds)
+    and creates a timer for the total time in seconds.
+    Handles cases where 'hours', 'minutes', and 'seconds' are all mentioned.
+    """
+    context = kwargs.get("context", "")
+
+    time_values = find_num(context)
+
+    if not time_values:
+        app.say("I couldn't find any numbers in your request. Please try again.")
+        return
+
+    hours = 0
+    minutes = 0
+    seconds = 0
+
+    context_lower = context.lower()
+
+    if "hour" in context_lower or "hours" in context_lower:
+        hours = time_values[0] if len(time_values) > 0 else 0
+
+    if "minute" in context_lower or "minutes" in context_lower:
+        if hours == 0:
+            minutes = time_values[0] if len(time_values) > 0 else 0
+        else:
+            minutes = time_values[1] if len(time_values) > 1 else 0
+
+    if "second" in context_lower or "seconds" in context_lower:
+        if minutes == 0 and hours == 0:
+            seconds = time_values[0] if len(time_values) > 0 else 0
+        else:
+            seconds = time_values[-1] if len(time_values) > 1 else 0
+
+    total_seconds = (hours * 3600) + (minutes * 60) + seconds
+
+    readable_time = seconds_readable(total_seconds)
+
+    app.say(f"Starting a timer for {readable_time}.")
+
+    def countdown():
+        time.sleep(total_seconds)
+        app.say(f"Timer is up!. Your {readable_time} are over.")
+        for i in range(6):
+            app.audio.play(f"{PROJECT_FOLDER}/data/sounds/beep.wav")
+            app.audio.player.wait_for_playback()
+
+    threading.Thread(target=countdown, daemon=True).start()
+
+
+def stopwatch(**kwargs):
+    global stopwatch_start_time
+
+    if kwargs["command"].parameters["way"] == "on":
+        stopwatch_start_time = time.time()
+    elif kwargs["command"].parameters["way"] == "off":
+        if stopwatch_start_time is not None:
+            to_read = seconds_readable(time.time() - stopwatch_start_time)
+            print(to_read)
+            app.say(numbers_to_strings(to_read) + " have passed, sir")
+            stopwatch_start_time = None
+        else:
+            app.say("The stopwatch was not started yet, sir")
 
 

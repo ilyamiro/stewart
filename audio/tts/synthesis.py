@@ -3,6 +3,17 @@ import os
 import logging
 import inspect
 from pathlib import Path
+import random
+import time
+
+import numpy as np
+from pydub import AudioSegment
+from pydub.generators import WhiteNoise
+from scipy.signal import chirp 
+from scipy.io import wavfile
+import io
+
+
 
 from voicesynth import Model, Synthesizer
 
@@ -15,9 +26,9 @@ config = load_yaml(CONFIG_FILE)
 
 LANG = load_lang()
 
-SEX = config["audio"]["tts"]["sex"]
-SPEAKER = config["audio"]["tts"][SEX]
-MODEL = config["audio"]["tts"]["model"]
+SEX = config["audio"]["tts"][LANG]["sex"]
+SPEAKER = config["audio"]["tts"][LANG][SEX]
+MODEL = config["audio"]["tts"][LANG]["model"]
 ENABLE = config["audio"]["tts"]["enable"]
 
 log = logging.getLogger("tts")
@@ -34,18 +45,32 @@ class TTS:
 
         self.active = ENABLE
 
-    def say(self, text, prosody=94):
-        if self.active:
-            if not text:
-                return
-
-            text = parse_config_answers(text)
-            thread = threading.Thread(target=self.synthesizer.say, kwargs={"text": text, "path": f"{PROJECT_FOLDER}/audio/tts/audio.wav", "prosody_rate": prosody, "module": "playsound"})
-            thread.start()
-
-            called_from()
-
-            log.debug(text)
-        else:
+    def say(self, text, no_audio=False, prosody=94, speaker=SPEAKER, path=f"{PROJECT_FOLDER}/audio/tts/audio.wav"):
+        if not self.active:
             log.debug(f"No sound: {text}")
+            return
+
+        if not text:
+            return
+
+        if speaker in self.model.speakers:
+            self.model.set_speaker(speaker)
+
+        text = parse_config_answers(text)
+
+        thread_target = self.synthesizer.say if not no_audio else self.synthesizer.synthesize
+        thread_kwargs = {
+            "text": text,
+            "path": path,
+            "prosody_rate": prosody,
+        }
+        if no_audio:
+            thread_kwargs["module"] = "playsound"
+
+        thread = threading.Thread(target=thread_target, kwargs=thread_kwargs)
+        thread.start()
+
+        called_from()
+
+        log.debug(text)
 

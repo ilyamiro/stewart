@@ -1,0 +1,1235 @@
+specifications:
+  audio:
+    stt:
+      restricted-add-line: ' one two three four five six seven eight nine ten eleven
+            twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty
+            thirty forty fifty sixty seventy eighty ninety a hundred an the on around all
+            by for over first second third fourth fifth sixth seventh eighth ninth tenth
+            eleventh twelfth thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth
+            nineteenth twentieth thirtieth fortieth fiftieth sixtieth seventieth eightieth
+            ninetieth hour minute'
+  triggers:
+    - stewart
+    - stewards
+    - stuart
+  user:
+    call: Sir
+    name: Illia
+  start-up:
+    answers:
+      - Good [get_part_of_day], sir, how can i help you today?
+      - \[get_weather_description]. How can i help you?
+      - Core configuration process has been completed. How can I assist you today?
+      - I am fully operational and ready for today, sir. What can I do for you?
+      - Startup process ended successfully. Is there something specific you need help
+        with, sir?
+      - Initialization complete. How may I assist you today, sir?
+      - Systems are online and ready. What can I do for you, sir?
+      - Startup sequence finished. How can I be of service today, sir?
+      - All systems are ready to go. What do you need assistance with, sir?
+      - Boot process completed successfully. How may I help you today, sir?
+      - Ready for operation. What tasks do you have for me, sir?
+      - Startup routine finished. How can I assist you today, sir?
+      - All systems are up and running. How can I be of help today, sir?
+      - Initialization sequence complete. What do you need assistance with, sir?
+      - Systems are fully operational. How may I assist you today, sir?
+      - Startup procedures are complete. What can I do for you, sir?
+      - All checks are green. How can I be of service today, sir?
+      - Startup protocols executed successfully. What tasks do you have for me, sir?
+      - Systems are ready for action. How may I help you today, sir?
+      - Initialization finished successfully. What can I assist you with, sir?
+      - All systems are online and ready. How can I be of help today, sir?
+      - Startup sequence completed. What do you need assistance with, sir?
+answers:
+  default:
+  - Yes, sir?
+  - How can I help, sir?
+  - At your service, sir.
+  - What do you need, sir?
+  - Ready, sir.
+  - What can I do for you, sir?
+  - Here to help, sir.
+  - How may I serve, sir?
+  - At your command, sir.
+  - What's that, sir?
+  - What's needed, sir?
+  - How can I assist, sir?
+  - Ready to help, sir.
+  - What would you like, sir?
+  - Your command, sir?
+  - Standing by, sir.
+  - Yes, how can I help, sir?
+  - I'm listening, sir.
+  - How may I be of service, sir?
+  half_day:
+  - How may I assist you today, sir?
+  - Welcome back after your break, sir.
+  - Good to hear from you again, sir. What's next?
+  - I trust you've had a good day, sir. How can I help?
+  - What can I do for you today, sir?
+  - Back after quite a while, sir. What's on the agenda?
+  - Ready to assist with anything you need, sir.
+  - I hope your day has been productive, sir. How can I help?
+  multi:
+  - Yes, sir.
+  - Of course, sir.
+  - Right away, sir.
+  - Certainly, sir.
+  - Understood, sir.
+  - On it, sir.
+  - At once, sir.
+  - Processing, sir.
+  - Working, sir.
+  - Executing, sir.
+  - Processing your commands, sir.
+  - Executing your request, sir.
+  - Working on that now, sir.
+  - Taking care of it, sir.
+  - Processing multiple tasks, sir.
+  - Working on your requests, sir.
+  - Starting the process, sir.
+  - Beginning execution, sir.
+  - Managing your tasks, sir.
+  - I'll handle all of that, sir.
+  - Processing each command, sir.
+  - Taking care of everything, sir.
+  - Working on all tasks, sir.
+  - Handling each request, sir.
+  - Processing in sequence, sir.
+  - Managing all commands, sir.
+  - Executing in order, sir.
+  - Processing multiple steps, sir.
+  - Working through the queue, sir.
+  - One moment, sir.
+  - Just a moment, sir.
+  - Please stand by, sir.
+  - Processing in progress, sir.
+  - Nearly complete, sir.
+  - Working on completion, sir.
+  - Almost finished, sir.
+  - Wrapping up, sir.
+  multiple_hours:
+  - What can I help you with today, sir?
+  - Welcome back, sir. I trust you're well?
+  - Ready to assist, sir. How was your time away?
+  - What would you like to accomplish, sir?
+  - Good to hear from you again, sir.
+  - Back at your service after your break, sir.
+  - How may I help you today, sir?
+  - I hope you had a productive break, sir. Shall we begin?
+  over_hour:
+  - How may I assist you today, sir?
+  - Welcome back, sir. What's next?
+  - Good to hear from you, sir.
+  - Back to help, sir. What's on the agenda?
+  - What can I do for you today, sir?
+  - Pleased to see you again, sir.
+  - Ready to assist once more, sir.
+  - At your service after your break, sir.
+  short_away:
+  - How may I assist you, sir?
+  - Still here, sir. What can I do for you?
+  - At your service, sir.
+  - Right where we left off, sir.
+  - What do you need, sir?
+  - How can I help, sir?
+  - Ready when you are, sir.
+  - Just as before, sir. What's next?
+  under_hour:
+  - What can I help you with, sir?
+  - Back to it, sir. What's next?
+  - How may I be of service, sir?
+  - Shall we continue, sir?
+  - Ready to assist, sir. What do you need?
+  - At your disposal once more, sir.
+  - What would you like to accomplish, sir?
+  - Here again, sir. How can I help?
+commands:
+  default:
+  - action: stopwatch
+    command:
+    - stop
+    - stopwatch
+    equivalents:
+    - - stop
+      - track
+      - time
+    parameters:
+      way: 'off'
+    synonyms:
+      stopwatch:
+      - countdown
+    tts: true
+  - action: stopwatch
+    command:
+    - start
+    - stopwatch
+    equivalents:
+    - - track
+      - time
+    parameters:
+      way: 'on'
+    responses:
+    - Started the stopwatch, sir
+    - The countdown begun, sir
+    - Tracking time, sir
+    - The time is being tracked, sir
+    - The stopwatch started, sir
+    synonyms:
+      stopwatch:
+      - countdown
+  - action: hotkey
+    command:
+    - change
+    - language
+    parameters:
+      hotkey:
+      - shift
+      - alt
+    responses:
+    - Changed the keyboard layout, sir
+    - The keyboard layout was changes, sir
+    - Switched the language, sir
+    synonyms:
+      change:
+      - switch
+      language:
+      - keyboard
+      - layout
+  - action: timer
+    command:
+    - set
+    - timer
+    equivalents:
+    - - count
+    synonyms:
+      set:
+      - start
+      timer:
+      - countdown
+    tts: true
+  - action: battery
+    command:
+    - battery
+    synonyms:
+      battery:
+      - power
+    tts: true
+  - action: subprocess
+    command:
+    - unlock
+    - session
+    equivalents:
+    - - log
+      - in
+      - session
+    parameters:
+      command:
+      - loginctl
+      - unlock-session
+    responses:
+    - Yes, sir, welcome to your system
+    - Welcome, sir
+    - Welcome back, sir
+    - The system was unlocked, sir
+    synonyms:
+      session:
+      - screen
+      - laptop
+      - computer
+      - system
+      - machine
+  - action: subprocess
+    command:
+    - lock
+    - session
+    equivalents:
+    - - log
+      - out
+      - session
+    parameters:
+      command:
+      - loginctl
+      - lock-session
+    responses:
+    - The system was locked down, sir
+    - The system is locked, sir
+    - I locked the system, sir
+    - Goodbye, sir
+    synonyms:
+      session:
+      - screen
+      - laptop
+      - computer
+      - system
+      - machine
+  - action: tell_time
+    command:
+    - tell
+    - time
+    equivalents:
+    - - what
+      - time
+    - - current
+      - time
+    - - how
+      - much
+      - time
+    parameters: null
+    responses: null
+    synonyms:
+      tell:
+      - say
+  - action: tell_day
+    command:
+    - tell
+    - day
+    equivalents:
+    - - what
+      - day
+    - - current
+      - day
+    - - day
+      - of
+      - week
+    parameters: null
+    responses: null
+    synonyms:
+      tell:
+      - say
+  - action: tell_month
+    command:
+    - tell
+    - month
+    equivalents:
+    - - what
+      - month
+    - - current
+      - month
+    - - which
+      - month
+    parameters: null
+    responses: null
+    synonyms:
+      tell:
+      - say
+  - action: subprocess
+    command:
+    - open
+    - files
+    equivalents:
+    - - open
+      - system
+      - files
+    parameters:
+      command:
+      - xdg-open
+      - /home/ilyamiro
+    responses:
+    - Opened files, sir
+    - Opened the file system for you, sir
+    - Files are opened
+    synonyms:
+      open:
+      - start
+  - action: list_usb
+    command:
+    - list
+    - usb
+    - devices
+    equivalents:
+    - - list
+      - usb
+    parameters: null
+    responses: null
+    synonyms:
+      list:
+      - specify
+    tts: true
+  - action: grammar_restrict
+    command:
+    - enable
+    - free
+    - mode
+    equivalents:
+    - - turn
+      - 'on'
+      - free
+      - mode
+    - - enable
+      - free
+      - speech
+    parameters:
+      way: 'on'
+    responses:
+    - You are now free to speak, sir
+    - Speak freely, sir
+    - I have enabled unrestricted speech recognition mode, sir
+    - Word recognition is set to free mode, sir
+    - Voice recognition systems were unrestrained
+    - Restrains were turned off, sir
+    synonyms: null
+  - action: grammar_restrict
+    command:
+    - disable
+    - free
+    - speech
+    - mode
+    equivalents:
+    - - turn
+      - 'off'
+      - free
+      - mode
+    - - disable
+      - free
+      - mode
+    parameters:
+      way: 'off'
+    responses: []
+    synonyms:
+      disable:
+      - disabled
+  - action: hotkey
+    command:
+    - close
+    - window
+    equivalents:
+    - - close
+      - app
+    parameters:
+      hotkey:
+      - alt
+      - f4
+    responses:
+    - Closed it, sir
+    - Closed the window, sir
+    - Killed an application, sir
+    synonyms:
+      close:
+      - end
+      - kill
+  - action: repeat
+    command:
+    - repeat
+    - action
+    equivalents:
+    - - do
+      - it
+      - again
+    - - repeat
+      - previous
+      - action
+    - - repeat
+      - an
+      - action
+    parameters: {}
+    responses: []
+    synonyms: {}
+  - action: scroll
+    command:
+    - scroll
+    - down
+    equivalents:
+    - - page
+      - down
+    parameters:
+      way: down
+    responses:
+    - Scrolled down, sir
+    - Page down, sir
+    synonyms: {}
+  - action: scroll
+    command:
+    - scroll
+    - up
+    equivalents:
+    - - page
+      - up
+    parameters:
+      way: up
+    responses: []
+    synonyms: {}
+  - action: play_audio
+    command:
+    - turn
+    - 'on'
+    - back
+    - in
+    - black
+    equivalents:
+    - - play
+      - rock
+      - music
+    parameters:
+      path: /home/ilyamiro/Музыка/back_in_black.mp3
+    responses:
+    - Of course, sir
+    - Playing music, sir
+    synonyms: null
+  - action: kill_audio
+    command:
+    - turn
+    - 'off'
+    - music
+    equivalents:
+    - - stop
+      - music
+    - - stop
+      - the
+      - music
+    parameters: null
+    responses:
+    - Of course, sir
+    - Killed the music process, sir
+    synonyms: null
+  - action: pause_audio
+    command:
+    - pause
+    - music
+    equivalents:
+    - - pause
+      - the
+      - music
+    parameters: null
+    responses: null
+    synonyms:
+      music:
+      - audio
+  - action: resume_audio
+    command:
+    - resume
+    - music
+    equivalents:
+    - - start
+      - music
+      - again
+    parameters: null
+    responses: null
+    synonyms:
+      music:
+      - audio
+  - action: subprocess
+    command:
+    - enable
+    - bluetooth
+    equivalents:
+    - - turn
+      - bluetooth
+      - 'on'
+    - - turn
+      - 'on'
+      - bluetooth
+    parameters:
+      command:
+      - bluetoothctl
+      - power
+      - 'on'
+    responses:
+    - Bluetooth was activated, sir
+    - Enabled, sir
+    synonyms: {}
+  - action: subprocess
+    command:
+    - disable
+    - bluetooth
+    equivalents:
+    - - turn
+      - 'off'
+      - bluetooth
+    - - turn
+      - bluetooth
+      - 'off'
+    parameters:
+      command:
+      - bluetoothctl
+      - power
+      - 'off'
+    responses:
+    - Bluetooth was diactivated, sir
+    - Disabled, sir
+    synonyms: {}
+  - action: subprocess
+    command:
+    - connect
+    - to
+    - headphones
+    equivalents:
+    - - connect
+      - headphones
+    - - connect
+      - to
+      - the
+      - headphones
+    parameters:
+      command:
+      - bluetoothctl
+      - connect
+      - 84:D3:52:F5:24:1E
+    responses:
+    - Connected to headphones, sir
+    - Activated, sir
+    synonyms: {}
+  - action: subprocess
+    command:
+    - connect
+    - to
+    - speaker
+    equivalents:
+    - - connect
+      - to
+      - the
+      - speaker
+    - - connect
+      - speaker
+    parameters:
+      command:
+      - bluetoothctl
+      - connect
+      - 10:28:74:F5:7E:74
+    responses:
+    - Connected, sir
+    - Activated it, sir
+    synonyms: {}
+  - action: subprocess
+    command:
+    - disconnect
+    - from
+    - headphones
+    equivalents:
+    - - disconnect
+      - headphones
+    parameters:
+      command:
+      - bluetoothctl
+      - disconnect
+      - 84:D3:52:F5:24:1E
+    responses:
+    - Disconnected, sir
+    - Broke the connection, sir
+    synonyms: {}
+  - action: subprocess
+    command:
+    - disconnect
+    - from
+    - the
+    - speaker
+    equivalents:
+    - - disconnect
+      - the
+      - speaker
+    - - disconnect
+      - speaker
+    parameters:
+      command:
+      - bluetoothctl
+      - disconnect
+      - 10:28:74:F5:7E:74
+    responses:
+    - Disconnected, sir
+    - Disconnected from the device, sir
+    synonyms: {}
+  - action: subprocess
+    command:
+    - fix
+    - bluetooth
+    equivalents: []
+    parameters:
+      command:
+      - sudo
+      - systemctl
+      - restart
+      - bluetooth
+    responses:
+    - Trying different methods, sir
+    - One moment, please
+    synonyms:
+      fix:
+      - repair
+  - action: volume
+    command:
+    - turn
+    - volume
+    - up
+    equivalents:
+    - - turn
+      - up
+      - volume
+    - - increase
+      - volume
+    - - increased
+      - volume
+    - - make
+      - it
+      - louder
+    - - make
+      - louder
+    - - turn
+      - up
+    - - turn
+      - it
+      - up
+    parameters:
+      command: up
+    responses:
+    - Right away, sir
+    - Volume was increased, sir
+    synonyms: null
+  - action: volume
+    command:
+    - turn
+    - volume
+    - down
+    equivalents:
+    - - turn
+      - down
+      - volume
+    - - decrease
+      - volume
+    - - make
+      - it
+      - quieter
+    - - make
+      - it
+      - quiet
+    parameters:
+      command: down
+    responses:
+    - Right away, sir
+    - Volume was decreased, sir
+    - Turned it down, sir
+    synonyms: null
+  - action: volume
+    command:
+    - set
+    - volume
+    equivalents: null
+    parameters:
+      command: set
+    responses:
+    - Right away, sir
+    - Yes, sir
+    synonyms:
+      set:
+      - make
+  - action: mute_volume
+    command:
+    - mute
+    - volume
+    equivalents: null
+    parameters:
+      command: 'off'
+    responses: null
+    synonyms:
+      mute:
+      - disable
+      - silence
+  - action: mute_volume
+    command:
+    - enable
+    - volume
+    equivalents: null
+    parameters:
+      command: 'on'
+    responses: null
+    synonyms:
+      volume:
+      - sound
+  - action: power_off
+    command:
+    - turn
+    - computer
+    - 'off'
+    equivalents:
+    - - shut
+      - computer
+      - down
+    - - shut
+      - down
+    - - shut
+      - down
+      - computer
+    - - turn
+      - 'off'
+      - computer
+    parameters:
+      way: 'off'
+    responses:
+    - Turning computer off, sir
+    - Yes, sir, right away
+    - Computer is going to be shutdown
+    synonyms: null
+  - action: power_off
+    command:
+    - turn
+    - computer
+    - 'off'
+    - now
+    equivalents:
+    - - shut
+      - computer
+      - down
+      - now
+    - - shut
+      - down
+      - now
+    - - shut
+      - down
+      - computer
+      - now
+    - - turn
+      - 'off'
+      - computer
+      - now
+    parameters:
+      way: now
+    responses:
+    - Turning computer off, sir
+    - Yes, sir, right away
+    - Computer is going to be shutdown
+    synonyms: null
+  - action: power_reload
+    command:
+    - reload
+    - computer
+    - now
+    equivalents:
+    - - shut
+      - down
+      - now
+    - - reload
+      - pc
+      - now
+    - - reload
+      - the
+      - computer
+      - now
+    parameters:
+      way: now
+    responses:
+    - Reloading, sir
+    - Yes, sir, right away
+    - Computer is going to be shutdown and booted up again
+    synonyms:
+      computer:
+      - laptop
+      - system
+  - action: power_reload
+    command:
+    - reload
+    - computer
+    equivalents:
+    - - shut
+      - down
+      - now
+    - - reload
+      - pc
+      - now
+    - - reload
+      - the
+      - computer
+    parameters:
+      way: 'off'
+    responses:
+    - Reloading, sir
+    - Yes, sir, right away
+    - Computer is going to be shutdown and booted up again
+    synonyms:
+      computer:
+      - laptop
+      - system
+  - action: power_reload
+    command:
+    - stop
+    - computer
+    - reload
+    equivalents:
+    - - stop
+      - the
+      - reload
+    - - stop
+      - reload
+    - - cancel
+      - shutdown
+    parameters:
+      way: 'on'
+    responses:
+    - Stopped the reload, sir
+    - Yes, the reload was stopped
+    - Computer is not going to be shut down
+    synonyms:
+      computer:
+      - laptop
+      - system
+  - action: power_off
+    command:
+    - stop
+    - computer
+    - shutdown
+    equivalents:
+    - - cancel
+      - shutdown
+    - - stop
+      - shutdown
+    - - dont
+      - shutdown
+    - - 'no'
+      - shutdown
+    parameters:
+      way: now
+    responses:
+    - Turning computer off, sir
+    - Yes, sir, right away
+    - Computer is going to be shutdown
+    synonyms: null
+  - action: update
+    command:
+    - update
+    - the
+    - system
+    equivalents:
+    - - update
+      - system
+    - - download
+      - updates
+    responses: []
+    synonyms: null
+  - action: boost_bass
+    command:
+    - boost
+    - bass
+    equivalents:
+    - - turn
+      - up
+      - the
+      - bass
+    - - add
+      - more
+      - bass
+    - - enhance
+      - the
+      - bass
+    parameters: null
+    responses: null
+    synonyms: null
+  - action: stop
+    command:
+    - exit
+    equivalents:
+    - - stop
+      - running
+    - - kill
+      - yourself
+    parameters: null
+    responses: null
+    synonyms:
+      exit:
+      - exits
+  - action: normalize_sound
+    command:
+    - normalize
+    - sound
+    equivalents:
+    - - decrease
+      - bass
+    - - default
+      - sound
+    parameters: null
+    responses: null
+    synonyms: null
+  - action: find_video
+    command:
+    - find
+    - video
+    continues: true
+    equivalents: null
+    parameters: null
+    responses:
+    - Searching for it, sir
+    synonyms: null
+  - action: find
+    command:
+    - find
+    continues: true
+    synonyms:
+      find:
+      - search
+      - google
+    tts: true
+  - action: find_open
+    command:
+    - find
+    - link
+    continues: true
+    synonyms:
+      find:
+      - search
+      - google
+      link:
+      - site
+      - website
+      - page
+      - webpage
+  - action: play_song
+    command:
+    - play
+    continues: true
+    equivalents: null
+    parameters: null
+    responses:
+    - Searching for it, sir
+    - One moment, sir
+    - I am on it, sir
+    - Wait a second, please
+    - Downloading it, sir
+    synonyms: null
+  - action: upcoming_events
+    command:
+    - plans
+    equivalents:
+    - - upcoming events
+    parameters: null
+    responses: null
+    tts: true
+  - action: hotkey
+    command:
+    - close
+    - all
+    - window
+    equivalents:
+    - - close
+      - it
+      - all
+    parameters:
+      hotkey:
+      - win
+      - d
+    synonyms:
+      close:
+      - hide
+      window:
+      - windows
+  - action: sleep
+    command:
+    - go
+    - sleep
+    equivalents:
+    - - monitoring
+      - mode
+    parameters: null
+    responses:
+    - Switching to monitoring mode, sir
+    - Going to sleep, sir
+    - Inactive mode activated, sir
+  - action: suggestion
+    command:
+    - give
+    - suggestion
+    equivalents:
+    - - what
+      - to
+      - do
+      - for
+      - today
+    - - suggestion
+      - for
+      - today
+    synonyms:
+      suggestion:
+      - suggestions
+    tts: true
+  - action: protocol
+    command:
+    - study
+    - protocol
+    equivalents:
+    - - let's
+      - study
+    parameters:
+      protocol:
+      - action: subprocess
+        parameters:
+          command:
+          - xdg-open
+          - https://aarhustech.itslearning.com/eportfolio/427803/itinfo/
+      - action: subprocess
+        parameters:
+          command:
+          - xdg-open
+          - https://aarhustech.itslearning.com/main.aspx?TextURL=CourseCards
+      - action: subprocess
+        parameters:
+          command:
+          - xdg-open
+          - https://www.microsoft365.com/?auth=2
+      - action: subprocess
+        parameters:
+          command:
+          - xdg-open
+          - https://selvbetjening.aarhustech.dk/WebTimeTable/default.aspx
+      - action: subprocess
+        parameters:
+          command:
+          - xdg-open
+          - https://aarhustech.itslearning.com/eportfolio/427803/itinfo/
+    responses:
+    - Initiating study protocol, sir
+    - Preparing the work space, sir
+    - Playing relaxing music, sir
+    synonyms:
+      let's:
+      - lets
+  repeat:
+  - action: browser
+    command:
+    - open
+    links:
+      facebook: https://www.facebook.com
+      google: https://www.google.com
+      instagram: https://www.instagram.com
+      mail: https://gmail.com
+      twitter: https://twitter.com
+      web telegram: https://telegram.org
+      youtube: https://www.youtube.com
+    parameter: url
+    synonyms:
+      instagram:
+      - insta
+  - action: subprocess
+    command:
+    - open
+    links:
+      browser:
+      - xdg-open
+      - https://
+      calendar:
+      - gnome-calendar
+      chess:
+      - xdg-open
+      - https://lichess.org
+      code editor:
+      - bash
+      - /home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh
+      discord:
+      - /usr/bin/flatpak
+      - run
+      - --branch=stable
+      - --arch=x86_64
+      - --command=com.discordapp.Discord
+      - com.discordapp.Discord
+      - /dev/null 2>&1
+      documents:
+      - xdg-open
+      - /home/ilyamiro/Документы
+      downloads:
+      - xdg-open
+      - /home/ilyamiro/Загрузки
+      libra office:
+      - libreoffice
+      - --writer
+      music:
+      - xdg-open
+      - /home/ilyamiro/Музыка
+      notes:
+      - gedit
+      obsidian:
+      - /usr/bin/flatpak
+      - run
+      - --branch=stable
+      - --arch=x86_64
+      - --command=obsidian.sh
+      - --file-forwarding
+      - md.obsidian.Obsidian
+      - '@@u'
+      - '%U'
+      - '@@'
+      - /dev/null 2>&1
+      pictures:
+      - xdg-open
+      - /home/ilyamiro/Изображения
+      screen recorder:
+      - obs
+      settings:
+      - gnome-control-center
+      software center:
+      - gnome-software
+      steam:
+      - steam
+      telegram:
+      - /usr/bin/flatpak
+      - run
+      - --branch=stable
+      - --arch=x86_64
+      - --command=telegram-desktop
+      - --file-forwarding
+      - org.telegram.desktop
+      - '@@u'
+      - '%u'
+      - '@@'
+      - /dev/null 2>&1
+      terminal:
+      - kitty
+      video:
+      - xdg-open
+      - /home/ilyamiro/Видео
+    parameter: command
+    synonyms:
+      download:
+      - downloads
+      pictures:
+      - image
+      - images
+      - picture
+      terminal:
+      - console
+      video:
+      - videos
+  - action: subprocess
+    command:
+    - close
+    links:
+      browser:
+      - sudo
+      - killall
+      - firefox
+      discord:
+      - sudo
+      - killall
+      - Discord
+      files:
+      - sudo
+      - killall
+      - nautilus
+      obsidian:
+      - sudo
+      - killall
+      - obsidian
+      proxy:
+      - sudo
+      - killall
+      - openvpn
+      screen recorder:
+      - sudo
+      - killall
+      - obs
+      software center:
+      - sudo
+      - killall
+      - gnome-software
+      steam:
+      - sudo
+      - killall
+      - steam
+      telegram:
+      - sudo
+      - killall
+      - telegram-desktop
+      terminal:
+      - sudo
+      - killall
+      - kitty
+    parameter: command
+    synonyms:
+      exit:
+      - close
+      nautilus:
+      - files

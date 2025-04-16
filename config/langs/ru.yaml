@@ -1,0 +1,1158 @@
+specifications:
+  audio:
+    stt:
+      restricted-add-line: ' один два три четыре пять шесть семь восемь девять десять одиннадцать
+            двенадцать тринадцать четырнадцать пятнадцать шестнадцать семнадцать восемнадцать девятнадцать двадцать
+            тридцать сорок пятьдесят шестьдесят семьдесят восемьдесят девяносто сто эй ан на вокруг все
+            у за над первый второй третий четвёртый пятый шестой седьмой восьмой девятый десятый
+            одиннадцатый двенадцатый тринадцатый четырнадцатый пятнадцатый шестнадцатый семнадцатый восемнадцатый
+            девятнадцатый двадцатый тридцатый сороковой пятидесятый шестидесятый семидесятый восьмидесятый
+            девяностый час минута'
+  triggers:
+    - стюарт
+    - стюард
+  user:
+    call: Сэр
+    name: Илья
+  start-up:
+    answers:
+      - Добрый [get_part_of_day], сэр, чем могу помочь?
+      - \[get_weather_description]. Чем могу помочь?
+      - Процесс настройки завершён. Чем могу быть полезен?
+      - Я полностью работоспособен и готов к работе, сэр. Что прикажете?
+      - Запуск завершён успешно. Нужна помощь с чем-то конкретным, сэр?
+      - Инициализация завершена. Чем могу помочь сегодня, сэр?
+      - Системы онлайн и готовы. Что мне сделать, сэр?
+      - Последовательность запуска завершена. Чем могу быть полезен, сэр?
+      - Все системы готовы к работе. В чём нужна помощь, сэр?
+      - Загрузка завершена успешно. Как я могу помочь, сэр?
+      - Готов к работе. Какие задания у вас есть, сэр?
+      - Процедура запуска завершена. Чем помочь, сэр?
+      - Все системы работают. Чем могу быть полезен, сэр?
+      - Инициализация завершена. В чём нужна помощь, сэр?
+      - Системы полностью функционируют. Чем могу помочь, сэр?
+      - Процедуры запуска завершены. Что мне сделать, сэр?
+      - Все проверки пройдены. Чем могу быть полезен, сэр?
+      - Протоколы запуска выполнены успешно. Какие задачи у вас, сэр?
+      - Системы готовы к действию. Как могу помочь, сэр?
+      - Инициализация успешно завершена. В чём помочь, сэр?
+      - Все системы онлайн и готовы. Чем помочь, сэр?
+      - Последовательность запуска завершена. В чём нужна помощь, сэр?
+answers:
+  default:
+    - Да, сэр?
+    - Чем могу помочь, сэр?
+    - К вашим услугам, сэр.
+    - Что вам нужно, сэр?
+    - Готов, сэр.
+    - Что мне сделать, сэр?
+    - Здесь, чтобы помочь, сэр.
+    - Как могу служить, сэр?
+    - По вашему приказу, сэр.
+    - Что такое, сэр?
+    - Что требуется, сэр?
+    - Чем могу быть полезен, сэр?
+    - Готов помочь, сэр.
+    - Чего бы вы хотели, сэр?
+    - Ваш приказ, сэр?
+    - Жду указаний, сэр.
+    - Да, чем помочь, сэр?
+    - Я слушаю, сэр.
+    - Как я могу быть полезен, сэр?
+  half_day:
+    - Чем могу помочь сегодня, сэр?
+    - С возвращением после перерыва, сэр.
+    - Рад снова вас слышать, сэр. Что дальше?
+    - Надеюсь, у вас был хороший день, сэр. Чем помочь?
+    - Что мне сделать сегодня, сэр?
+    - Давно не виделись, сэр. Что в планах?
+    - Готов помочь с чем угодно, сэр.
+    - Надеюсь, день прошёл продуктивно, сэр. Чем помочь?
+  multi:
+    - Да, сэр.
+    - Конечно, сэр.
+    - Уже делаю, сэр.
+    - Безусловно, сэр.
+    - Понял, сэр.
+    - Работаю над этим, сэр.
+    - Немедленно, сэр.
+    - Обрабатываю, сэр.
+    - В процессе, сэр.
+    - Исполняю, сэр.
+    - Обрабатываю ваши команды, сэр.
+    - Исполняю ваш запрос, сэр.
+    - Уже работаю над этим, сэр.
+    - Забочусь об этом, сэр.
+    - Обрабатываю несколько задач, сэр.
+    - Работаю над вашими запросами, сэр.
+    - Начинаю выполнение, сэр.
+    - Запускаю процесс, сэр.
+    - Управляю вашими задачами, сэр.
+    - Я займусь этим, сэр.
+    - Обрабатываю каждую команду, сэр.
+    - Беру всё на себя, сэр.
+    - Работаю над всеми задачами, сэр.
+    - Выполняю каждый запрос, сэр.
+    - Обрабатываю по очереди, сэр.
+    - Управляю всеми командами, сэр.
+    - Выполняю по порядку, сэр.
+    - Обрабатываю несколько шагов, сэр.
+    - Работаю с очередью, сэр.
+    - Момент, сэр.
+    - Одну секунду, сэр.
+    - Пожалуйста, подождите, сэр.
+    - Идёт обработка, сэр.
+    - Почти готово, сэр.
+    - Завершаю выполнение, сэр.
+    - Почти закончил, сэр.
+    - Заканчиваю, сэр.
+  multiple_hours:
+    - Чем могу помочь сегодня, сэр?
+    - С возвращением, сэр. Надеюсь, всё хорошо?
+    - Готов помочь, сэр. Как прошёл перерыв?
+    - Что хотите сделать, сэр?
+    - Рад снова вас слышать, сэр.
+    - Снова к вашим услугам после перерыва, сэр.
+    - Как я могу помочь сегодня, сэр?
+    - Надеюсь, перерыв был продуктивным, сэр. Приступим?
+  over_hour:
+    - Чем могу помочь сегодня, сэр?
+    - С возвращением, сэр. Что дальше?
+    - Рад вас слышать, сэр.
+    - Снова здесь, чтобы помочь, сэр. Что в плане?
+    - Что мне сделать сегодня, сэр?
+    - Рад снова видеть вас, сэр.
+    - Готов помочь снова, сэр.
+    - К вашим услугам после перерыва, сэр.
+  short_away:
+    - Чем помочь, сэр?
+    - Я всё ещё здесь, сэр. Что сделать?
+    - К вашим услугам, сэр.
+    - Прямо как мы и остановились, сэр.
+    - Что вам нужно, сэр?
+    - Чем могу помочь, сэр?
+    - Готов, когда вы, сэр.
+    - Всё как прежде, сэр. Что дальше?
+  under_hour:
+    - Чем могу помочь, сэр?
+    - Продолжаем, сэр. Что дальше?
+    - Как я могу быть полезен, сэр?
+    - Продолжим, сэр?
+    - Готов помочь, сэр. Что вам нужно?
+    - Снова к вашим услугам, сэр.
+    - Что хотите сделать, сэр?
+    - Снова здесь, сэр. Чем помочь?
+commands:
+  default:
+    - action: stopwatch
+      command:
+        - останови
+        - секундомер
+      equivalents:
+        - - останови
+          - учет
+          - времени
+      parameters:
+        way: 'off'
+      synonyms:
+      tts: true
+    - action: stopwatch
+      command:
+        - запусти
+        - секундомер
+      equivalents:
+        - - отслеживай
+          - время
+      parameters:
+        way: 'on'
+      responses:
+        - Запустил секундомер, сэр
+        - Отсчет начался, сэр
+        - Отслеживаю время, сэр
+        - Секундомер запущен, сэр
+        - Отсчет времени был запущен, сэр
+      synonyms:
+    - action: hotkey
+      command:
+        - смени
+        - язык
+      parameters:
+        hotkey:
+          - shift
+          - alt
+      responses:
+        - Сменил раскладку клавиатуры, сэр
+        - Язык был изменен, сэр
+        - Поменял язык, сэр
+      synonyms:
+        смени:
+          - измени
+          - поменяй
+        язык:
+          - раскладку
+          - клавиатуру
+    - action: timer
+      command:
+        - поставь
+        - таймер
+      equivalents:
+        - - засеки
+          - время
+      synonyms:
+        поставь:
+          - запусти
+        таймер:
+          - отсчет
+      tts: true
+    - action: battery
+      command:
+        - батарея
+      synonyms:
+        батарея:
+          - заряд
+          - зарядка
+          - батарейка
+      tts: true
+    - action: subprocess
+      command:
+        - разблокируй
+        - компьютер
+      equivalents:
+        - - войди
+          - в
+          - систему
+      parameters:
+        command:
+          - loginctl
+          - unlock-session
+      responses:
+        - Да, сэр, добро пожаловать в вашу систему
+        - Добро пожаловать, сэр
+        - Добро пожаловать в систему, сэр
+        - Система была разблокирована, сэр
+      synonyms:
+        компьютер:
+          - экран
+          - ноутбук
+          - система
+          - сессия
+          - машина
+    - action: subprocess
+      command:
+        - заблокируй
+        - компьютер
+      equivalents:
+        - - выйди
+          - из
+          - системы
+      parameters:
+        command:
+          - loginctl
+          - lock-session
+      responses:
+        - Экран был заблокирован, сэр
+        - Система была заблокирована, сэр
+        - Я заблокировал систему, сэр
+        - До свидания, сэр
+      synonyms:
+        компьютер:
+          - экран
+          - ноутбук
+          - система
+          - сессия
+          - машина
+    - action: tell_time
+      command:
+        - скажи
+        - время
+      equivalents:
+        - - сколько
+          - времени
+        - - сколько
+          - время
+        - - текущее
+          - время
+      parameters: null
+      responses: null
+      synonyms:
+        скажи:
+          - подскажи
+    - action: tell_day
+      command:
+        - какой
+        - день
+      equivalents:
+        - - текущий
+          - день
+        - - день
+          - недели
+      parameters: null
+      responses: null
+      synonyms:
+        скажи:
+          - подскажи
+    - action: tell_month
+      command:
+        - скажи
+        - месяц
+      equivalents:
+        - - какой
+          - месяц
+      parameters: null
+      responses: null
+      synonyms:
+        скажи:
+          - подскажи
+    - action: subprocess
+      command:
+        - открой
+        - файлы
+      equivalents:
+        - - открой
+          - проводник
+      parameters:
+        command:
+          - xdg-open
+          - /home/ilyamiro
+      responses:
+        - Открыл файлы, сэр
+        - Открыл файловую систему для вас, сэр
+        - Файлы открыты
+      synonyms:
+        открой:
+          - запусти
+    - action: list_usb
+      command:
+        - подключенные
+        - устройства
+      equivalents:
+        - - перечисли
+          - подключения
+      parameters: null
+      responses: null
+      synonyms:
+      tts: true
+    - action: grammar_restrict
+      command:
+        - включи
+        - свободный
+        - режим
+      equivalents:
+      parameters:
+        way: 'on'
+      responses:
+        - Теперь вы можете свободно говорить, сэр
+        - Говорите свободно, сэр
+        - Я включил режим неограниченного распознавания речи, сэр
+        - Распознавание слов переключено в свободный режим, сэр
+        - Системы распознавания голоса были освобождены от ограничений
+        - Ограничения были отключены, сэр
+      synonyms:
+        включи:
+          активируй
+        режим:
+          речь
+    - action: grammar_restrict
+      command:
+        - выключи
+        - свободный
+        - режим
+      equivalents:
+        - - выключи
+          - свободную
+          - речь
+      parameters:
+        way: 'off'
+      responses:
+        - Включил ограниченное распознование речи, сэр
+        - Улучшил точность распознавания, сэр
+        - Свободный режим был отключен, сэр
+      synonyms:
+        выключи:
+          - отключи
+    - action: hotkey
+      command:
+        - закрой
+        - окно
+      equivalents:
+        - - закрой
+          - приложение
+      parameters:
+        hotkey:
+          - alt
+          - f4
+      responses:
+        - Закрыл, сэр
+        - Закрыл окно, сэр
+        - Остановил приложение, сэр
+      synonyms:
+        закрой:
+          - заверши
+          - останови
+        приложение:
+          - программу
+    - action: repeat
+      command:
+        - повтори
+      equivalents:
+        - - сделай
+          - снова
+      parameters: { }
+      responses: [ ]
+      synonyms: { }
+    - action: scroll
+      command:
+        - страница
+        - вниз
+      equivalents:
+        - - прокрути
+          - вниз
+      parameters:
+        way: down
+      responses:
+        - Прокрутил вниз, сэр
+        - Страница вниз, сэр
+      synonyms: { }
+    - action: scroll
+      command:
+        - страница
+        - вверх
+      equivalents:
+        - - прокрути
+          - вверх
+      parameters:
+        way: up
+      responses: [ ]
+      synonyms: { }
+    - action: kill_audio
+      command:
+        - выключи
+        - музыку
+      equivalents:
+        - - останови
+          - музыку
+      parameters: null
+      responses:
+        - Конечно, сэр
+        - Остановил музыкальный процесс, сэр
+      synonyms: null
+    - action: pause_audio
+      command:
+        - приостанови
+        - музыку
+      equivalents:
+        - - поставь
+          - на
+          - паузу
+      parameters: null
+      responses: null
+      synonyms:
+        музыку:
+          - аудио
+          - музыка
+        приостанови:
+          пауза
+    - action: resume_audio
+      command:
+        - возообнови
+        - музыку
+      equivalents:
+        - - запусти
+          - музыку
+          - снова
+      parameters: null
+      responses: null
+      synonyms:
+        музыку:
+          - аудио
+          - воспроизведение
+    - action: subprocess
+      command:
+        - включи
+        - блютуз
+      equivalents:
+        - - активируй
+          - блютуз
+      parameters:
+        command:
+          - bluetoothctl
+          - power
+          - 'on'
+      responses:
+        - Блютуз был активирован, сэр
+        - Включено, сэр
+      synonyms: { }
+    - action: subprocess
+      command:
+        - выключи
+        - блютуз
+      equivalents:
+        - - деактивируй
+          - блютуз
+      parameters:
+        command:
+          - bluetoothctl
+          - power
+          - 'off'
+      responses:
+        - Блютуз был отключен, сэр
+        - Выключено, сэр
+      synonyms: { }
+    - action: subprocess
+      command:
+        - подключи
+        - наушники
+      equivalents:
+        - - соедини
+          - с
+          - наушниками
+        - - подключи
+          - к
+          - наушникам
+      parameters:
+        command:
+          - bluetoothctl
+          - connect
+          - 84:D3:52:F5:24:1E
+      responses:
+        - Подключил наушники, сэр
+        - Активировано, сэр
+      synonyms: { }
+    - action: subprocess
+      command:
+        - подключи
+        - колонку
+      equivalents:
+        - - подключись
+          - к
+          - колонке
+        - - соедини
+          - с
+          - колонкой
+      parameters:
+        command:
+          - bluetoothctl
+          - connect
+          - 10:28:74:F5:7E:74
+      responses:
+        - Подключено, сэр
+        - Активировал, сэр
+      synonyms: { }
+    - action: subprocess
+      command:
+        - отключи
+        - наушники
+      equivalents:
+        - - отсоедини
+          - наушники
+      parameters:
+        command:
+          - bluetoothctl
+          - disconnect
+          - 84:D3:52:F5:24:1E
+      responses:
+        - Отключено, сэр
+        - Разорвал соединение, сэр
+      synonyms: { }
+    - action: subprocess
+      command:
+        - отключи
+        - колонку
+      equivalents:
+        - - отсоедини
+          - колонку
+        - - разорви
+          - соединение
+          - с
+          - колонкой
+      parameters:
+        command:
+          - bluetoothctl
+          - disconnect
+          - 10:28:74:F5:7E:74
+      responses:
+        - Отключено, сэр
+        - Отключился от устройства, сэр
+      synonyms: { }
+    - action: subprocess
+      command:
+        - почини
+        - блютуз
+      equivalents: [ ]
+      parameters:
+        command:
+          - sudo
+          - systemctl
+          - restart
+          - bluetooth
+      responses:
+        - Пробую разные методы, сэр
+        - Одну минуту, пожалуйста
+      synonyms:
+        почини:
+          - исправь
+    - action: volume
+      command:
+        - увеличь
+        - громкость
+      equivalents:
+        - - сделай
+          - громче
+        - - сделай
+          - погромче
+      parameters:
+        command: up
+      responses:
+        - Сию минуту, сэр
+        - Громкость увеличена, сэр
+      synonyms:
+        увеличь:
+          - прибавь
+          - повысь
+        громкость:
+          - звук
+    - action: volume
+      command:
+        - уменьши
+        - громкость
+      equivalents:
+        - - сделай
+          - потише
+        - - сделай
+          - тише
+      parameters:
+        command: down
+      responses:
+        - Сию минуту, сэр
+        - Громкость уменьшена, сэр
+        - Убавил её, сэр
+      synonyms:
+        уменьши:
+          - убавь
+          - понизь
+        громкость:
+          - звук
+    - action: volume
+      command:
+        - установи
+        - громкость
+      equivalents: null
+      parameters:
+        command: set
+      responses:
+        - Сию минуту, сэр
+        - Да, сэр
+      synonyms:
+        установи:
+          - сделай
+    - action: mute_volume
+      command:
+        - отключи
+        - звук
+      equivalents: null
+      parameters:
+        command: 'off'
+      responses: null
+      synonyms:
+        отключи:
+          - выключи
+          - заглуши
+    - action: mute_volume
+      command:
+        - включи
+        - звук
+      equivalents: null
+      parameters:
+        command: 'on'
+      responses: null
+      synonyms:
+        звук:
+          - громкость
+    - action: power_off
+      command:
+        - выключи
+        - компьютер
+      equivalents:
+        - - заверши
+          - работу
+          - компьютера
+        - - отключи
+          - компьютер
+      parameters:
+        way: 'off'
+      responses:
+        - Выключаю компьютер, сэр
+        - Да, сэр, сию секунду
+        - Компьютер будет выключен
+      synonyms:
+        выключи:
+          - отключи
+        компьютер:
+          - ноутбук
+          - машину
+          - систему
+          - устройство
+    - action: power_off
+      command:
+        - выключи
+        - компьютер
+        - сейчас
+      equivalents:
+        - - заверши
+          - работу
+          - компьютера
+          - сейчас
+      parameters:
+        way: now
+      responses:
+        - Выключаю компьютер, сэр
+        - Да, сэр, сию секунду
+        - Компьютер будет выключен
+      synonyms:
+        выключи:
+          - отключи
+          - выключить
+        компьютер:
+          - ноутбук
+          - машину
+          - систему
+          - устройство
+    - action: power_reload
+      command:
+        - перезагрузи
+        - компьютер
+        - сейчас
+      equivalents:
+        - - перезагрузка
+          - сейчас
+      parameters:
+        way: now
+      responses:
+        - Перезагружаю, сэр
+        - Да, сэр, сию секунду
+        - Компьютер будет выключен и загружен снова
+      synonyms:
+        перезагрузи:
+          - перезапусти
+          - перезапуск
+        компьютер:
+          - ноутбук
+          - систему
+          - машину
+          - устройство
+    - action: power_reload
+      command:
+        - перезагрузи
+        - компьютер
+      equivalents:
+        - - перезагрузка
+          - сейчас
+      parameters:
+        way: 'off'
+      responses:
+        - Перезагружаю, сэр
+        - Да, сэр, сию секунду
+        - Компьютер будет выключен и загружен снова
+      synonyms:
+        компьютер:
+          - ноутбук
+          - систему
+          - машину
+          - устройство
+        перезагрузи:
+          - перезапусти
+          - перезапуск
+    - action: power_reload
+      command:
+        - останови
+        - перезагрузку
+        - компьютера
+      equivalents:
+        - - отмени
+          - выключение
+      parameters:
+        way: 'on'
+      responses:
+        - Остановил перезагрузку, сэр
+        - Да, перезагрузка остановлена
+        - Компьютер не будет выключен
+      synonyms:
+        останови:
+          - отмени
+          - выключи
+        компьютер:
+          - ноутбук
+          - систему
+          - машину
+          - устройство
+    - action: power_off
+      command:
+        - отмени
+        - выключение
+        - компьютера
+      equivalents:
+        - - останови
+          - выключение
+        - - не
+          - выключай
+      parameters:
+        way: now
+      responses:
+        - Выключаю компьютер, сэр
+        - Да, сэр, сию секунду
+        - Компьютер будет выключен
+      synonyms:
+        останови:
+          - отмени
+          - выключи
+        компьютер:
+          - ноутбук
+          - систему
+          - машину
+          - устройство
+    - action: update
+      command:
+        - обнови
+        - систему
+      equivalents:
+        - - скачай
+          - обновления
+      responses: [ ]
+      synonyms:
+        скачай:
+          - установи
+    - action: boost_bass
+      command:
+        - усиль
+        - бас
+      equivalents:
+      parameters: null
+      responses: null
+      synonyms:
+        усиль:
+          - улучши
+          - увеличь
+          - добавь
+        бас:
+          - баса
+          - басов
+    - action: stop
+      command:
+        - стоп
+      equivalents:
+        - - прекрати
+          - работу
+        - - убей
+          - себя
+      parameters: null
+      responses: null
+      synonyms: null
+    - action: normalize_sound
+      command:
+        - нормализуй
+        - звук
+      equivalents:
+        - - уменьши
+          - басы
+        - - стандартный
+          - звук
+      parameters: null
+      responses: null
+      synonyms: null
+    - action: find_video
+      command:
+        - найди
+        - видео
+      continues: true
+      equivalents: null
+      parameters: null
+      responses:
+        - Ищу это, сэр
+      synonyms: null
+    - action: find
+      command:
+        - найди
+      continues: true
+      synonyms:
+        найди:
+          - поиск
+      tts: true
+    - action: find_open
+      command:
+        - найди
+        - сайт
+      continues: true
+      synonyms:
+        найди:
+          - поиск
+        сайт:
+          - ссылку
+          - страницу
+    - action: play_song
+      command:
+        - включи
+      continues: true
+      equivalents: null
+      parameters: null
+      responses:
+        - Ищу это, сэр
+        - Минуточку, сэр
+        - Я работаю над этим, сэр
+        - Подождите секунду, пожалуйста
+        - Скачиваю это, сэр
+      synonyms:
+        включи:
+          - воспроизведи
+    - action: upcoming_events
+      command:
+        - планы
+      equivalents:
+        - - предстоящие события
+      parameters: null
+      responses: null
+      tts: true
+    - action: hotkey
+      command:
+        - закрой
+        - все
+        - окна
+      equivalents:
+        - - закрой
+          - всё
+      parameters:
+        hotkey:
+          - win
+          - d
+      synonyms:
+        закрой:
+          - скрой
+        окна:
+          - окно
+        все:
+          - всё
+    - action: sleep
+      command:
+        - засыпай
+      equivalents:
+        - - режим
+          - мониторинга
+      parameters: null
+      responses:
+        - Переключаюсь в режим мониторинга, сэр
+        - Засыпаю, сэр
+        - Неактивный режим активирован, сэр
+      synonyms:
+        засыпай:
+          - засни
+          - гибернация
+    - action: suggestion
+      command:
+        - дай
+        - предложение
+      equivalents:
+        - - что
+          - делать
+          - сегодня
+        - - предложение
+          - на
+          - сегодня
+      synonyms:
+        предложение:
+          - предложения
+        делать:
+          - поделать
+      tts: true
+    - action: protocol
+      command:
+        - учебный
+        - протокол
+      equivalents:
+        - - давай
+          - учиться
+        - - протокол
+          - учеба
+      parameters:
+        protocol:
+          - action: subprocess
+            parameters:
+              command:
+                - xdg-open
+                - https://aarhustech.itslearning.com/eportfolio/427803/itinfo/
+          - action: subprocess
+            parameters:
+              command:
+                - xdg-open
+                - https://aarhustech.itslearning.com/main.aspx?TextURL=CourseCards
+          - action: subprocess
+            parameters:
+              command:
+                - xdg-open
+                - https://www.microsoft365.com/?auth=2
+          - action: subprocess
+            parameters:
+              command:
+                - xdg-open
+                - https://selvbetjening.aarhustech.dk/WebTimeTable/default.aspx
+          - action: subprocess
+            parameters:
+              command:
+                - xdg-open
+                - https://aarhustech.itslearning.com/eportfolio/427803/itinfo/
+      responses:
+        - Инициирую учебный протокол, сэр
+        - Подготавливаю рабочее пространство, сэр
+        - Включаю расслабляющую музыку, сэр
+      synonyms:
+        давай:
+          - давайте
+  repeat:
+    - action: browser
+      command:
+        - открой
+      links:
+        фейсбук: https://www.facebook.com
+        гугл: https://www.google.com
+        инстаграм: https://www.instagram.com
+        почту: https://gmail.com
+        твиттер: https://twitter.com
+        телеграм: https://telegram.org
+        ютуб: https://www.youtube.com
+      parameter: url
+      synonyms:
+        инстаграм:
+          - инсту
+    - action: subprocess
+      command:
+        - открой
+      links:
+        браузер:
+          - xdg-open
+          - https://
+        календарь:
+          - gnome-calendar
+        шахматы:
+          - xdg-open
+          - https://lichess.org
+        редактор кода:
+          - bash
+          - /home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh
+        дискорд:
+          - /usr/bin/flatpak
+          - run
+          - --branch=stable
+          - --arch=x86_64
+          - --command=com.discordapp.Discord
+          - com.discordapp.Discord
+          - /dev/null 2>&1
+        документы:
+          - xdg-open
+          - /home/ilyamiro/Документы
+        загрузки:
+          - xdg-open
+          - /home/ilyamiro/Загрузки
+        редактор документов:
+          - libreoffice
+          - --writer
+        музыку:
+          - xdg-open
+          - /home/ilyamiro/Музыка
+        заметки:
+          - gedit
+        обсидиан:
+          - /usr/bin/flatpak
+          - run
+          - --branch=stable
+          - --arch=x86_64
+          - --command=obsidian.sh
+          - --file-forwarding
+          - md.obsidian.Obsidian
+          - '@@u'
+          - '%U'
+          - '@@'
+          - /dev/null 2>&1
+        изображения:
+          - xdg-open
+          - /home/ilyamiro/Изображения
+        запись экрана:
+          - obs
+        настройки:
+          - gnome-control-center
+        центр приложений:
+          - gnome-software
+        игры:
+          - steam
+        телеграм:
+          - /usr/bin/flatpak
+          - run
+          - --branch=stable
+          - --arch=x86_64
+          - --command=telegram-desktop
+          - --file-forwarding
+          - org.telegram.desktop
+          - '@@u'
+          - '%u'
+          - '@@'
+          - /dev/null 2>&1
+        терминал:
+          - kitty
+        видео:
+          - xdg-open
+          - /home/ilyamiro/Видео
+      parameter: command
+      synonyms:
+        загрузки:
+          - загрузка
+        изображения:
+          - картинки
+          - фото
+          - изображение
+        терминал:
+          - консоль
+        видео:
+          - видеозаписи
+    - action: subprocess
+      command:
+        - закрой
+      links:
+        браузер:
+          - sudo
+          - killall
+          - firefox
+        дискорд:
+          - sudo
+          - killall
+          - Discord
+        файлы:
+          - sudo
+          - killall
+          - nautilus
+        обсидиан:
+          - sudo
+          - killall
+          - obsidian
+        запись экрана:
+          - sudo
+          - killall
+          - obs
+        центр приложений:
+          - sudo
+          - killall
+          - gnome-software
+        игры:
+          - sudo
+          - killall
+          - steam
+        телеграм:
+          - sudo
+          - killall
+          - telegram-desktop
+        терминал:
+          - sudo
+          - killall
+          - kitty
+      parameter: command
+      synonyms:
+        выход:
+          - закрой
+        наутилус:
+          - файлы

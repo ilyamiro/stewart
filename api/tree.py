@@ -56,31 +56,6 @@ class Manager:
                 words.extend(synonyms)
         return " ".join(set(words))
 
-    # def find(self, request: str):
-    #     request = request.lower().strip()
-    #     words = request.split()
-    #
-    #     results = []
-    #
-    #     first_keywords = {}
-    #     for command in self.commands:
-    #         first_keywords[command.keywords[0]] = command
-    #         for synonym in command.synonyms.get(command.keywords[0], []):
-    #             first_keywords[synonym] = command
-    #
-    #     mapping = self.map_words_to_indexes(words, first_keywords)
-    #     last = len(words)
-    #
-    #     for index, keyword in mapping.items():
-    #         constructed_command = [keyword]
-    #         matches = self.get_matching_commands(constructed_command)
-    #
-    #         for match in matches:
-    #             for word in words[index:last]:
-    #                 if word
-    #
-    #     return None
-
     def find(self, request: str):
         request = request.lower().strip()
         words = request.split()

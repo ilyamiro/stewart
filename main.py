@@ -50,13 +50,14 @@ def main():
                 app.api.say(random.choice(config[f"start-up"]["answers"]))
                 log.info("Played startup voice synthesis")
 
-            last_time = None
-
-            thread = threading.Thread(target=animation)
-            thread.daemon = True
-            thread.start()
+            # thread = threading.Thread(target=animation)
+            # thread.daemon = True
+            # thread.start()
 
             app.run(stt, None)
+            last_time = time.time()
+
+            # time.sleep(3)
 
             buffer = b""
             while True:
@@ -67,6 +68,7 @@ def main():
                     if len(buffer) > 12000:
                         result = stt.check_speaker(buffer)
                         if result:
+                            log.debug("Going out of the sleeping mode")
                             elapsed_time = time.time() - last_time
                             if elapsed_time < 600:
                                 app.api.say(random.choice(config["answers"]["default"]))
@@ -85,7 +87,7 @@ def main():
 
                             log.info("Successfully went into sleeping mode")
 
-                            last_time = app.last_time
+                            last_time = time.time()
 
                     buffer = b""
 
