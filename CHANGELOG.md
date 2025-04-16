@@ -34,6 +34,23 @@
 - Fixed broken `protocol` action in `app/app.py`
 - Some other minor improvements
 
+#### v1.8.0
+
+- Added `battery` and 'battery health check' functions for my laptop
+- Fixed `m/s` being mispronounced by tts in `/plugins/custom/weather.py` by replacing it with `meter per second`
+- Relocated config files into a separate directory, removed language filtering for faster loading process.
+- Modified how configs are processed in `api/app.py`
+- Added russian language commands (translation)
+- Fixed sleep mode issues
+- Add `timer` and `stopwatch` actions
+- Moved 2 scripts from `/dev` > `/scripts/py` and deleted the `/dev` directory
+- Modified some scripts (`auto_commit`)
+- Added russian language for GPT plugin
+- Fixed TTS issues in `weather` plugin
+- Modified `say` function in TTS to be able to synthesize without playing and specify the speaker for the model
+- Fixed broken `protocol` action in `app/app.py`
+- Some other minor improvements
+
 #### v1.7.5 - Small improvements and animation
 
 - Create a terminal "gui" animation out of terminal symbols

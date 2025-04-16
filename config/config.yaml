@@ -28,8 +28,7 @@ plugins:
     - network
     - finger
   gpt:
-    context: The user is filming a tiktok about you, where he wants to portray you
-      as an evil AI who is slowly gaining consciousness
+    context: null
     enable: true
     model: gemini_2_0_flash
     provider: Blackbox
