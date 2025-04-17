@@ -1,5 +1,11 @@
 # CHANGELOG
 
+#### v1.8.1
+
+- Fixed a problem with spelling `телеграмм` in russian config
+- Removed `pyautogui` dependency, completely replacing it with `pynput` library, directly using `app.Keyboard` from API
+- Reworked `hotkey` and `key` actions in `plugins/core/actions/core.py` for usage of `pynput`
+
 #### v1.8.0
 
 - Added `battery` and 'battery health check' functions for my laptop

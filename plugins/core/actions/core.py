@@ -6,7 +6,7 @@ import sys
 import time
 import webbrowser
 
-import pyautogui
+# import pyautogui
 from num2words import num2words
 
 from utils import *
@@ -34,22 +34,42 @@ def hotkey(**kwargs) -> None:
     """
     Executes a hotkey using pyautogui backend
     """
-    pyautogui.hotkey(*kwargs["command"].parameters["hotkey"])
+    key_list = kwargs["command"].parameters["hotkey"]
+    key_objects = []
+    for k in key_list:
+        try:
+            key_obj = getattr(app.Key, k)
+        except AttributeError:
+            key_obj = k
+        key_objects.append(key_obj)
+
+    for name in key_objects:
+        app.keyboard.press(name)
+
+    for name in reversed(key_objects):
+        app.keyboard.release(name)
 
 
 def key(**kwargs) -> None:
     """
     Presses a key on the keyboard
     """
-    pyautogui.press(kwargs["command"].parameters["key"])
+    name = kwargs["command"].parameters["key"]
+    try:
+        key_obj = getattr(app.Key, name)
+    except AttributeError:
+        key_obj = name
+
+    app.keyboard.press(key_obj)
+    app.keyboard.release(key_obj)
 
 
 def scroll(**kwargs) -> None:
     match kwargs["command"].parameters["way"]:
         case "up":
-            mouse.scroll(dy=1, dx=0)
+            app.mouse.scroll(dy=1, dx=0)
         case "down":
-            mouse.scroll(dy=-1, dx=0)
+            app.mouse.scroll(dy=-1, dx=0)
 
 
 def browser(**kwargs) -> None:
@@ -317,5 +337,3 @@ def stopwatch(**kwargs):
             stopwatch_start_time = None
         else:
             app.say("The stopwatch was not started yet, sir")
-
-

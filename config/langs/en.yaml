@@ -1001,7 +1001,7 @@ commands:
       - all
     parameters:
       hotkey:
-      - win
+      - cmd
       - d
     synonyms:
       close:

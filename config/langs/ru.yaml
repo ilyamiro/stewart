@@ -1081,7 +1081,7 @@ commands:
           - gnome-software
         игры:
           - steam
-        телеграм:
+        телеграмм:
           - /usr/bin/flatpak
           - run
           - --branch=stable
@@ -1142,7 +1142,7 @@ commands:
           - sudo
           - killall
           - steam
-        телеграм:
+        телеграмм:
           - sudo
           - killall
           - telegram-desktop

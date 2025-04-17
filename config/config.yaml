@@ -4,7 +4,7 @@ audio:
   tts:
     en:
       f: en_76
-      m: en_80
+      m: en_73
       model: v3_en
       sex: m
     enable: true
@@ -108,7 +108,7 @@ plugins:
 settings:
   inactivity-threshold: 300
   max-history-length: 100
-  text-mode: true
+  text-mode: false
   trigger:
     trigger-mode: enable
     trigger-time: 25
