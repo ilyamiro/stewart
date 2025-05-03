@@ -16,7 +16,7 @@ if admin():
     log.error("Program should not be run with super user (sudo or admin) privileges. Exiting...")
     sys.exit()
 
-from data.constants import PLUGINS_FOLDER
+from data.constants import PLUGINS_DIR
 from audio.input import STT
 from gui.animation import animation
 
@@ -50,9 +50,9 @@ def main():
                 app.api.say(random.choice(config[f"start-up"]["answers"]))
                 log.info("Played startup voice synthesis")
 
-            # thread = threading.Thread(target=animation)
-            # thread.daemon = True
-            # thread.start()
+            thread = threading.Thread(target=animation)
+            thread.daemon = True
+            thread.start()
 
             app.run(stt, None)
             last_time = time.time()

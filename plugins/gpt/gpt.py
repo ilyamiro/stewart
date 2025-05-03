@@ -87,9 +87,9 @@ start_prompt_ru = """ТЕПЕРЬ ВЫ ИСПОЛНЯЕТЕ РОЛЬ Стюар�
 
 app.update_config({
     "gpt": {
-        "enable": True,
-        "model": "gemini_2_0_flash",
-        "provider": "Blackbox",
+        "enable": False,
+        "model": "default",
+        "provider": None,
         "context": None,
         "start-prompt": {
             "ru": [

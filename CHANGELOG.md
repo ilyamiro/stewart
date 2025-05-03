@@ -2,6 +2,28 @@
 
 #### v1.8.2
 
+- Fixed `tts: false` flag for commands `tell_time`, `tell_day` and `tell_month`.
+- Added `close/open tab`, `pause video`, `next/previous video` commands for both `ru` and `en` configs.
+- Translated `auto_commit.py` into russian due to targeting russian-speaking audience.
+- Added support for russian language in `weather`, `gestures`, `taskwarrior`, `battery_health`, `events` plugins.
+- Added `translate_commit.py` file to automatically translate commit messages into russian when using `auto-commit`.
+- Renamed `FOLDER` to `DIR` in some constants, such as `PROJECT_FOLDER`.
+- Added a `None` checker for `class Timeline` when creating a `Scenario`.
+- Added a russian translation for different functions in plugin actions like `music` or `core`.
+- Removed some actions from the russian config due to incompatibility.
+
+#### v1.8.2
+
+- Fixed `tts: false` flag for commands `tell_time`, `tell_day` and `tell_month`.
+- Added `close/open tab`, `pause video`, `next/previous video` commands for both `ru` and `en` configs.
+- Translated `auto_commit.py` into russian due to targeting russian-speaking audience.
+- Added support for russian language in `weather`, `gestures`, `taskwarrior`, `battery_health`, `events` plugins.
+- Added `translate_commit.py` file to automatically translate commit messages into russian when using `auto-commit`.
+- Renamed `FOLDER` to `DIR` in some constants, such as `PROJECT_FOLDER`.
+- Added a `None` checker for `class Timeline` when creating a `Scenario`.
+- Added a russian translation for different functions in plugin actions like `music` or `core`.
+- Removed some actions from the russian config due to incompatibility.
+
 #### v1.8.1
 
 - Fixed a problem with spelling `телеграмм` in russian config

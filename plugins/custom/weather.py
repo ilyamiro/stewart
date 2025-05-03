@@ -159,18 +159,48 @@ def temperature(**kwargs):
 
 app.add_func_for_search(temperature, say_weather)
 
-app.manager.add(
-    app.Command(
-        ["temperature", "outside"],
-        "temperature",
-        synonyms={
-            "temperature": ["temp"],
-        },
-        tts=True,
-    ),
-    app.Command(
-        ["weather"],
-        "say_weather",
-        tts=True
+if app.lang == "en":
+    app.manager.add(
+        app.Command(
+            ["temperature", "outside"],
+            "temperature",
+            synonyms={
+                "temperature": ["temp"],
+            },
+            tts=True,
+        ),
+        app.Command(
+            ["weather"],
+            "say_weather",
+            tts=True
+        )
     )
-)
+elif app.lang == "ru":
+    app.manager.add(
+        app.Command(
+            ["температура", "улице"],
+            "temperature",
+            equivalents=[
+                [
+                    "сколько",
+                    "градусов",
+                    "улице"
+                ]
+            ],
+            synonyms={
+                "улице": [
+                    "улица"
+                    "снаружи"
+                ],
+                "градусов": [
+                    "градус"
+                ]
+            },
+            tts=True,
+        ),
+        app.Command(
+            ["погода"],
+            "say_weather",
+            tts=True
+        )
+    )

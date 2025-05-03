@@ -91,14 +91,13 @@ class Timeline:
 class Scenario:
     def __init__(self, name: str, timeline: Timeline, max_gap: int = 3):
         self.name = name
-        self.timeline = timeline
+        self.timeline = timeline if timeline is not None else Timeline([])
         self.max_gap = max_gap
         self.active = False
         self.request_since_last_trigger = 0
 
     def check_scenario(self, request: str, request_history) -> bool:
         request_history = [event.details.get("request") for event in request_history]
-        # Handle inactive scenario
         if not self.active:
             start_triggers = self.timeline.get_current_triggers()
             for trigger in start_triggers:

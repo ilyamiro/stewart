@@ -19,7 +19,7 @@ from voicesynth import Model, Synthesizer
 
 from utils import parse_config_answers, load_yaml, load_lang, called_from
 
-from data.constants import PROJECT_FOLDER, CONFIG_FILE
+from data.constants import PROJECT_DIR, CONFIG_FILE
 
 config = load_yaml(CONFIG_FILE)
 
@@ -36,7 +36,7 @@ log = logging.getLogger("tts")
 
 class TTS:
     def __init__(self):
-        self.model = Model(MODEL, f"{PROJECT_FOLDER}/audio/tts/models/{MODEL}.pt")
+        self.model = Model(MODEL, f"{PROJECT_DIR}/audio/tts/models/{MODEL}.pt")
         self.model.set_speaker(SPEAKER)
         log.debug(f"text-to-speech model configured. lang: {LANG}, speaker {SPEAKER} set")
 
@@ -45,7 +45,7 @@ class TTS:
 
         self.active = ENABLE
 
-    def say(self, text, no_audio=False, prosody=94, speaker=SPEAKER, path=f"{PROJECT_FOLDER}/audio/tts/audio.wav"):
+    def say(self, text, no_audio=False, prosody=94, speaker=SPEAKER, path=f"{PROJECT_DIR}/audio/tts/audio.wav"):
         if not self.active:
             log.debug(f"No sound: {text}")
             return

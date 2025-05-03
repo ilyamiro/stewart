@@ -12,7 +12,7 @@ from importlib import import_module
 import yt_dlp
 from ytmusicapi import YTMusic
 
-from data.constants import CONFIG_FILE, PROJECT_FOLDER, CACHING_FOLDER
+from data.constants import CONFIG_FILE, PROJECT_DIR, CACHING_DIR
 from utils import *
 from api import app
 
@@ -26,9 +26,6 @@ boost_amount = 0.5
 
 
 def sanitize_filename(filename):
-    """
-    Sanitize the filename by replacing invalid characters with underscores or removing them.
-    """
     sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
     sanitized = sanitized.strip()
     return sanitized
@@ -73,7 +70,7 @@ def volume(**kwargs):
 def save_song(href, title):
     log.info(f"Searching for song named {title}")
 
-    music_folder = f"{CACHING_FOLDER}/music"
+    music_folder = f"{CACHING_DIR}/music"
     os.makedirs(music_folder, exist_ok=True)
 
     download = config["plugins"]["core"]["music-download"]
@@ -154,7 +151,7 @@ def play_song(**kwargs):
         if song:
             notify(
                 title,
-                "Playing a requested song",
+                "Playing a requested song" if app.lang == "en" else "Воспроизведение запрошенной песни",
                 10
             )
             if song.startswith("https"):
@@ -163,7 +160,10 @@ def play_song(**kwargs):
                 app.audio.play(song)
             return
 
-    app.say("Sorry, I couldn't find a suitable song under 20 MB, sir.")
+    if app.lang == "en":
+        app.say("Sorry, I couldn't find a suitable song under twenty megabytes, sir.")
+    if app.lang == "ru":
+        app.say("Извините, сэр, я не смог найти подходящую песню весом меньше двадцати мегабайт")
 
 
 def boost_bass(**kwargs):
@@ -186,16 +186,22 @@ def find_video(**kwargs):
     if video_ids:
         webbrowser.open("https://www.youtube.com/watch?v=" + video_ids[0], autoraise=True)
     else:
-        app.say("Sorry, I have not found a matching video, sir, please try again")
+        if app.lang == "en":
+            app.say("Sorry, I have not found a matching video, sir, please try again")
+        elif app.lang == "ru":
+            app.say("Извините, сэр, я не смог найти подходящее видео, пожалуйста, попробуйте снова.")
 
 
 def find(**kwargs):
     to_find = kwargs.get("context")
-    app.say("That's what I could find for " + to_find)
+    if app.lang == "en":
+        app.say("That's what I could find for " + to_find)
+    elif app.lang == "ru":
+        app.say("Вот что мне удалось найти по запросу " + to_find)
 
     encoded_query = urllib.parse.quote(to_find)
 
-    if "youtube" in to_find:
+    if any(i in to_find for i in ["youtube", "ютуб"]):
         webbrowser.open("https://www.youtube.com/results?search_query=" + encoded_query, autoraise=True)
     else:
         webbrowser.open("https://www.google.com/search?q=" + encoded_query, autoraise=True)

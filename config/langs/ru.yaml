@@ -144,6 +144,97 @@ answers:
     - Снова здесь, сэр. Чем помочь?
 commands:
   default:
+    - action: hotkey
+      command:
+        - закрой
+        - вкладку
+      equivalents:
+      parameters:
+        hotkey:
+          - ctrl
+          - w
+      responses:
+        - Закрыл последнюю вкладку, сэр
+        - Закрыл, сэр
+        - Вкладка закрыта, сэр
+        - Открыто, сэр
+        - Готово
+
+    - action: key
+      command:
+        - пауза
+      parameters:
+        key: k
+      equivalents:
+      - - поставь
+        - на
+        - паузу
+      synonyms:
+        пауза:
+          - продолжи
+          - возобнови
+      responses:
+        - Да, сэр
+        - Поставил на паузу, сэр
+        - Остановил видео, сэр
+        - Видео на паузе, сэр
+        - Видео приостановлено
+
+    - action: hotkey
+      command:
+        - следующее
+        - видео
+      parameters:
+        hotkey:
+          - shift
+          - n
+      synonyms:
+        следующее:
+          - далее
+        видео:
+          - ролик
+      responses:
+        - Да, сэр
+        - Следующее видео, сэр
+        - Переключил, сэр
+        - Далее, сэр
+
+    - action: hotkey
+      command:
+        - предыдущее
+        - видео
+      equivalents:
+      parameters:
+        hotkey:
+          - shift
+          - p
+      synonyms:
+        предыдущее:
+          - прошлое
+          - прошлый
+        видео:
+          - ролик
+      responses:
+        - Да, сэр
+        - Предыдущее видео, сэр
+        - Переключил, сэр
+        - Включил предыдущее видео, сэр
+    - action: hotkey
+      command:
+        - открой
+        - вкладку
+      equivalents:
+      parameters:
+        hotkey:
+          - ctrl
+          - t
+      responses:
+        - Открыл новую вкладку, сэр
+        - Открыл, сэр
+        - Новая вкладка открыта, сэр
+        - Открыл вкладку браузера, сэр
+        - Открыто, сэр
+        - Готово
     - action: stopwatch
       command:
         - останови
@@ -321,17 +412,17 @@ commands:
       synonyms:
         открой:
           - запусти
-    - action: list_usb
-      command:
-        - подключенные
-        - устройства
-      equivalents:
-        - - перечисли
-          - подключения
-      parameters: null
-      responses: null
-      synonyms:
-      tts: true
+#    - action: list_usb
+#      command:
+#        - подключенные
+#        - устройства
+#      equivalents:
+#        - - перечисли
+#          - подключения
+#      parameters: null
+#      responses: null
+#      synonyms:
+#      tts: true
     - action: grammar_restrict
       command:
         - включи

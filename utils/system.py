@@ -233,7 +233,7 @@ def cleanup(directory, limit: int):
 
 def notify(title: str, message: str, timeout: int = 10):
     notification.notify(
-        app_icon=f"{PROJECT_FOLDER}/data/images/stewart.png",
+        app_icon=f"{PROJECT_DIR}/data/images/stewart.png",
         app_name="Stewart",
         title=title,
         message=message,
@@ -409,7 +409,7 @@ def find_plugins(directory):
     for path in base_directory.rglob('*'):
         if path.is_dir() and path.name not in skip_dirs:
             # Append the relative path to the base directory
-            subdirectories.append(str(path.relative_to(Path(PROJECT_FOLDER))))
+            subdirectories.append(str(path.relative_to(Path(PROJECT_DIR))))
 
     return subdirectories
 

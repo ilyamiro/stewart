@@ -19,7 +19,7 @@ from pynput.mouse import Button as MouseButton
 import mpv
 import yaml
 
-from data.constants import PROJECT_FOLDER, CONFIG_FILE, CONFIG_DIR
+from data.constants import PROJECT_DIR, CONFIG_FILE, CONFIG_DIR
 from audio.tts import TTS
 from utils import load_yaml, filter_lang_config, load_lang, notify
 

@@ -2,7 +2,7 @@ from num2words import num2words
 import re
 
 from api import app
-from data.constants import PROJECT_FOLDER
+from data.constants import PROJECT_DIR
 
 from utils import run_stdout, notify
 

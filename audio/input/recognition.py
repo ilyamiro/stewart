@@ -11,7 +11,7 @@ import pyaudio
 import torch
 from vosk import KaldiRecognizer, Model, SpkModel
 
-from data.constants import PROJECT_FOLDER, CONFIG_FILE
+from data.constants import PROJECT_DIR, CONFIG_FILE
 from utils import load_yaml
 
 from api import app
@@ -21,11 +21,11 @@ log = logging.getLogger("stt")
 
 # Configuration and model paths
 config = load_yaml(CONFIG_FILE)
-SPK_MODEL_PATH = f"{PROJECT_FOLDER}/audio/input/models/vosk-model-speaker-recognition"
-MODEL_BASE_PATH = f"{PROJECT_FOLDER}/audio/input/models"
+SPK_MODEL_PATH = f"{PROJECT_DIR}/audio/input/models/vosk-model-speaker-recognition"
+MODEL_BASE_PATH = f"{PROJECT_DIR}/audio/input/models"
 
 # Load speaker signature
-with open(f"{PROJECT_FOLDER}/audio/input/vector.txt", "r", encoding="utf-8") as f:
+with open(f"{PROJECT_DIR}/audio/input/vector.txt", "r", encoding="utf-8") as f:
     spk_sig = ast.literal_eval(f.read().replace("\n", ""))
 
 

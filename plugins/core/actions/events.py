@@ -186,12 +186,26 @@ def __generate_event_summary_string__(events):
 def upcoming_events(**kwargs):
     events = __parse_ics_file__("/home/ilyamiro/.local/share/evolution/calendar/system/calendar.ics")
 
-    for word in ["week", "tomorrow", "today"]:
-        if word in kwargs["context"]:
-            events_filtered = __filter_events__(events, word)
-            string = __generate_event_summary_string__(events_filtered)
-            app.say(string, prosody=88)
-            break
+    transform = {
+        "неделя": "week",
+        "завтра": "tomorrow",
+        "сегодня": "today"
+    }
+    if app.lang == "en":
+        for word in ["week", "tomorrow", "today"]:
+            if word in kwargs["context"]:
+                events_filtered = __filter_events__(events, word)
+                string = __generate_event_summary_string__(events_filtered)
+                app.say(string, prosody=88)
+                break
+
+    elif app.lang == "ru":
+        for word in ["неделя", "завтра", "сегодня"]:
+            if word in kwargs["context"]:
+                events_filtered = __filter_events__(events, transform[word])
+                string = __generate_event_summary_string__(events_filtered)
+                app.say(string, prosody=90)
+                break
 
 
 

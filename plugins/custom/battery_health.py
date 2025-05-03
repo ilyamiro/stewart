@@ -360,23 +360,18 @@ def generate_battery_report(battery_info):
             ]
             report.append(random.choice(time_phrases))
 
-    # Add power consumption info if available
     if power_phrases:
         report.append(random.choice(power_phrases))
 
-    # Add battery health info if available
     if health_phrases:
         report.append(random.choice(health_phrases))
 
-    # Add cycle count info if available
     if cycle_phrases:
         report.append(random.choice(cycle_phrases))
 
-    # Add temperature info if available
     if temp_phrases:
         report.append(random.choice(temp_phrases))
 
-    # Add voltage info if available
     if voltage_phrases:
         report.append(random.choice(voltage_phrases))
 
@@ -391,14 +386,24 @@ def battery_health(**kwargs):
 
 app.add_func_for_search(battery_health)
 
-app.manager.add(
-    app.Command(
-        keywords=["check", "battery"],
-        action="battery_health",
-        synonyms={"check": ["analyze", "monitor", "test"]},
-        tts=True
+if app.lang == "en":
+    app.manager.add(
+        app.Command(
+            keywords=["check", "battery"],
+            action="battery_health",
+            synonyms={"check": ["analyze", "monitor", "test"]},
+            tts=True
+        )
     )
-)
 
+elif app.lang == "ru":
+    app.manager.add(
+        app.Command(
+            keywords=["проверка", "батареи"],
+            action="battery_health",
+            synonyms={"проверка": ["анализ", "тест"]},
+            tts=True
+        )
+    )
 
 

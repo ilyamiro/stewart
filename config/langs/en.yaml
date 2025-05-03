@@ -160,6 +160,92 @@ commands:
       stopwatch:
       - countdown
     tts: true
+  - action: hotkey
+    command:
+      - close
+      - tab
+    equivalents:
+    parameters:
+      hotkey:
+      - ctrl
+      - w
+    responses:
+    - Closed the last tab, sir
+    - Closed it, sir
+    - A tab was closed, sir
+    - Opened, sir
+    - Done.
+  - action: key
+    command: 
+    - pause
+    - video
+    parameters:
+      key: k
+    synonyms:
+      pause:
+        - resume
+        - unpause
+      video:
+        - playback
+    responses:
+    - Yes, sir
+    - Paused it, sir
+    - Stopped the video, sir
+    - Paused the video, sir
+    - The video was put on hold.
+  - action: hotkey
+    command: 
+    - next
+    - video
+    parameters:
+      hotkey:
+        - shift
+        - n
+    synonyms:
+      next:
+        - following       
+      video:
+        - one
+    responses:
+    - Yes, sir
+    - Next video, sir
+    - Switched it, sir
+    - Next, sir
+  - action: hotkey
+    command:
+      - previous
+      - video
+    equivalents:
+    parameters:
+      hotkey:
+        - shift
+        - n
+    synonyms:
+      previous:
+        - last
+      video:
+        - one
+    responses:
+      - Yes, sir
+      - Previous video, sir
+      - Switched it, sir
+      - Turned on a previous video, sir, sir
+  - action: hotkey
+    command:
+      - open
+      - tab
+    equivalents:
+    parameters:
+      hotkey:
+      - ctrl
+      - t
+    responses:
+    - Opened a new tab, sir
+    - Opened it, sir
+    - A new tab was open, sir
+    - A new browser tab was open, sir
+    - Opened, sir
+    - Done. 
   - action: stopwatch
     command:
     - start
@@ -280,6 +366,7 @@ commands:
     synonyms:
       tell:
       - say
+    tts: true
   - action: tell_day
     command:
     - tell
@@ -294,6 +381,7 @@ commands:
       - week
     parameters: null
     responses: null
+    tts: true
     synonyms:
       tell:
       - say
@@ -313,6 +401,7 @@ commands:
     synonyms:
       tell:
       - say
+    tts: true
   - action: subprocess
     command:
     - open
@@ -1229,7 +1318,6 @@ commands:
       - kitty
     parameter: command
     synonyms:
-      exit:
-      - close
-      nautilus:
-      - files
+      close:
+        - quit
+        - exit

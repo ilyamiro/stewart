@@ -10,7 +10,7 @@ import webbrowser
 from num2words import num2words
 
 from utils import *
-from data.constants import CONFIG_FILE, PROJECT_FOLDER
+from data.constants import CONFIG_FILE, PROJECT_DIR
 
 from api import app
 
@@ -318,7 +318,7 @@ def timer(**kwargs):
         time.sleep(total_seconds)
         app.say(f"Timer is up!. Your {readable_time} are over.")
         for i in range(6):
-            app.audio.play(f"{PROJECT_FOLDER}/data/sounds/beep.wav")
+            app.audio.play(f"{PROJECT_DIR}/data/sounds/beep.wav")
             app.audio.player.wait_for_playback()
 
     threading.Thread(target=countdown, daemon=True).start()

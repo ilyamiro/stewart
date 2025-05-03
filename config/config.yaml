@@ -29,9 +29,9 @@ plugins:
     - finger
   gpt:
     context: null
-    enable: true
-    model: gemini_2_0_flash
-    provider: Blackbox
+    enable: false
+    model: default
+    provider: null
     start-prompt:
       en:
       - content: "\nYOU NOW PLAY AS Stewart: a voice assistant\n\nRules to Follow\

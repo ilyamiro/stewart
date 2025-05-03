@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from utils import *
-from data.constants import CONFIG_FILE, PROJECT_FOLDER, PLUGINS_FOLDER
+from data.constants import CONFIG_FILE, PROJECT_DIR, PLUGINS_DIR
 
 log = logging.getLogger("app")
 
@@ -23,7 +23,7 @@ class App:
     @staticmethod
     def decorator(func):
         def wrapper(self, *args, **kwargs):
-            plugins = find_plugins(PLUGINS_FOLDER)
+            plugins = find_plugins(PLUGINS_DIR)
             import_plugins(plugins)
 
             log.debug(f"Imported plugins: {plugins}")
@@ -74,7 +74,7 @@ class App:
 
             if self.config["audio"]["stt"]["speech-mode-restricted"]:
                 self.grammar_recognition_restricted_create()
-                self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
+                self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_DIR}/data/grammar/grammar-{self.lang}.txt",
                                                            self.stt.create_new_recognizer())
 
             log.debug("Speech to text instance initialized")
@@ -282,7 +282,7 @@ class App:
         Creates a file of words that are used in commands
         This file is used for a vosk speech-to-text model to speed up the recognition speed and quality
         """
-        with open(f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt", "w") as file:
+        with open(f"{PROJECT_DIR}/data/grammar/grammar-{self.lang}.txt", "w") as file:
             file.write('["' + " ".join(self.config["settings"]["trigger"].get(f"triggers")))
             file.write(self.config["audio"]["stt"].get(f"restricted-add-line"))
             file.write(" " + self.api.manager.construct_recognizer_string() + '"]')
@@ -300,7 +300,7 @@ class App:
                     self.stt.recognizer = self.stt.create_new_recognizer()
                 case "off":
                     self.stt.recognizer = self.stt.set_grammar(
-                        f"{PROJECT_FOLDER}/data/grammar/grammar-{self.lang}.txt",
+                        f"{PROJECT_DIR}/data/grammar/grammar-{self.lang}.txt",
                         self.stt.create_new_recognizer())
         else:
             self.api.say("voice recognition is not active, sir")

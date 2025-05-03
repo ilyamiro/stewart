@@ -6,7 +6,7 @@ import time
 import random
 import playsound
 
-from data.constants import CONFIG_FILE, PROJECT_FOLDER, ADB_DEVICE_IP
+from data.constants import CONFIG_FILE, PROJECT_DIR, ADB_DEVICE_IP
 from utils import load_yaml, run, run_stdout, filter_lang_config
 from api import app
 
