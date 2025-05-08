@@ -17,6 +17,7 @@ audio/input/vector.txt
 
 # Configuration Files
 old_conf.yaml
+config/lang.txt
 
 # Local Testing Files
 test.py

@@ -9,6 +9,7 @@ import threading
 import types
 import typing
 from importlib import import_module
+from pathlib import Path
 
 from pynput.keyboard import Controller as Keyboard
 from pynput.keyboard import Key as KeyboardKey
@@ -19,13 +20,14 @@ from pynput.mouse import Button as MouseButton
 import mpv
 import yaml
 
-from data.constants import PROJECT_DIR, CONFIG_FILE, CONFIG_DIR
+from data.constants import PROJECT_DIR, CONFIG_FILE, CONFIG_DIR, PLUGINS_DIR
 from audio.tts import TTS
 from utils import load_yaml, filter_lang_config, load_lang, notify
 
-from .tree import Manager
-from .scenarios import Trigger, Timeline, Scenario
-from .events import Event, EventLogger
+from .commands.tree import Manager
+from .commands.scenarios import Trigger, Timeline, Scenario
+from .events.events import Event, EventLogger
+from .locals.service import Locale, LocaleService
 
 log = logging.getLogger("API: app")
 
@@ -223,6 +225,9 @@ class AppAPI:
 
         self.lang = self.get_lang()
 
+        self.localeService = LocaleService(self.lang)
+        self.Locale = Locale
+
         self.config = self.get_config()
 
         self.__pre_init_callbacks__: list = []
@@ -264,7 +269,6 @@ class AppAPI:
                 log.warning(f"Hook {hook.__name__} threw an error: {e}")
 
     # < ------------------- Modules ------------------- >
-
     def add_func_for_search(self, *args):
         log.info(f"Added functions to actions: {args}")
         for func in args:
@@ -340,7 +344,69 @@ class AppAPI:
         self.__setattr__(func.__name__, func)
         log.info(f"Added API endpoint: {func.__name__}")
 
-    # <! ----------------------- get ----------------------- !>
+    # < ------------------- Plugins ------------------- >
+    @staticmethod
+    def _load_plugin_modules(directory):
+        modules = []
+        for filename in os.listdir(directory):
+            if filename.endswith('.py'):
+                module_name = filename[:-3]
+                module_path = directory.replace(os.sep, ".") + "." + module_name
+                modules.append(module_path)
+
+        for path in modules:
+            try:
+                import_module(path)
+            except ImportError as e:
+                log.info(f"Failed to import {path}: {e}")
+
+    def _import_plugin(self, directory, manifest):
+        name = manifest.get("name")
+
+        locales = manifest.get("locales")
+        if locales:
+            loaded_locales = []
+            for lang, path in locales.items():
+                locale = self.Locale(lang, path)
+                locale.load()
+                loaded_locales.append(locale)
+            self.localeService.add(name, loaded_locales)
+
+        if self.localeService.exists(name):
+            self._load_plugin_modules(directory)
+
+    @staticmethod
+    def _load_plugin_manifest(path):
+        file_path = os.path.join(path, 'manifest.yaml')
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            return None
+        try:
+            content = load_yaml(file_path)
+            log.info(f"manifest.yaml found in {path}, proceeding.")
+            return content
+        except Exception as e:
+            log.info(f"Error reading manifest.yaml for plugin {directory}: {e}")
+            return None
+
+    def load_plugins(self):
+
+        skip_dirs = ["__pycache__", ".idea", "venv", "locales"]
+        plugin_list = []
+        base_directory = Path(PLUGINS_DIR)
+
+        for path in base_directory.iterdir():
+            if path.is_dir() and path.name not in skip_dirs:
+                plugin_list.append(str(path.relative_to(Path(PROJECT_DIR))))
+
+        for plugin_dir in plugin_list:
+            manifest = self._load_plugin_manifest(plugin_dir)
+            if manifest:
+                self._import_plugin(plugin_dir, manifest)
+            else:
+                log.info(f"There was an error loading manifest.yaml for plugin {plugin_dir}")
+
+    #
+    # # <! ----------------------- get ----------------------- !>
     @staticmethod
     def get_lang():
         """
@@ -371,7 +437,8 @@ class AppAPI:
             lang_config = load_yaml(lang_config_path)
             return self.deep_merge(base_config, lang_config)
 
-        return self.deep_merge(base_config, load_yaml(f'{CONFIG_DIR}/langs/en.yaml'))  # TODO MAKE A DEFAULT ROLLBACK LANGUAGE
+        return self.deep_merge(base_config,
+                               load_yaml(f'{CONFIG_DIR}/langs/en.yaml'))  # TODO MAKE A DEFAULT ROLLBACK LANGUAGE
 
     def update_config(self, config: dict):
         self.config["plugins"].update(config)

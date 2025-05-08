@@ -1,16 +1,21 @@
 # CHANGELOG
 
-#### v1.8.2
+#### v1.9.0
 
-- Fixed `tts: false` flag for commands `tell_time`, `tell_day` and `tell_month`.
-- Added `close/open tab`, `pause video`, `next/previous video` commands for both `ru` and `en` configs.
-- Translated `auto_commit.py` into russian due to targeting russian-speaking audience.
-- Added support for russian language in `weather`, `gestures`, `taskwarrior`, `battery_health`, `events` plugins.
-- Added `translate_commit.py` file to automatically translate commit messages into russian when using `auto-commit`.
-- Renamed `FOLDER` to `DIR` in some constants, such as `PROJECT_FOLDER`.
-- Added a `None` checker for `class Timeline` when creating a `Scenario`.
-- Added a russian translation for different functions in plugin actions like `music` or `core`.
-- Removed some actions from the russian config due to incompatibility.
+- Created a directory `vectors` and separated speaker recognition into different languages
+- Fixed a problem with paths that arose when moving `combine_spk_vectors.py` and `create_spk_sig.py` from `stewart/dev` to `stewart/scripts` directory
+- Added fixed `LANG` parameter for creating a speaker signature for russian language.
+- Added two new gestures in `custom/gestures` plugin: swipe to the right, swipe to the left between two monitors.
+- Created a new plugin management system in the `app/api`.
+- Created an experiment translation service for easier localization of plugins.
+- Added manifest.yaml file to each plugin for declarative naming and localization.
+- Moved `import_plugins` and `find_plugins` from `utils` to `api/app`.
+- Created 2 new classes `LocaleService` and `Locale`.
+- Separated `api` folder into `commands`, `events`, `locals`.
+- Modified some utils like `numbers_to_strings` to better match the current loading language and avoid conflicts.
+- Divided plugins into `actions` and `locales`.
+- Prevent importing plugins that didn't declare current language as a locale.
+- A lot of other small fixes
 
 #### v1.8.2
 

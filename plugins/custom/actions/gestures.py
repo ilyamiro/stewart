@@ -3,6 +3,7 @@ import cv2
 import mediapipe as mp
 import math
 from api import app, tree
+import subprocess
 
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
@@ -55,6 +56,61 @@ def detect_open_hand(hand_landmarks):
     return index_extended and middle_extended and ring_extended and pinky_extended
 
 
+# New function to detect swipe gesture
+def detect_swipe(hand_landmarks, swipe_history, swipe_threshold=0.15, frames_threshold=10):
+    # Get wrist position (base of the hand)
+    wrist = (hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y)
+
+    # Add current position to history
+    swipe_history.append(wrist)
+
+    # Keep only the recent positions
+    if len(swipe_history) > frames_threshold:
+        swipe_history.pop(0)
+
+    # Need enough frames to detect a swipe
+    if len(swipe_history) < frames_threshold:
+        return None
+
+    # Calculate total horizontal movement
+    start_x = swipe_history[0][0]
+    end_x = swipe_history[-1][0]
+    horizontal_movement = end_x - start_x
+
+    # Check if the movement exceeds the threshold
+    if abs(horizontal_movement) > swipe_threshold:
+        # Clear history after detecting a swipe
+        swipe_history.clear()
+
+        # Return swipe direction: "right" for positive movement, "left" for negative
+        return "right" if horizontal_movement > 0 else "left"
+
+    return None
+
+
+# Function to move window between monitors using GNOME's wmctrl
+def move_window_to_monitor(direction):
+    try:
+        # Get active window ID
+        active_window = subprocess.check_output(["xdotool", "getactivewindow"]).decode().strip()
+
+        # Get current window position and size
+        window_info = subprocess.check_output(["xdotool", "getwindowgeometry", active_window]).decode()
+
+        # For GNOME on Fedora, we can use wmctrl to move the window
+        if direction == "right":
+            # Move to right monitor (add screen width to x-position)
+            subprocess.run(["wmctrl", "-ir", active_window, "-e", f"0,{SCREEN_WIDTH},0,-1,-1"])
+        else:  # left
+            # Move to left monitor (set x-position to 0)
+            subprocess.run(["wmctrl", "-ir", active_window, "-e", "0,0,0,-1,-1"])
+
+        return True
+    except Exception as e:
+        print(f"Error moving window: {e}")
+        return False
+
+
 # Open the webcam
 cap = cv2.VideoCapture(0)
 
@@ -65,6 +121,11 @@ def enable_mouse_control(**kwargs):
     is_right_pinching = False  # State of the right pinch gesture
     both_hands_open = False  # State for detecting both hands open
     last_both_hands_time = 0  # Last time both hands open were triggered
+
+    # For swipe detection
+    swipe_history = []
+    last_swipe_time = 0
+    swipe_cooldown = 1.5  # Seconds between swipe actions to prevent accidental triggers
 
     while cap.isOpened():
         success, frame = cap.read()
@@ -110,6 +171,16 @@ def enable_mouse_control(**kwargs):
                         pass
                     is_right_pinching = False
 
+                # Check for swipe gesture
+                current_time = time.time()
+                if (current_time - last_swipe_time) > swipe_cooldown:  # Only check if cooldown has passed
+                    swipe_direction = detect_swipe(hand_landmarks, swipe_history)
+                    if swipe_direction:
+                        # Perform the swipe action
+                        if move_window_to_monitor(swipe_direction):
+                            print(f"Window moved to {swipe_direction} monitor")
+                            last_swipe_time = current_time  # Reset cooldown timer
+
             current_time = time.time()
             if hands_open_count >= 2:
                 if not both_hands_open:
@@ -141,9 +212,9 @@ if app.lang == "en":
                 "Gesture control activated, sir"
             ],
             equivalents=[
-                    ["enable", "mouse", "control"],
-                    ["turn", "on", "mouse", "control"],
-                    ["turn", "on", "gesture", "control"]
+                ["enable", "mouse", "control"],
+                ["turn", "on", "mouse", "control"],
+                ["turn", "on", "gesture", "control"]
             ]
         ),
         app.Command(
@@ -152,8 +223,8 @@ if app.lang == "en":
             ],
             "disable_mouse_control",
             responses=[
-                    "Disabling gesture mouse control, sir",
-                    "Gesture control disactivated, sir"
+                "Disabling gesture mouse control, sir",
+                "Gesture control disactivated, sir"
             ],
             equivalents=[
                 ["disable", "mouse", "control"],
@@ -177,7 +248,10 @@ elif app.lang == "ru":
             equivalents=[
                 ["включи", "жесты"],
                 ["включи", "жестовое", "управление"]
-            ]
+            ],
+            synonyms={
+                "управление": ["управления", ]
+            }
         ),
         app.Command(
             [
@@ -191,7 +265,9 @@ elif app.lang == "ru":
             equivalents=[
                 ["выключи", "жесты"],
                 ["выключи", "жестовое", "управление"]
-            ]
+            ],
+            synonyms={
+                "управление": ["управления", ]
+            }
         )
     )
-

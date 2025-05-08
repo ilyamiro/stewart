@@ -31,7 +31,7 @@ def print_directory_tree(root_dir, indent='', exclude_dirs=None):
             print_directory_tree(full_path, next_indent, exclude_dirs)
 
 
-root_directory = '/home/ilyamiro/stewart'
+root_directory = '/home/ilyamiro/Life/projects/stewart'
 
 exclude = ['venv', 'models', "__pycache__", ".git", ".idea", "app_log", "sounds", "images", "grammar", "include"]
 

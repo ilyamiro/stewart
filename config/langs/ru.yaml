@@ -365,6 +365,7 @@ commands:
           - время
       parameters: null
       responses: null
+      tts: true
       synonyms:
         скажи:
           - подскажи
@@ -382,7 +383,9 @@ commands:
       synonyms:
         скажи:
           - подскажи
+      tts: true
     - action: tell_month
+      tts: true
       command:
         - скажи
         - месяц
@@ -982,6 +985,7 @@ commands:
     - action: play_song
       command:
         - включи
+        - песню
       continues: true
       equivalents: null
       parameters: null
@@ -994,6 +998,9 @@ commands:
       synonyms:
         включи:
           - воспроизведи
+        песню:
+          - аудио
+          - музыку
     - action: upcoming_events
       command:
         - планы

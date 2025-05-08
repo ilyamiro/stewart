@@ -425,10 +425,7 @@ commands:
     command:
     - list
     - usb
-    - devices
     equivalents:
-    - - list
-      - usb
     parameters: null
     responses: null
     synonyms:

@@ -6,9 +6,12 @@ import pyaudio
 from collections import deque
 from vosk import Model, KaldiRecognizer, SpkModel
 
-PARENT = os.path.dirname(os.path.dirname(__file__))
+# TODO create it using Path.parent
+PARENT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
-MODEL_PATH = f"{PARENT}/audio/input/models/vosk-model-small-en"
+LANG = "ru"
+
+MODEL_PATH = f"{PARENT}/audio/input/models/vosk-model-small-{LANG}"
 SPK_MODEL_PATH = f"{PARENT}/audio/input/models/vosk-model-speaker-recognition"
 SAMPLE_RATE = 16000
 CHANNELS = 1

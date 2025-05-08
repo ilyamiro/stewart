@@ -1,0 +1,18 @@
+core:
+  list_usb:
+    total_connected: "There are in total {count} devices connected. That is {device_list}."
+    no_connected: "There aren't any devices connected, sir."
+  power_reload:
+    x_minutes: "Computer will be reloaded in {minutes} minutes, sir."
+    one_minute: "System will be reloaded in a minute, sir."
+    now: "Reloading system immediately, sir."
+    cancel: "System reload was cancelled."
+  power_off:
+    x_minutes: "The system will be shutdown in {minutes} minutes, sir."
+    one_minute: "System will shut down in a minute, sir."
+    now: "Shutting down immediately, sir."
+    cancel: "Shutdown was cancelled."
+  update:
+    no_update: "All packages are up to date, sir"
+    update_before: "Updating {number_of_lines} packages, sir"
+    update_after: "The system was successfully updated"

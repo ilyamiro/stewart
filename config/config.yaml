@@ -30,7 +30,7 @@ plugins:
   gpt:
     context: null
     enable: false
-    model: default
+    model: gpt_4o_mini
     provider: null
     start-prompt:
       en:
@@ -108,7 +108,7 @@ plugins:
 settings:
   inactivity-threshold: 300
   max-history-length: 100
-  text-mode: false
+  text-mode: true
   trigger:
     trigger-mode: enable
     trigger-time: 25

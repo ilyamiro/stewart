@@ -150,3 +150,14 @@ def seconds_readable(total_seconds):
         readable_time.append(f"{num2words(seconds)} second{'s' if seconds > 1 else ''}")
 
     return " and ".join(readable_time)
+
+
+def numbers_to_strings(text: str):
+    all_numbers = re.findall(r"[-+]?\d*\.\d+|\d+", text)
+    all_numbers = [int(num) if num.isdigit() else float(num) for num in all_numbers]
+
+    for number in all_numbers:
+        word = num2words(float(number), lang="en")
+        text = text.replace(str(number), word)
+
+    return text

@@ -88,7 +88,7 @@ start_prompt_ru = """ТЕПЕРЬ ВЫ ИСПОЛНЯЕТЕ РОЛЬ Стюар�
 app.update_config({
     "gpt": {
         "enable": False,
-        "model": "default",
+        "model": "gpt_4o_mini",
         "provider": None,
         "context": None,
         "start-prompt": {

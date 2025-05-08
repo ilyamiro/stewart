@@ -6,9 +6,6 @@ import sys
 import time
 import webbrowser
 
-# import pyautogui
-from num2words import num2words
-
 from utils import *
 from data.constants import CONFIG_FILE, PROJECT_DIR
 
@@ -113,9 +110,9 @@ def list_usb(**kwargs) -> None:
     if devices:
         count = num2words(len(devices))
         device_list = ', and '.join(devices)
-        app.say(f"There are in total {count} devices connected. That is {device_list}.")
+        app.say(app.localeService.translate("core", "core.list_usb.total_connected", count=count, device_list=device_list))
     else:
-        app.say("There aren't any devices connected, sir.")
+        app.say(app.localeService.translate("core", "core.list_usb.no_connected"))
 
 
 def power_reload(**kwargs) -> None:
@@ -129,33 +126,23 @@ def power_reload(**kwargs) -> None:
         num = find_num(context)[0]
         if num:
             minutes = num2words(num, lang="en")
-            app.say(f"Computer will be reloaded in {minutes} minutes, sir.")
+            app.say(app.localeService.translate("core", "core.power_reload.x_minutes", minutes=minutes))
             os.system(f"shutdown -r -h +{num} /dev/null 2>&1")
         else:
-            app.say("System will be reloaded in a minute, sir.")
+            app.say(app.localeService.translate("core", "core.power_reload.one_minute"))
             os.system(f"sudo shutdown -r -h +1 /dev/null 2>&1")
 
     elif way == "now":
-        app.say("Reloading system immediately, sir.")
+        app.say(app.localeService.translate("core", "core.power_reload.now"))
         thread = threading.Timer(2.5, os.system, args=["sudo shutdown -r now"])
         thread.start()
 
     else:
-        app.say("System reload was cancelled.")
+        app.say(app.localeService.translate("core", "core.power_reload.cancel"))
         os.system("sudo shutdown -c /dev/null 2>&1")
 
 
 def power_off(**kwargs) -> None:
-    """
-    Handle system shutdown based on the specified parameters.
-
-    Args:
-        kwargs (dict): Contains parameters for shutdown behavior and command details.
-
-    Parameters:
-        - kwargs["parameters"]["way"]: The shutdown method ("off", "now", or others to cancel shutdown).
-        - kwargs["command"]: The command string, potentially containing the delay in minutes.
-    """
     way = kwargs["command"].parameters["way"]
     context = kwargs["context"]
 
@@ -163,18 +150,18 @@ def power_off(**kwargs) -> None:
         num = find_num(context)[0]
         if num:
             minutes = num2words(num, lang="en")
-            app.say(f"System will shut down in {minutes} minutes, sir.")
+            app.say(app.localeService.translate("core", "core.power_off.x_minutes", minutes=minutes))
             os.system(f"shutdown -h +{num} /dev/null 2>&1")
         else:
-            app.say("System will shut down in a minute, sir.")
+            app.say(app.localeService.translate("core", "core.power_off.one_minute"))
             os.system("sudo shutdown -h +1 /dev/null 2>&1")
     elif way == "now":
-        app.say("Shutting down immediately, sir.")
+        app.say(app.localeService.translate("core", "core.power_off.now"))
         thread = threading.Timer(2.5, os.system, args=["sudo shutdown now"])
         thread.start()
 
     else:
-        tts.say("Shutdown was cancelled.")
+        tts.say(app.localeService.translate("core", "core.power_off.cancel"))
         os.system("sudo shutdown -c /dev/null 2>&1")
 
 
@@ -185,11 +172,11 @@ def update(**kwargs) -> None:
     number_of_lines = int(wc_output.stdout.strip())
 
     if number_of_lines == 0:
-        app.say("All packages are up to date, sir")
+        app.say(app.localeService.translate("core", "core.update.no_update"))
     else:
-        app.say(f"Updating {num2words(number_of_lines)} packages, sir")
+        app.say(app.localeService.translate("core", "core.update.update_before"), number_of_lines=num2words(number_of_lines, app.lang))
         sp.run(["sudo", "dnf", "update", "--refresh", "--best", "--allowerasing", "-y"])
-        app.say("The system was successfully updated")
+        app.say(app.localeService.translate("core", "core.update.update_after"))
 
 
 def tell_time(**kwargs):
@@ -248,27 +235,29 @@ def battery(**kwargs):
 
     try:
         with open(battery_path, "r") as f:
-            percentage = num2words(int(f.read().strip()))
+            percentage = int(f.read().strip())
 
         with open(charging_path, "r") as f:
             status = f.read().strip()
+            
+        word_percent = num2words(percentage, lang=app.lang)
 
         if status.lower() == "charging":
             if percentage >= 80:
-                app.say(f"Your laptop is charging and already at {percentage} percent. You might consider unplugging soon.")
+                app.say(f"Your laptop is charging and already at {word_percent} percent. You might consider unplugging soon.")
             elif percentage >= 50:
-                app.say(f"Your laptop is charging and currently at {percentage} percent. Keep it plugged in for now.")
+                app.say(f"Your laptop is charging and currently at {word_percent} percent. Keep it plugged in for now.")
             else:
-                app.say(f"Your laptop is charging and only at {percentage} percent. Let it charge longer.")
+                app.say(f"Your laptop is charging and only at {word_percent} percent. Let it charge longer.")
         else:  # Not charging
             if percentage >= 80:
-                app.say(f"Your battery is at {percentage} percent. You're good to go!")
+                app.say(f"Your battery is at {word_percent} percent. You're good to go!")
             elif percentage >= 50:
-                app.say(f"Your battery is at {percentage} percent. You might want to charge it soon.")
+                app.say(f"Your battery is at {word_percent} percent. You might want to charge it soon.")
             elif percentage >= 20:
-                app.say(f"Your battery is getting low at {percentage} percent. Please find a charger.")
+                app.say(f"Your battery is getting low at {word_percent} percent. Please find a charger.")
             else:
-                app.say(f"Warning! Your battery is critically low at {percentage} percent. Plug in your charger immediately!")
+                app.say(f"Warning! Your battery is critically low at {word_percent} percent. Plug in your charger immediately!")
     except FileNotFoundError:
         app.say("No battery detected or unable to read battery information.")
 
@@ -284,7 +273,7 @@ def timer(**kwargs):
     time_values = find_num(context)
 
     if not time_values:
-        app.say("I couldn't find any numbers in your request. Please try again.")
+        app.say("I couldn't find any time specifications in your request. Please try again.")
         return
 
     hours = 0

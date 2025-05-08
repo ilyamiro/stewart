@@ -52,7 +52,8 @@ class Trigger:
 
         return False
 
-    def _match_keywords(self, request_lower: str, keywords: List[str]) -> bool:
+    @staticmethod
+    def _match_keywords(request_lower: str, keywords: List[str]) -> bool:
         pattern = r'\b({0})\b'.format('|'.join(re.escape(kw) for kw in keywords))
         matches = re.findall(pattern, request_lower)
         if len(matches) == len(keywords):

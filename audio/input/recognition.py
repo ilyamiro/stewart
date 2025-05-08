@@ -25,7 +25,7 @@ SPK_MODEL_PATH = f"{PROJECT_DIR}/audio/input/models/vosk-model-speaker-recogniti
 MODEL_BASE_PATH = f"{PROJECT_DIR}/audio/input/models"
 
 # Load speaker signature
-with open(f"{PROJECT_DIR}/audio/input/vector.txt", "r", encoding="utf-8") as f:
+with open(f"{PROJECT_DIR}/audio/input/vectors/{app.lang}.txt", "r", encoding="utf-8") as f:
     spk_sig = ast.literal_eval(f.read().replace("\n", ""))
 
 

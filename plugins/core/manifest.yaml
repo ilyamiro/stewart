@@ -1,0 +1,4 @@
+name: core
+locales:
+  en: locales/en.yaml
+  ru: locales/ru.yaml

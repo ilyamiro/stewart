@@ -83,7 +83,7 @@ def load_yaml(path: str):
         with open(path, "r", encoding="utf-8") as file:
             return yaml.safe_load(file)
     else:
-        log.warning("Yaml file is non existent")
+        log.warning(f"File {full_path} does not exist")
 
 
 config = load_yaml(CONFIG_FILE)
@@ -321,26 +321,6 @@ def remove_non_letters(input_string):
     return cleaned_string
 
 
-def numbers_to_strings(text: str):
-    """
-    Convert numbers found in the given text to their word representations.
-
-    Parameters:
-    - text (str): Input text containing numbers.
-
-    Returns:
-    str: Text with numbers converted to words.
-    """
-    all_numbers = re.findall(r"[-+]?\d*\.\d+|\d+", text)
-    all_numbers = [int(num) if num.isdigit() else float(num) for num in all_numbers]
-
-    for number in all_numbers:
-        word = num2words(float(number))
-        text = text.replace(str(number), word)
-
-    return text
-
-
 def normalize(text: str) -> str:
     """
     Normalize the input text by converting numbers to words, removing unwanted characters,
@@ -398,49 +378,6 @@ def extract_number(input_string: str):
 
 
 # --------------- Module Management Functions ---------------
-def find_plugins(directory):
-    """
-    Find all plugin directories under the main plugin folder.
-    """
-    skip_dirs = ["__pycache__", ".idea", "venv"]
-    subdirectories = []
-    base_directory = Path(directory)  # Convert to a Path object
-
-    for path in base_directory.rglob('*'):
-        if path.is_dir() and path.name not in skip_dirs:
-            # Append the relative path to the base directory
-            subdirectories.append(str(path.relative_to(Path(PROJECT_DIR))))
-
-    return subdirectories
-
-
-def import_modules_from_directory(directory) -> None:
-    """
-    Dynamically import all Python modules from a given directory.
-
-    Parameters:
-    - directory (str): The directory to search for modules.
-
-    Returns:
-    list: List of imported modules.
-    """
-    modules = []
-    for filename in os.listdir(directory):
-        if filename.endswith('.py'):
-            module_name = filename[:-3]
-            try:
-                module_path = directory.replace("/", ".") + "." + module_name
-                module = import_module(module_path)
-                modules.append(module)
-            except ImportError as e:
-                log.info(f"Failed to import {module_name}: {e}")
-
-
-def import_plugins(directory):
-    for plugin_dir in directory:
-        import_modules_from_directory(plugin_dir)
-
-
 def import_functions_from_a_module(module):
     members = inspect.getmembers(module)
     functions = [member[0] for member in members if inspect.isfunction(member[1])]

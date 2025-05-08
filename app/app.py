@@ -23,10 +23,7 @@ class App:
     @staticmethod
     def decorator(func):
         def wrapper(self, *args, **kwargs):
-            plugins = find_plugins(PLUGINS_DIR)
-            import_plugins(plugins)
-
-            log.debug(f"Imported plugins: {plugins}")
+            self.api.load_plugins()
 
             self.api.__run_hooks__(self.api.__pre_init_callbacks__)
 

@@ -57,8 +57,6 @@ def main():
             app.run(stt, None)
             last_time = time.time()
 
-            # time.sleep(3)
-
             buffer = b""
             while True:
                 data = stt.stream.read(512, exception_on_overflow=False)
