@@ -11,12 +11,10 @@ def __is_device_charging__():
     """Check if the device is charging based on dumpsys battery output."""
     output = run_stdout('adb', 'shell', 'dumpsys', 'battery')
 
-    # Check for charging states using regular expressions
     ac_powered = re.search(r'AC powered:\s*(\w+)', output)
     usb_powered = re.search(r'USB powered:\s*(\w+)', output)
     wireless_powered = re.search(r'Wireless powered:\s*(\w+)', output)
 
-    # Evaluate the charging status
     if (ac_powered and ac_powered.group(1) == 'true') or \
             (usb_powered and usb_powered.group(1) == 'true') or \
             (wireless_powered and wireless_powered.group(1) == 'true'):

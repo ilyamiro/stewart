@@ -1,5 +1,20 @@
 # CHANGELOG
 
+#### v1.9.1
+
+- Created centralized caching: `api/files/caching.py` with a possibility to write down caching data.
+- Added caching for tts-generated audio to play audio faster if it already exists.
+- Created `RunTime` class in API
+- Loaded a `docusaurus` build wiki for deployment on github.pages
+- Minor fixes in `scripts/auto-commit.py`
+
+#### v1.9.1
+
+- Created centralized caching: `api/files/caching.py` with a possibility to write down caching data.
+- Added caching for tts-generated audio to play audio faster if it already exists.
+- Created `RunTime` class in API
+- Loaded a `docusaurus` build wiki for deployment on github.pages
+
 #### v1.9.0
 
 - Created a directory `vectors` and separated speaker recognition into different languages

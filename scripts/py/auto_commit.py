@@ -3,16 +3,19 @@ import subprocess
 import re
 import logging
 from pyrogram import Client
+import pyrogram.errors
 
-from translate_commit import process
+# Removed temporarily
+# from translate_commit import process
+
+PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
 
 logging.basicConfig(level=logging.INFO)
 
-PROJECT_FOLDER = Path(__file__).resolve().parent.parent.parent
 CHANNEL = "@stewart_github"
 REPO_URL = "https://github.com/ilyamiro/stewart"
 
-with open(f"{PROJECT_FOLDER}/version.txt", "r", encoding="utf-8") as file:
+with open(f"{PROJECT_DIR}/version.txt", "r", encoding="utf-8") as file:
     version = file.read()
 
 
@@ -40,7 +43,7 @@ def format_commit_changes(raw_changes):
     return formatted_changes
 
 
-def build_telegram_message(commit_info, changes):
+def build_telegram_message(commit_info, changes, short=False):
     return f"""**Новый коммит** 
 Версия: **{version}**
     
@@ -52,7 +55,7 @@ def build_telegram_message(commit_info, changes):
 
 {commit_info['message']}
 
-{changes}
+{changes if not short else "Скрыто из-за длины сообщения"}
 
 **[Cсылка на коммит]({REPO_URL}/commit/{commit_info['hash']})**
 
@@ -78,7 +81,7 @@ YouTube: https://youtube.com/@stewart.github
 
 def get_commit_info():
     commit_info = {
-        'message': process(run_git_command(['git', 'log', '-1', '--pretty=%B'])),
+        'message': run_git_command(['git', 'log', '-1', '--pretty=%B']),
         'hash': run_git_command(['git', 'log', '-1', '--pretty=%H']),
         'date': run_git_command(['git', 'log', '-1', '--pretty=%ad', '--date=iso']),
         'author': run_git_command(['git', 'log', '-1', '--pretty=%an']),
@@ -108,7 +111,12 @@ def main():
 
     app = Client("post_commit")
     app.start()
-    app.send_message(CHANNEL, telegram_message)
+    try:
+        app.send_message(CHANNEL, telegram_message)
+    except pyrogram.errors.exceptions.bad_request_400.MessageTooLong:
+        telegram_message = build_telegram_message(commit_info, changes, short=True)
+        app.send_message(CHANNEL, telegram_message)
+
     app.edit_message_caption(CHANNEL, 4, build_edit_message())
     app.stop()
 

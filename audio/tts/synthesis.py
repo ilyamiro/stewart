@@ -13,8 +13,6 @@ from scipy.signal import chirp
 from scipy.io import wavfile
 import io
 
-
-
 from voicesynth import Model, Synthesizer
 
 from utils import parse_config_answers, load_yaml, load_lang, called_from

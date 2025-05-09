@@ -139,7 +139,6 @@ def filter_lang_config(file, lang_prefix):
 
 
 # --------------- System & Subprocess Functions ---------------
-
 def set_caching_directory():
     home_dir = os.path.expanduser("~")
 
@@ -287,6 +286,13 @@ def clear():
 
 
 # --------------- Text Processing & Utility Functions ---------------
+
+def sanitize_filename(filename):
+    sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
+    sanitized = sanitized.strip()
+    return sanitized
+
+
 def issubset(list_of_lists1, list_of_lists2):
     for sublist2 in list_of_lists2:
         for sublist1 in list_of_lists1:

@@ -25,12 +25,6 @@ log = logging.getLogger("module: " + __file__)
 boost_amount = 0.5
 
 
-def sanitize_filename(filename):
-    sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
-    sanitized = sanitized.strip()
-    return sanitized
-
-
 def play_audio(**kwargs):
     if os.path.exists(kwargs["command"].parameters["path"]):
         app.audio.play(kwargs["command"].parameters["path"])
@@ -70,10 +64,10 @@ def volume(**kwargs):
 def save_song(href, title):
     log.info(f"Searching for song named {title}")
 
-    music_folder = f"{CACHING_DIR}/music"
-    os.makedirs(music_folder, exist_ok=True)
-
+    music_folder = app.runtime.mkdir_cache("music")
+    runtime.cleanup("music_folder", max_files=25)
     download = config["plugins"]["core"]["music-download"]
+
     filename = os.path.join(music_folder, sanitize_filename(title))
     max_file_size = 20 * 1024 * 1024
     url = None

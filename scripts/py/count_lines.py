@@ -36,7 +36,7 @@ def count_lines_in_python_files(directory, skip_files=None, skip_dirs=None, add_
 
 skip_files_list = ['test.py', 'test2.py']
 add_files_list = ["README.md", "requirements.txt", "en.yaml", "ru.yaml", "config.yaml", "info.js", "check_adb.sh", "connect_adb.sh"]
-skip_dirs_list = ['venv', 'models',  "__pycache__", ".git", ".idea", "app_log", "sounds", "images", "grammar", "animations"]
+skip_dirs_list = ['venv', 'models',  "__pycache__", ".git", ".idea", "app_log", "sounds", "images", "grammar", "animations", "docs"]
 
 lines_of_code = count_lines_in_python_files(PROJECT_FOLDER, skip_files_list, skip_dirs_list, add_files_list)
 

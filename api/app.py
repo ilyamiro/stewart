@@ -8,6 +8,7 @@ import inspect
 import threading
 import types
 import typing
+import hashlib
 from importlib import import_module
 from pathlib import Path
 
@@ -22,19 +23,21 @@ import yaml
 
 from data.constants import PROJECT_DIR, CONFIG_FILE, CONFIG_DIR, PLUGINS_DIR
 from audio.tts import TTS
-from utils import load_yaml, filter_lang_config, load_lang, notify
+from utils import load_yaml, filter_lang_config, load_lang, notify, sanitize_filename
 
 from .commands.tree import Manager
 from .commands.scenarios import Trigger, Timeline, Scenario
 from .events.events import Event, EventLogger
-from .locals.service import Locale, LocaleService
+from .locales.service import Locale, LocaleService
+from .files.caching import Runtime
 
 log = logging.getLogger("API: app")
 
 __GPT_CALLBACK_TYPE__ = typing.Callable[[str], str]
 
+# runtime = Runtime()
 
-class AudioInference:
+class AudioInterface:
     def __init__(self):
         try:
             self.player = mpv.MPV(
@@ -201,10 +204,9 @@ class AudioInference:
 
 class AppAPI:
     def __init__(self):
-        ttsi = TTS()
+        self.ttsi = TTS()
 
-        self.say = ttsi.say
-        self.say: Callable
+        self.runtime = Runtime()
 
         self.manager = Manager()
         self.Command = self.manager.Command
@@ -214,11 +216,12 @@ class AppAPI:
         self.Scenario = Scenario
 
         self.Event = Event
+        self.eventLogger = EventLogger()
 
         self.mouse = Mouse()
         self.keyboard = Keyboard()
 
-        self.audio = AudioInference()
+        self.audio = AudioInterface()
 
         self.Button = MouseButton
         self.Key = KeyboardKey
@@ -238,9 +241,27 @@ class AppAPI:
 
         self.__actions__: dict = {}
 
-        self.eventLogger = EventLogger()
-
         self.scenarios: list = []
+
+    def say(self, text: str, no_audio=False, prosody=94, speaker=None):
+        tts_cache: Path = self.runtime.mkdir_cache("tts")
+
+        normalized = text.strip().lower()
+        hash_input = f"{normalized}|prosody={prosody}|speaker={speaker or ''}"
+        phrase_hash = hashlib.sha256(hash_input.encode()).hexdigest()
+        filename = tts_cache / sanitize_filename(f"{phrase_hash}.wav")
+
+        cached_hash = self.runtime.read(f"tts:{hash_input}")
+        if cached_hash:
+            cached_file = tts_cache / f"{cached_hash}.wav"
+            if cached_file.exists():
+                self.runtime.write(f"tts:{hash_input}", cached_hash)  # Reinforce mapping
+                self.audio.play(cached_file)
+                return
+
+        # Generate and cache
+        self.ttsi.say(text=text, path=filename, no_audio=no_audio, prosody=prosody, speaker=speaker)
+        self.runtime.write(f"tts:{hash_input}", phrase_hash)
 
     @staticmethod
     def __blank__(context, history):
