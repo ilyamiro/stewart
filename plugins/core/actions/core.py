@@ -11,6 +11,8 @@ from data.constants import CONFIG_FILE, PROJECT_DIR
 
 from api import app
 
+import_utils(app.lang, globals())
+
 log = logging.getLogger("module: " + __file__)
 
 stopwatch_start_time = None

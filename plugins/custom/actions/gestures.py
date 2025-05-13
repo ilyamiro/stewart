@@ -2,7 +2,7 @@ import time
 import cv2
 import mediapipe as mp
 import math
-from api import app, tree
+from api import app
 import subprocess
 
 mp_hands = mp.solutions.hands

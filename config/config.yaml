@@ -108,7 +108,7 @@ plugins:
 settings:
   inactivity-threshold: 300
   max-history-length: 100
-  text-mode: true
+  text-mode: false
   trigger:
     trigger-mode: enable
     trigger-time: 25

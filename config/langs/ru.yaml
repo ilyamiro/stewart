@@ -739,6 +739,7 @@ commands:
       synonyms:
         установи:
           - сделай
+          - поставь
     - action: mute_volume
       command:
         - отключи

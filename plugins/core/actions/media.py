@@ -12,13 +12,15 @@ from importlib import import_module
 import yt_dlp
 from ytmusicapi import YTMusic
 
-from data.constants import CONFIG_FILE, PROJECT_DIR, CACHING_DIR
+from data.constants import CONFIG_FILE, PROJECT_DIR
 from utils import *
 from api import app
 
+import_utils(app.lang, globals())
+
 config = load_yaml(CONFIG_FILE)
 
-api = YTMusic()
+api_ytmusic = YTMusic()
 
 log = logging.getLogger("module: " + __file__)
 
@@ -115,10 +117,10 @@ def save_song(href, title):
 
 
 def find_song(search):
-    result = api.search(search, filter="videos")[0]
+    result = api_ytmusic.search(search, filter="videos")[0]
 
     if not result or not result.get("videoId"):
-        result = api.search(search, filter="songs")[0]
+        result = api_ytmusic.search(search, filter="songs")[0]
 
     if result and result.get("videoId"):
         song = "https://music.youtube.com/watch?v=" + result["videoId"]

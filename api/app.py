@@ -144,23 +144,23 @@ class AudioInterface:
         except Exception as e:
             log.error(f"Error streaming {value}: {e}")
 
-    def play(self, file_path: str):
+    def play(self, path: str):
         """
         Plays a sound file using mpv.
 
-        :param file_path: Path to the sound file to be played.
+        :param path: Path to the sound file to be played.
         """
         if not self.player:
             log.error("MPV player not initialized")
             return
 
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"The file {file_path} does not exist.")
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"The file {path} does not exist.")
 
         try:
             self.player.stop()
 
-            self.player.play(file_path)
+            self.player.play(path)
 
         except Exception as e:
             log.error(f"Failed to play sound: {e}")
@@ -244,10 +244,17 @@ class AppAPI:
         self.scenarios: list = []
 
     def say(self, text: str, no_audio=False, prosody=94, speaker=None):
+        if not text:
+            return
+
+        if not self.ttsi.active:
+            log.debug(f"No sound: {text}")
+            return
+
         tts_cache: Path = self.runtime.mkdir_cache("tts")
 
         normalized = text.strip().lower()
-        hash_input = f"{normalized}|prosody={prosody}|speaker={speaker or ''}"
+        hash_input = str(f"{normalized}|prosody={prosody}|speaker={speaker or ''}")
         phrase_hash = hashlib.sha256(hash_input.encode()).hexdigest()
         filename = tts_cache / sanitize_filename(f"{phrase_hash}.wav")
 
@@ -256,11 +263,10 @@ class AppAPI:
             cached_file = tts_cache / f"{cached_hash}.wav"
             if cached_file.exists():
                 self.runtime.write(f"tts:{hash_input}", cached_hash)  # Reinforce mapping
-                self.audio.play(cached_file)
+                self.audio.play(str(cached_file))
                 return
 
-        # Generate and cache
-        self.ttsi.say(text=text, path=filename, no_audio=no_audio, prosody=prosody, speaker=speaker)
+        self.ttsi.say(text=text, path=str(filename), no_audio=no_audio, prosody=prosody, speaker=speaker)
         self.runtime.write(f"tts:{hash_input}", phrase_hash)
 
     @staticmethod
@@ -369,11 +375,18 @@ class AppAPI:
     @staticmethod
     def _load_plugin_modules(directory):
         modules = []
-        for filename in os.listdir(directory):
-            if filename.endswith('.py'):
-                module_name = filename[:-3]
-                module_path = directory.replace(os.sep, ".") + "." + module_name
-                modules.append(module_path)
+
+        for root, _, files in os.walk(directory):
+            for filename in files:
+                if filename.endswith('.py'):
+                    rel_path = os.path.relpath(root, directory)
+                    if rel_path == '.':
+                        module_path = directory.replace(os.sep, ".") + "." + filename[:-3]
+                    else:
+                        # For subdirectories, include the subdirectory in the module path
+                        module_path = directory.replace(os.sep, ".") + "." + rel_path.replace(os.sep,
+                                                                                              ".") + "." + filename[:-3]
+                    modules.append(module_path)
 
         for path in modules:
             try:
@@ -394,6 +407,7 @@ class AppAPI:
             self.localeService.add(name, loaded_locales)
 
         if self.localeService.exists(name):
+            log.info(f"Locale found, loading {directory}")
             self._load_plugin_modules(directory)
 
     @staticmethod
@@ -403,7 +417,7 @@ class AppAPI:
             return None
         try:
             content = load_yaml(file_path)
-            log.info(f"manifest.yaml found in {path}, proceeding.")
+            log.info(f"manifest.yaml found in {path}, proceeding")
             return content
         except Exception as e:
             log.info(f"Error reading manifest.yaml for plugin {directory}: {e}")

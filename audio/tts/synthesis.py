@@ -44,13 +44,6 @@ class TTS:
         self.active = ENABLE
 
     def say(self, text, no_audio=False, prosody=94, speaker=SPEAKER, path=f"{PROJECT_DIR}/audio/tts/audio.wav"):
-        if not self.active:
-            log.debug(f"No sound: {text}")
-            return
-
-        if not text:
-            return
-
         if speaker in self.model.speakers:
             self.model.set_speaker(speaker)
 

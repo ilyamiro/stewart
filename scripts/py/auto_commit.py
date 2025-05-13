@@ -55,7 +55,7 @@ def build_telegram_message(commit_info, changes, short=False):
 
 {commit_info['message']}
 
-{changes if not short else "Скрыто из-за длины сообщения"}
+{changes if not short else "Измененные файлы скрыты из-за превышения длины сообщения"}
 
 **[Cсылка на коммит]({REPO_URL}/commit/{commit_info['hash']})**
 
@@ -78,10 +78,18 @@ YouTube: https://youtube.com/@stewart.github
 Мой телеграм: http://t.me/sacrificeit
 """
 
+def load_rus():
+    try:
+        with open(f"{PROJECT_DIR}/commit_ru.txt", "r", encoding="utf-8") as file:
+            return file.read()
+    except FileNotFoundError:
+        return None
+
 
 def get_commit_info():
+    rus_commit = load_rus()
     commit_info = {
-        'message': run_git_command(['git', 'log', '-1', '--pretty=%B']),
+        'message': run_git_command(['git', 'log', '-1', '--pretty=%B']) if not rus_commit else rus_commit,
         'hash': run_git_command(['git', 'log', '-1', '--pretty=%H']),
         'date': run_git_command(['git', 'log', '-1', '--pretty=%ad', '--date=iso']),
         'author': run_git_command(['git', 'log', '-1', '--pretty=%an']),

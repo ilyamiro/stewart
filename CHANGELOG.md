@@ -1,5 +1,11 @@
 # CHANGELOG
 
+#### v1.9.1-1 - Documentation, caching, and utils
+
+- Fixed tts caching from errors in `v1.9.1`
+- Added `import_utils` for language utils management
+- Updated documentation with new `/docs` build: Recolored main page images, finished `Overview.md`, improved dark theme. Added favicon
+
 #### v1.9.1
 
 - Created centralized caching: `api/files/caching.py` with a possibility to write down caching data.

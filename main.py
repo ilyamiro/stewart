@@ -7,8 +7,9 @@ import time
 import sys
 import traceback
 
+import utils
 from logs import logging_setup, set_logging
-from utils import system_setup, admin, clear, format_time_passed
+from utils import system_setup, admin, clear
 
 log = logging.getLogger("main")
 
@@ -19,6 +20,10 @@ if admin():
 from data.constants import PLUGINS_DIR
 from audio.input import STT
 from gui.animation import animation
+from app import App
+from api import app as iapp
+
+utils.import_utils(iapp.lang, globals())
 
 
 def main():
@@ -29,9 +34,6 @@ def main():
 
         system_setup()
         set_logging(True)
-
-        from app import App
-        from api import app as iapp
 
         app = App(iapp)
         config = app.api.get_config()
