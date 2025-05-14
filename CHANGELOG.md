@@ -1,5 +1,10 @@
 # CHANGELOG
 
+#### v1.9.2
+
+- Added some config commands
+- Fixed a bug in plugin `core/media` where `find_song` would not be utilized
+
 #### v1.9.1-1 - Documentation, caching, and utils
 
 - Fixed tts caching from errors in `v1.9.1`
