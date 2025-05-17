@@ -20,14 +20,17 @@ def read_commit():
 
 
 def find_semantic_version(commit: str):
-    pattern = r'(\d+\.\d+\.\d+)'
+    pattern = r'\bv?(\d+\.\d+\.\d+(?:-\d+)?)\b'
     match = re.search(pattern, commit)
     if match:
-        return match.group()
+        return f"v{match.group(1)}"
 
     try:
         with open(VERSION_FILE, "r", encoding="utf-8") as file:
-            return "v" + file.read().strip()
+            version = file.read().strip()
+            if not version.startswith("v"):
+                version = "v" + version
+            return version
     except FileNotFoundError:
         logging.error(f"Version file {VERSION_FILE} not found.")
         return "v0.0.0"

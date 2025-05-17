@@ -41,10 +41,10 @@ def save_speaker_signature(updated_vector, file_path):
 
 
 # Usage
-file_path = "vector.txt"
+file_path = "vector_new.txt"
 
 # Load previous vector (if exists)
-prev_vector = load_previous_vector("vector.txt")
+prev_vector = load_previous_vector("ru.txt")
 new_vector = load_previous_vector("vector_combine.txt")
 # Assuming you have a new x-vector to update
 new_xvector = np.array(new_vector)  # Replace this with the actual new vector

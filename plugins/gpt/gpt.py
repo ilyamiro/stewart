@@ -6,7 +6,10 @@ import webbrowser
 import g4f
 
 from api import app
-from utils import load_yaml, parse_config_answers, get_caller_dir, numbers_to_strings, extract_links, find_link, internet
+from utils import load_yaml, parse_config_answers, get_caller_dir, extract_links, find_link, internet, import_utils
+
+import_utils(app.lang, globals())
+
 
 log = logging.getLogger("GPT Model")
 
@@ -246,6 +249,11 @@ if config["plugins"]["gpt"]["enable"] is True:
 
 app.add_func_for_search(gpt_callback, open_that_context)
 
-app.manager.add(
-    app.Command(["model"], "gpt_callback", synonyms={"model": ["chat"]}, continues=True, tts=True)
-)
+if app.lang == "en":
+    app.manager.add(
+        app.Command(["model"], "gpt_callback", synonyms={"model": ["chat"]}, continues=True, tts=True)
+    )
+elif app.lang == "ru":
+    app.manager.add(
+        app.Command(["модель"], "gpt_callback", synonyms={"модель": ["чат"]}, continues=True, tts=True)
+    )

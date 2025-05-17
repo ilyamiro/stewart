@@ -49,7 +49,12 @@ def mute_volume(**kwargs):
 
 
 def volume(**kwargs):
-    num = find_num(kwargs["context"])[0]
+    results = find_num(kwargs["context"])
+    if results:
+        num = results[0]
+    else:
+        num = None
+
     command = kwargs["command"].parameters["command"]
     current = int(os.popen('amixer get Master | grep -oP "\[\d+%\]"').read().split()[0][1:-2])
     adjustment = num if num else 25
@@ -64,10 +69,10 @@ def volume(**kwargs):
 
 
 def save_song(href, title):
-    log.info(f"Searching for song named {title}")
+    log.info(f"Searching for a song named {title}")
 
     music_folder = app.runtime.mkdir_cache("music")
-    runtime.cleanup("music_folder", max_files=25)
+    app.runtime.cleanup(music_folder, max_files=25)
     download = config["plugins"]["core"]["music-download"]
 
     filename = os.path.join(music_folder, sanitize_filename(title))
@@ -84,7 +89,7 @@ def save_song(href, title):
         'outtmpl': filename,
     }
 
-    if os.path.exists(filename + ".mp3"):
+    if os.path.exists(filename + ".mp3") and download:
         log.info(f"{filename} already exists. Playing the existing file.")
     else:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -116,24 +121,10 @@ def save_song(href, title):
     return url if not download else filename + ".mp3"
 
 
-def find_song(search):
-    result = api_ytmusic.search(search, filter="videos")[0]
-
-    if not result or not result.get("videoId"):
-        result = api_ytmusic.search(search, filter="songs")[0]
-
-    if result and result.get("videoId"):
-        song = "https://music.youtube.com/watch?v=" + result["videoId"]
-        title = f'{result.get("artists")[0]["name"] if result.get("artists") else "Unknown"} - {result["title"]}'
-        return song, title
-
-    return None
-
-
 def play_song(**kwargs):
     search = kwargs["context"]
     log.info(f"Searching music sources for {search}")
-    results = api.search(search, filter="videos")  # Fetch multiple results
+    results = api_ytmusic.search(search, filter="songs")  # Fetch multiple results
 
     for result in results:
         if not result or not result.get("videoId"):
@@ -148,7 +139,7 @@ def play_song(**kwargs):
             notify(
                 title,
                 "Playing a requested song" if app.lang == "en" else "Воспроизведение запрошенной песни",
-                10
+                8
             )
             if song.startswith("https"):
                 app.audio.stream(song)
@@ -208,7 +199,7 @@ def find_open(**kwargs):
 
 
 def stream(**kwargs):
-    link = kwargs["parameters"]["link"]
-    app.play(link)
+    link = kwargs["command"].parameters["link"]
+    app.audio.stream(link)
 
 

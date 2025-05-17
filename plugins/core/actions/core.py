@@ -18,6 +18,13 @@ log = logging.getLogger("module: " + __file__)
 stopwatch_start_time = None
 
 
+def typing(**kwargs) -> None:
+    """
+    Types a specified text from the context
+    """
+    app.keyboard.type(kwargs["context"])
+
+
 def subprocess(**kwargs) -> None:
     """
     Runs a command using python subprocess module
@@ -29,24 +36,31 @@ def subprocess(**kwargs) -> None:
     )
 
 
+def click(**kwargs) -> None:
+    app.mouse.click(app.MouseButton.left)
+
+
 def hotkey(**kwargs) -> None:
     """
-    Executes a hotkey using pyautogui backend
+    Executes a hotkey using xdotool or pynput backend
     """
     key_list = kwargs["command"].parameters["hotkey"]
-    key_objects = []
-    for k in key_list:
-        try:
-            key_obj = getattr(app.Key, k)
-        except AttributeError:
-            key_obj = k
-        key_objects.append(key_obj)
+    if kwargs["command"].parameters.get("xdotool"):
+        run("xdotool", "key", "--delay", "0", "+".join(key_list))
+    else:
+        key_objects = []
+        for k in key_list:
+            try:
+                key_obj = getattr(app.Key, k)
+            except AttributeError:
+                key_obj = k
+            key_objects.append(key_obj)
 
-    for name in key_objects:
-        app.keyboard.press(name)
+        for name in key_objects:
+            app.keyboard.press(name)
 
-    for name in reversed(key_objects):
-        app.keyboard.release(name)
+        for name in reversed(key_objects):
+            app.keyboard.release(name)
 
 
 def key(**kwargs) -> None:
@@ -54,21 +68,15 @@ def key(**kwargs) -> None:
     Presses a key on the keyboard
     """
     name = kwargs["command"].parameters["key"]
-    try:
-        key_obj = getattr(app.Key, name)
-    except AttributeError:
-        key_obj = name
-
-    app.keyboard.press(key_obj)
-    app.keyboard.release(key_obj)
+    run("xdotool", "key", name)
 
 
 def scroll(**kwargs) -> None:
     match kwargs["command"].parameters["way"]:
         case "up":
-            app.mouse.scroll(dy=1, dx=0)
+            app.mouse.scroll(dy=10, dx=0)
         case "down":
-            app.mouse.scroll(dy=-1, dx=0)
+            app.mouse.scroll(dy=-10, dx=0)
 
 
 def browser(**kwargs) -> None:
@@ -122,10 +130,14 @@ def power_reload(**kwargs) -> None:
     Handles system reload based on the specified parameters.
     """
     way = kwargs["command"].parameters["way"]
-    context = kwargs["context"]
 
     if way == "off":
-        num = find_num(context)[0]
+        results = find_num(kwargs["context"])
+        if results:
+            num = results[0]
+        else:
+            num = None
+
         if num:
             minutes = num2words(num, lang="en")
             app.say(app.localeService.translate("core", "core.power_reload.x_minutes", minutes=minutes))
@@ -146,10 +158,14 @@ def power_reload(**kwargs) -> None:
 
 def power_off(**kwargs) -> None:
     way = kwargs["command"].parameters["way"]
-    context = kwargs["context"]
 
     if way == "off":
-        num = find_num(context)[0]
+        results = find_num(kwargs["context"])
+        if results:
+            num = results[0]
+        else:
+            num = None
+
         if num:
             minutes = num2words(num, lang="en")
             app.say(app.localeService.translate("core", "core.power_off.x_minutes", minutes=minutes))
@@ -328,3 +344,11 @@ def stopwatch(**kwargs):
             stopwatch_start_time = None
         else:
             app.say("The stopwatch was not started yet, sir")
+
+
+def backlight(**kwargs):
+    sp.run(
+        ["sudo", "tee", "/sys/class/leds/asus::kbd_backlight/brightness"],
+        input="3\n" if kwargs["command"].parameters["way"] == "on" else "0\n",
+        text=True
+    )

@@ -1,8 +1,12 @@
 import json
 import os.path
+import time
 import logging
 import re
+import random
 import subprocess
+import mpv
+import yaml
 import socket
 import inspect
 import threading
@@ -11,6 +15,8 @@ import typing
 import hashlib
 from importlib import import_module
 from pathlib import Path
+from multiprocessing import Process
+from playsound import playsound
 
 from pynput.keyboard import Controller as Keyboard
 from pynput.keyboard import Key as KeyboardKey
@@ -18,12 +24,9 @@ from pynput.keyboard import Key as KeyboardKey
 from pynput.mouse import Controller as Mouse
 from pynput.mouse import Button as MouseButton
 
-import mpv
-import yaml
-
 from data.constants import PROJECT_DIR, CONFIG_FILE, CONFIG_DIR, PLUGINS_DIR
 from audio.tts import TTS
-from utils import load_yaml, filter_lang_config, load_lang, notify, sanitize_filename
+from utils import load_yaml, filter_lang_config, load_lang, notify, sanitize_filename, parse_config_answers
 
 from .commands.tree import Manager
 from .commands.scenarios import Trigger, Timeline, Scenario
@@ -34,6 +37,7 @@ from .files.caching import Runtime
 log = logging.getLogger("API: app")
 
 __GPT_CALLBACK_TYPE__ = typing.Callable[[str], str]
+
 
 # runtime = Runtime()
 
@@ -223,7 +227,7 @@ class AppAPI:
 
         self.audio = AudioInterface()
 
-        self.Button = MouseButton
+        self.MouseButton = MouseButton
         self.Key = KeyboardKey
 
         self.lang = self.get_lang()
@@ -236,12 +240,21 @@ class AppAPI:
         self.__pre_init_callbacks__: list = []
         self.__post_init_callbacks__: list = []
 
-        self.__no_command_callback__ = self.__blank__
+        self.__no_command_callback__ = self.__no_command_default__
         self.__trigger_callback__ = self.__blank__
 
         self.__actions__: dict = {}
 
         self.scenarios: list = []
+
+    def __no_command_default__(self, context, history):
+        answer = random.choice(self.config[f"answers"]["default"])
+        self.say(parse_config_answers(answer))
+
+        self.eventLogger.record(self.Event(
+            "wake_word_used",
+            {"answer": answer}
+        ))
 
     def say(self, text: str, no_audio=False, prosody=94, speaker=None):
         if not text:
@@ -251,23 +264,32 @@ class AppAPI:
             log.debug(f"No sound: {text}")
             return
 
-        tts_cache: Path = self.runtime.mkdir_cache("tts")
+        def call_tts_in_thread(**kwargs):
+            process = Process(target=self.ttsi.say, kwargs=kwargs)
+            process.start()
 
-        normalized = text.strip().lower()
-        hash_input = str(f"{normalized}|prosody={prosody}|speaker={speaker or ''}")
-        phrase_hash = hashlib.sha256(hash_input.encode()).hexdigest()
-        filename = tts_cache / sanitize_filename(f"{phrase_hash}.wav")
+        if self.config["audio"]["tts"]["enable-caching"]:
+            tts_cache: Path = self.runtime.mkdir_cache("tts")
 
-        cached_hash = self.runtime.read(f"tts:{hash_input}")
-        if cached_hash:
-            cached_file = tts_cache / f"{cached_hash}.wav"
-            if cached_file.exists():
-                self.runtime.write(f"tts:{hash_input}", cached_hash)  # Reinforce mapping
-                self.audio.play(str(cached_file))
-                return
+            normalized = text.strip().lower()
+            hash_input = str(f"{normalized}|prosody={prosody}|speaker={speaker or ''}")
+            phrase_hash = hashlib.sha256(hash_input.encode()).hexdigest()
+            filename = tts_cache / sanitize_filename(f"{phrase_hash}.wav")
 
-        self.ttsi.say(text=text, path=str(filename), no_audio=no_audio, prosody=prosody, speaker=speaker)
-        self.runtime.write(f"tts:{hash_input}", phrase_hash)
+            cached_hash = self.runtime.read(f"tts:{hash_input}")
+            if cached_hash:
+                cached_file = tts_cache / f"{cached_hash}.wav"
+                if cached_file.exists():
+                    log.debug(f"Using cached tts file {cached_file} for text: {text}")
+                    self.runtime.write(f"tts:{hash_input}", cached_hash)  # Reinforce mapping
+                    playsound(str(cached_file), block=False)
+                    return
+
+            call_tts_in_thread(text=text, path=str(filename), no_audio=no_audio, prosody=prosody, speaker=speaker)
+            self.runtime.write(f"tts:{hash_input}", phrase_hash)
+        else:
+            call_tts_in_thread(text=text, path=f"{PROJECT_DIR}/audio/tts/audio.wav", no_audio=no_audio,
+                               prosody=prosody, speaker=speaker)
 
     @staticmethod
     def __blank__(context, history):

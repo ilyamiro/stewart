@@ -49,19 +49,17 @@ class TTS:
 
         text = parse_config_answers(text)
 
-        thread_target = self.synthesizer.say if not no_audio else self.synthesizer.synthesize
-        thread_kwargs = {
+        func = self.synthesizer.say if not no_audio else self.synthesizer.synthesize
+        kwargs = {
             "text": text,
             "path": path,
             "prosody_rate": prosody,
         }
         if no_audio:
-            thread_kwargs["module"] = "playsound"
+            kwargs["module"] = "playsound"
 
-        thread = threading.Thread(target=thread_target, kwargs=thread_kwargs)
-        thread.start()
+        func(**kwargs)
 
         called_from()
 
         log.debug(text)
-

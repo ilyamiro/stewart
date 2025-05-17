@@ -9,7 +9,7 @@ import traceback
 
 import utils
 from logs import logging_setup, set_logging
-from utils import system_setup, admin, clear
+from utils import system_setup, admin, clear, run
 
 log = logging.getLogger("main")
 
@@ -65,9 +65,10 @@ def main():
                 if stt.vad(data):
                     buffer += data
                 else:
-                    if len(buffer) > 12000:
+                    if len(buffer) > 16000:
                         result = stt.check_speaker(buffer)
                         if result:
+                            run("loginctl", "unlock-session")
                             log.debug("Going out of the sleeping mode")
                             elapsed_time = time.time() - last_time
                             if elapsed_time < 600:

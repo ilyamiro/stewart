@@ -88,7 +88,7 @@ class App:
                 log.debug(
                     f"Going into sleep mode due to inactivity for {threshold} seconds (~{threshold / 60} minutes)")
                 self.running = False
-            data = self.stt.stream.read(4000, exception_on_overflow=False)
+            data = self.stt.stream.read(1024, exception_on_overflow=False)
             for word in self.stt.listen(data):
                 self.process_trigger(word)
 
@@ -101,13 +101,7 @@ class App:
         self.scan_scenarios(request)
 
         if (not request or not self.remove_trigger_word(request)) and self.config["settings"]["trigger"]["trigger-mode"] != "disabled" and not self.scenario_active:
-            answer = random.choice(self.config[f"answers"]["default"])
-            self.api.say(parse_config_answers(answer))
-
-            self.api.eventLogger.record(self.api.Event(
-                "wake_word_used",
-                {"answer": answer}
-            ))
+            self.api.__no_command_default__(context=None, history=None)
         else:
             result, execution_time = track_time(lambda: self.api.manager.find(request))
             if result:
@@ -123,10 +117,10 @@ class App:
                     command = result[0]
                     if command[0].responses and not command[0].tts:
                         answer = random.choice(command[0].responses)
+                        self.api.say(answer)
                     elif not command[0].responses and not command[0].tts:
                         answer = random.choice(self.config["answers"]["multi"])
-
-                    self.api.say(answer)
+                        self.api.say(answer)
 
                     self.api.eventLogger.record(self.api.Event(
                         "command_detected",
@@ -142,13 +136,13 @@ class App:
                         answer = random.choice(self.config["answers"]["multi"])
                         self.api.say(answer)
 
-                        self.api.eventLogger.record(self.api.Event(
-                            "command_detected",
-                            {
-                                "user_request": request,
-                                "commands": result_visual,
-                            }
-                        ))
+                    self.api.eventLogger.record(self.api.Event(
+                        "command_detected",
+                        {
+                            "user_request": request,
+                            "commands": result_visual,
+                        }
+                    ))
                     for command in result:
                         self.do(command)
 
@@ -310,11 +304,12 @@ class App:
 
     @staticmethod
     def stop(**kwargs):
+        time.sleep(1)
         os.kill(os.getpid(), signal.SIGKILL)
 
     def sleep(self, **kwargs):
+        run("loginctl", "lock-session")
         self.running = False
-        time.sleep(0.5)
 
     def protocol(self, **kwargs):
         for command in kwargs["command"].parameters["protocol"]:

@@ -161,3 +161,23 @@ def numbers_to_strings(text: str):
         text = text.replace(str(number), word)
 
     return text
+
+
+def normalize(text: str) -> str:
+    """
+    Normalize the input text by converting numbers to words, removing unwanted characters,
+    reducing spaces, and converting to lowercase.
+
+    Parameters:
+    - text (str): The input text to normalize.
+
+    Returns:
+    str: Normalized text.
+    """
+    text = numbers_to_strings(text)
+    text = re.sub(r"[^a-zA-Z.\s]", "", text)
+    text = text.lower()
+    text = re.sub(r"\s+", " ", text)
+    text = text.strip()
+
+    return text

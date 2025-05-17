@@ -5,12 +5,16 @@ from num2words import num2words
 import math
 
 from api import app
-from utils import normalize
+from utils import import_utils
+
+import_utils(app.lang, globals())
 
 
 def time_left(due_time: str) -> str:
+    if not due_time:
+        due_time = datetime.now()
     due = datetime.strptime(due_time, "%Y%m%dT%H%M%SZ")
-    now = datetime.utcnow()
+    now = datetime.now()
 
     time_diff = due - now
     seconds_left = time_diff.total_seconds()
@@ -119,3 +123,4 @@ elif app.lang == "ru":
 scenario = app.Scenario("taskwarrior", main_timeline, max_gap=1)
 
 app.add_scenario(scenario)
+

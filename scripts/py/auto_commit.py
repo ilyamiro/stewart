@@ -71,12 +71,15 @@ def build_edit_message():
 В этом телеграм канале я буду показывать свой прогресс в создании помощника по имени Стюарт. Я буду постить мой прогресс, дневные задачи и прогресс на русском и английском языках
 
 Текущая версия ассистента: **{version}**
+ 
+Сайт проекта и документация: https://ilyamiro.github.io/stewart/
 
 GitHub: https://github.com/ilyamiro/Stewart
 YouTube: https://youtube.com/@stewart.github
 
 Мой телеграм: http://t.me/sacrificeit
 """
+
 
 def load_rus():
     try:

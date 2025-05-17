@@ -25,7 +25,7 @@ LANG_FILE = f"{CONFIG_DIR}/lang.txt"
 PLUGINS_DIR = f"{PROJECT_DIR}/plugins"
 
 # logs
-LOG_DIR = f"~/.cache/stewart/logs/app_log"
+LOG_DIR = f"/home/ilyamiro/.cache/stewart/logs/"
 LOG_FILENAME = os.path.join(LOG_DIR, f"log_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log")
 
 # MY PHONE LOCAL IP

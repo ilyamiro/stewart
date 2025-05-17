@@ -4,6 +4,7 @@ import json
 import threading
 import ast
 import logging
+import time
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +21,7 @@ from api import app
 log = logging.getLogger("stt")
 
 # Configuration and model paths
-config = load_yaml(CONFIG_FILE)
+config = app.config
 SPK_MODEL_PATH = f"{PROJECT_DIR}/audio/input/models/vosk-model-speaker-recognition"
 MODEL_BASE_PATH = f"{PROJECT_DIR}/audio/input/models"
 
@@ -64,7 +65,11 @@ class STT:
         # -------- Model Loading --------
         self.model_path = f"{MODEL_BASE_PATH}/vosk-model-{size}-{lang}"
         self.model = self._load_model()
-        self.spk_model = self._load_speaker_model()
+
+        if config["audio"]["stt"]["speaker-recognition"]:
+            self.spk_model = self._load_speaker_model()
+        else:
+            self.spk_model = None
         self.vad_model = self._load_vad_model()
 
         # -------- Recognizer Initialization --------
@@ -78,7 +83,7 @@ class STT:
         Uses a mono, 16kHz, 16-bit format.
         """
         stream = self.pyaudio_instance.open(
-            rate=16000, channels=1, format=pyaudio.paInt16, input=True, frames_per_buffer=8192
+            rate=16000, channels=1, format=pyaudio.paInt16, input=True, frames_per_buffer=2048
         )
         log.debug("PyAudio stream instance successfully opened for input")
         return stream
@@ -133,24 +138,33 @@ class STT:
         """
         if self.recognizer.AcceptWaveform(data):
             answer = json.loads(self.recognizer.Result())
-            if "spk" in answer:
-                distance = cosine_dist(spk_sig, answer["spk"])
-                if distance < 0.55 and answer["text"]:
-                    log.info(f"Text recognized: {answer['text']}, speaker distance: {distance}")
+
+            if config["audio"]["stt"]["speaker-recognition"]:
+                if "spk" in answer:
+                    distance = cosine_dist(spk_sig, answer["spk"])
+                    if distance < 0.55 and answer["text"]:
+                        log.info(f"Text recognized: {answer['text']}, speaker distance: {distance}")
+                        return answer["text"]
+                    else:
+                        log.info(f"Speaker distance ({distance}) exceeds threshold. Ignoring result.")
+            else:
+                if answer["text"]:
+                    log.info(f"Text recognized: {answer['text']}")
                     return answer["text"]
-                else:
-                    log.info(f"Speaker distance ({distance}) exceeds threshold. Ignoring result.")
 
     def check_speaker(self, data):
-        if self.recognizer.AcceptWaveform(data):
-            answer = json.loads(self.recognizer.Result())
-            if "spk" in answer:
-                distance = cosine_dist(spk_sig, answer["spk"])
-                log.info(f"Speaker recognized with distance: {distance}")
-                if distance < 0.45:
-                    yield True
-                else:
-                    yield False
+        if config["audio"]["stt"]["speaker-recognition"]:
+            if self.recognizer.AcceptWaveform(data):
+                answer = json.loads(self.recognizer.Result())
+                if "spk" in answer:
+                    distance = cosine_dist(spk_sig, answer["spk"])
+                    log.info(f"Speaker recognized with distance: {distance}")
+                    if distance < 0.40:
+                        yield True
+                    else:
+                        yield False
+        else:
+            yield True
 
     # -------- Voice Activity Detection --------
     def vad(self, data):
@@ -173,7 +187,8 @@ class STT:
         Sets speaker model for speaker identification.
         """
         recognizer = KaldiRecognizer(self.model, 16000)
-        recognizer.SetSpkModel(self.spk_model)
+        if config["audio"]["stt"]["speaker-recognition"]:
+            recognizer.SetSpkModel(self.spk_model)
         log.info("New vosk recognizer instance created")
         return recognizer
 

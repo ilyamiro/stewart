@@ -272,6 +272,7 @@ commands:
       hotkey:
       - shift
       - alt
+      pynput: true
     responses:
     - Changed the keyboard layout, sir
     - The keyboard layout was changes, sir
@@ -485,7 +486,7 @@ commands:
     parameters:
       hotkey:
       - alt
-      - f4
+      - F4
     responses:
     - Closed it, sir
     - Closed the window, sir

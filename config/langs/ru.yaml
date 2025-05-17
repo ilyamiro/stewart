@@ -16,7 +16,7 @@ specifications:
     name: Илья
   start-up:
     answers:
-      - Добрый [get_part_of_day], сэр, чем могу помочь?
+      - \[get_part_of_day], сэр, чем могу помочь?
       - \[get_weather_description]. Чем могу помочь?
       - Процесс настройки завершён. Чем могу быть полезен?
       - Я полностью работоспособен и готов к работе, сэр. Что прикажете?
@@ -54,9 +54,8 @@ answers:
     - Чем могу быть полезен, сэр?
     - Готов помочь, сэр.
     - Чего бы вы хотели, сэр?
-    - Ваш приказ, сэр?
     - Жду указаний, сэр.
-    - Да, чем помочь, сэр?
+    - Чем помочь, сэр?
     - Я слушаю, сэр.
     - Как я могу быть полезен, сэр?
   half_day:
@@ -83,21 +82,7 @@ answers:
     - Исполняю ваш запрос, сэр.
     - Уже работаю над этим, сэр.
     - Забочусь об этом, сэр.
-    - Обрабатываю несколько задач, сэр.
-    - Работаю над вашими запросами, сэр.
-    - Начинаю выполнение, сэр.
-    - Запускаю процесс, сэр.
-    - Управляю вашими задачами, сэр.
-    - Я займусь этим, сэр.
-    - Обрабатываю каждую команду, сэр.
     - Беру всё на себя, сэр.
-    - Работаю над всеми задачами, сэр.
-    - Выполняю каждый запрос, сэр.
-    - Обрабатываю по очереди, сэр.
-    - Управляю всеми командами, сэр.
-    - Выполняю по порядку, сэр.
-    - Обрабатываю несколько шагов, сэр.
-    - Работаю с очередью, сэр.
     - Момент, сэр.
     - Одну секунду, сэр.
     - Пожалуйста, подождите, сэр.
@@ -144,6 +129,132 @@ answers:
     - Снова здесь, сэр. Чем помочь?
 commands:
   default:
+    - action: stream
+      command:
+        - включи
+        - расслабляющую
+        - музыку
+      parameters:
+        link: "https://fluxfm.streamabc.net/flx-chillhop-mp3-128-8581707?sABC=6825027p%230%233n1o17opo5312o497o69212842qq72s8%23fgernzf.syhksz.qr&aw_0_1st.playerid=streams.fluxfm.de&amsparams=playerid:streams.fluxfm.de;skey:1747255932"
+      synonyms:
+        включи:
+          - проиграй
+        расслабляющую:
+          - релаксовую
+          - вайбовую
+      equivalents:
+        - - добавь
+          - атмосферы
+        - - добавь
+          - вайба
+      tts: true
+    - action: subprocess
+      command:
+        - поработаем
+        - над
+        - документацией
+      parameters:
+        command: [
+            "kitty",
+            "--start-as=maximized",
+            "bash",
+            "-c",
+            "cd ~/Life/projects/stewart.wiki && tmux new-session -Ad -s stewartwiki -n editor \"nvim\" \\; split-window -h \\; resize-pane -R 20 \\; select-pane -L \\; attach-session -t stewartwiki"
+          ]
+      responses:
+        - Произвел конфигурацию окружения, сэр.
+        - Подготовил ваше рабочее место, сэр
+      synonyms:
+        поработаем:
+          - работа
+        документацией:
+          - документация
+    - action: subprocess
+      command:
+        - очисти
+        - корзину
+      parameters:
+        command:
+          - gio
+          - trash
+          - --empty
+      responses:
+        - Очистил корзину, сэр
+        - Корзина была очищена, сэр
+        - Удалил ненужные файлы, сэр
+        - Удалено, сэр
+    - action: click
+      command:
+        - нажми
+      parameters:
+      synonyms:
+        нажми:
+          - кликни
+          - зажми
+    - action: hotkey
+      command:
+        - второй
+        - экран
+      parameters:
+        hotkey:
+          - super
+          - shift
+          - Right
+        xdotool: true
+      responses:
+        - Переместил, сэр
+        - Окно было передвинуто, сэр
+        - Выполнил, сэр
+        - Перенес окно, сэр
+      equivalents:
+        - - перенеси
+          - рабочий
+          - стол
+      synonyms:
+        экран:
+          - монитор
+          - стол
+          - моник
+          - кран
+    - action: hotkey
+      command:
+        - первый
+        - экран
+      parameters:
+        hotkey:
+          - super
+          - shift
+          - Left
+        xdotool: true
+      responses:
+        - Переместил, сэр
+        - Окно было передвинуто, сэр
+        - Выполнил, сэр
+        - Перенес окно, сэр
+      equivalents:
+        - - перенеси
+          - рабочий
+          - стол
+      synonyms:
+        экран:
+          - монитор
+          - стол
+          - моник
+          - кран
+    - action: key
+      command:
+        - подтверди
+      parameters:
+        key: enter
+      equivalents:
+        - - дальше
+        - - нажми
+          - энтер
+      synonyms:
+        подтверди:
+          - утверди
+        энтер:
+          - ентер
     - action: hotkey
       command:
         - закрой
@@ -330,6 +441,16 @@ commands:
           - машина
     - action: subprocess
       command:
+        - скриншот
+      parameters:
+        command:
+          - gnome-screenshot
+          - "-c"
+      equivalents:
+        - - снимок
+          - экрана
+    - action: subprocess
+      command:
         - заблокируй
         - компьютер
       equivalents:
@@ -415,17 +536,37 @@ commands:
       synonyms:
         открой:
           - запусти
-#    - action: list_usb
-#      command:
-#        - подключенные
-#        - устройства
-#      equivalents:
-#        - - перечисли
-#          - подключения
-#      parameters: null
-#      responses: null
-#      synonyms:
-#      tts: true
+    - action: backlight
+      command:
+        - включи
+        - подсветку
+      parameters:
+        way: "on"
+      responses:
+        - Включил подсветку клавиатуры, сэр.
+        - Подсветка была включена, сэр
+        - Включил, сэр
+      synonyms:
+        подсветку:
+          - подсветка
+        включи:
+          - активируй
+    - action: backlight
+      command:
+        - выключи
+        - подсветку
+      parameters:
+        way: "off"
+      responses:
+        - Выключил сэр.
+        - Подсветка была отключена, сэр
+        - Подсветка была убрана, сэр
+      synonyms:
+        подсветку:
+          - подсветка
+        включи:
+          - деактивируй
+          - отключи
     - action: grammar_restrict
       command:
         - включи
@@ -443,9 +584,9 @@ commands:
         - Ограничения были отключены, сэр
       synonyms:
         включи:
-          активируй
+          - активируй
         режим:
-          речь
+          - речь
     - action: grammar_restrict
       command:
         - выключи
@@ -905,6 +1046,18 @@ commands:
           - систему
           - машину
           - устройство
+    - action: typing
+      command:
+        - напиши
+      continues: true
+      synonyms:
+        напиши:
+          - напечатай
+          - запиши
+      responses:
+        - Записал, сэр
+        - Вписал текст, сэр
+        - Текст был записан, сэр
     - action: update
       command:
         - обнови
@@ -1002,6 +1155,116 @@ commands:
         песню:
           - аудио
           - музыку
+    - action: hotkey
+      command:
+        - удали
+        - слово
+      responses:
+        - Удалил последнее слово, сэр
+        - Удалил, сэр
+        - Конечно, сэр
+      parameters:
+        hotkey:
+          - ctrl
+          - backspace
+      synonyms:
+        удали:
+          - убери
+          - вытри
+        слово:
+          - слова
+    - action: hotkey
+      command:
+        - вставь
+      responses:
+        - Вставил с буфера обмена, сэр
+        - Вставил текст, сэр
+        - Вставил, сэр
+      parameters:
+        hotkey:
+          - ctrl
+          - v
+    - action: hotkey
+      command:
+        - вырежи
+      responses:
+        - Вырезал, сэр
+        - Конечно, сэр
+        - Сделано, сэр
+      parameters:
+        hotkey:
+          - ctrl
+          - x
+    - action: hotkey
+      command:
+        - удали
+        - все
+      responses:
+        - Удалил весь текст, сэр
+        - Удалил, сэр
+        - Конечно, сэр
+      parameters:
+        hotkey:
+          - ctrl
+          - a
+          - backspace
+      synonyms:
+        удали:
+          - вытри
+          - убери
+        все:
+          - текст
+    - action: hotkey
+      command:
+        - выдели
+        - все
+      responses:
+        - Выделил, сэр
+        - Выделено, сэр
+        - Выделил весь текст, сэр
+      parameters:
+        hotkey:
+          - ctrl
+          - a
+      synonyms:
+        выдели:
+          - выбери
+        все:
+          - текст
+    - action: hotkey
+      command:
+        - вырежи
+        - все
+      responses:
+        - Вырезал, сэр
+        - Вырезал все, сэр
+        - Вырезал выбранное, сэр
+      parameters:
+        hotkey:
+          - ctrl
+          - a
+          - x
+      synonyms:
+        вырежи:
+          - вырезай
+        все:
+          - текст
+    - action: hotkey
+      command:
+        - скопируй
+      responses:
+        - Скопировал, сэр
+        - Переместил в буфер обмена, сэр
+        - Конечно, сэр
+      parameters:
+        hotkey:
+          - ctrl
+          - c
+      synonyms:
+        выдели:
+          - выбери
+        все:
+          - текст
     - action: upcoming_events
       command:
         - планы
@@ -1025,6 +1288,7 @@ commands:
       synonyms:
         закрой:
           - скрой
+          - сверни
         окна:
           - окно
         все:
@@ -1035,6 +1299,8 @@ commands:
       equivalents:
         - - режим
           - мониторинга
+        - - спящий
+          - режим
       parameters: null
       responses:
         - Переключаюсь в режим мониторинга, сэр
@@ -1043,6 +1309,7 @@ commands:
       synonyms:
         засыпай:
           - засни
+          - спать
           - гибернация
     - action: suggestion
       command:
@@ -1100,7 +1367,6 @@ commands:
       responses:
         - Инициирую учебный протокол, сэр
         - Подготавливаю рабочее пространство, сэр
-        - Включаю расслабляющую музыку, сэр
       synonyms:
         давай:
           - давайте
@@ -1114,12 +1380,14 @@ commands:
         инстаграм: https://www.instagram.com
         почту: https://gmail.com
         твиттер: https://twitter.com
-        телеграм: https://telegram.org
         ютуб: https://www.youtube.com
+        документацию: https://ilyamiro.github.io/stewart/docs/Overview
       parameter: url
       synonyms:
         инстаграм:
           - инсту
+        ютуб:
+          - ютюб
     - action: subprocess
       command:
         - открой
@@ -1133,6 +1401,9 @@ commands:
           - xdg-open
           - https://lichess.org
         редактор кода:
+          - bash
+          - /home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh
+        среду разработки:
           - bash
           - /home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh
         дискорд:
@@ -1155,8 +1426,6 @@ commands:
         музыку:
           - xdg-open
           - /home/ilyamiro/Музыка
-        заметки:
-          - gedit
         обсидиан:
           - /usr/bin/flatpak
           - run
@@ -1178,9 +1447,12 @@ commands:
           - gnome-control-center
         центр приложений:
           - gnome-software
+        логи:
+          - xdg-open
+          - /home/ilyamiro/.cache/stewart/logs
         игры:
           - steam
-        телеграмм:
+        телеграм:
           - /usr/bin/flatpak
           - run
           - --branch=stable
@@ -1197,8 +1469,18 @@ commands:
         видео:
           - xdg-open
           - /home/ilyamiro/Видео
+        блокнот:
+          - gnome-text-editor
+          - "-i"
       parameter: command
       synonyms:
+        блокнот:
+          - заметки
+          - записки
+        телеграм:
+          - телеграмм
+        открой:
+          - запусти
         загрузки:
           - загрузка
         изображения:
@@ -1213,6 +1495,10 @@ commands:
       command:
         - закрой
       links:
+        блокнот:
+          - sudo
+          - killall
+          - gnome-text-editor
         браузер:
           - sudo
           - killall

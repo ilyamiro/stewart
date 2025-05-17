@@ -1,5 +1,6 @@
 audio:
   stt:
+    speaker-recognition: true
     speech-mode-restricted: false
   tts:
     en:
@@ -8,20 +9,18 @@ audio:
       model: v3_en
       sex: m
     enable: true
+    enable-caching: true
     ru:
       f: xenia
       m: eugene
       model: v4_ru
       sex: m
 lang:
-  available:
-  - en
-  - ru
   name: english
   prefix: en
 plugins:
   core:
-    music-download: false
+    music-download: true
     usb-default:
     - linux foundation
     - webcam
@@ -111,7 +110,7 @@ settings:
   text-mode: false
   trigger:
     trigger-mode: enable
-    trigger-time: 25
+    trigger-time: 30
 start-up:
   sound-enable: true
   sound-path: data/sounds/startup.wav

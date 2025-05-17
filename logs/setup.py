@@ -12,9 +12,9 @@ from data.constants import LOG_DIR, LOG_FILENAME
 def logging_clear_files():
     log_files = sorted(glob.glob(os.path.join(LOG_DIR, "log_*.log")), key=os.path.getmtime)
 
-    # Keep only the last 3 log files
+    # Keep only the last 10 log files
     if len(log_files) > 10:
-        for log_file in log_files[:-3]:
+        for log_file in log_files[:-10]:
             os.remove(log_file)
 
 

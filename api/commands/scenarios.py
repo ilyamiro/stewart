@@ -1,4 +1,5 @@
 import re
+import inspect
 from typing import List, Callable, Union, Optional, Dict
 
 
@@ -97,6 +98,30 @@ class Scenario:
         self.active = False
         self.request_since_last_trigger = 0
 
+    @staticmethod
+    def _call_callback(callback, request):
+        sig = inspect.signature(callback)
+        params = sig.parameters
+
+        accepts_positional = False
+        accepts_kwargs = False
+        no_params = len(params) == 0
+
+        for p in params.values():
+            if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
+                accepts_positional = True
+            if p.kind == inspect.Parameter.VAR_KEYWORD:
+                accepts_kwargs = True
+
+        if accepts_positional:
+            callback(request)
+        elif accepts_kwargs:
+            callback(request=request)
+        elif no_params:
+            callback()
+        else:
+            callback(request)
+
     def check_scenario(self, request: str, request_history) -> bool:
         request_history = [event.details.get("request") for event in request_history]
         if not self.active:
@@ -106,7 +131,7 @@ class Scenario:
                     self.active = True
                     self.request_since_last_trigger = 0
                     if trigger.callback:
-                        trigger.callback(request)
+                        self._call_callback(trigger.callback, request)
                     self.timeline.advance()
                     return True
             return False
@@ -131,7 +156,7 @@ class Scenario:
             if isinstance(trigger, Trigger) and trigger.match(request):
                 self.request_since_last_trigger = 0
                 if trigger.callback:
-                    trigger.callback(request)
+                    self._call_callback(trigger.callback, request)
                 self.timeline.advance()
                 return True
             elif isinstance(trigger, Timeline):

@@ -2,8 +2,11 @@ import random
 import requests
 import sys
 
-from utils import numbers_to_strings, fetch_weather
+from utils import fetch_weather, import_utils
+
 from api import app
+
+import_utils(app.lang, globals())
 
 
 def generate_weather_sentence():
@@ -102,20 +105,20 @@ def generate_weather_sentence():
         if "clear" in weather_description.lower():
             if temperature > 25:
                 templates.append(
-                    f"Ого, сегодня жарко! Ясное небо и {temperature:.1f} градусов. Ощущается как {feels_like:.1f} градусов – лучше взять солнцезащитные очки и крем! Ветер дует со скоростью {wind_speed} метров в секунду, так что прохлады не ждите.")
+                    f"Ого, сегодня жарко! Ясное небо и {temperature:.1f} градусов. Ощущается как {feels_like:.1f} – лучше взять солнцезащитные очки и крем! Ветер дует со скоростью {wind_speed} метров в секунду, так что прохлады не ждите.")
             elif temperature > 15:
                 templates.append(
-                    f"Солнце светит и небо чистое. Приятные {temperature:.1f} градусов, но ощущается как {feels_like:.1f} градусов. Идеальная погода для прогулки, с ветром, мягко дующим на скорости {wind_speed} метров в секунду.")
+                    f"Солнце светит и небо чистое. Приятные {temperature:.1f} градусов, но ощущается как {feels_like:.1f} Идеальная погода для прогулки, с ветром, мягко дующим на скорости {wind_speed} метров в секунду.")
             elif temperature > 5:
                 templates.append(
-                    f"Прекрасное чистое небо, но немного прохладно при {temperature:.1f} градусах. Ощущается как {feels_like:.1f} градусов, так что, возможно, стоит одеться потеплее. Ветер даёт о себе знать на скорости {wind_speed} метров в секунду.")
+                    f"Прекрасное чистое небо, но немного прохладно при {temperature:.1f} градусах. Ощущается как {feels_like:.1f}. так что, возможно, стоит одеться потеплее. Ветер даёт о себе знать на скорости {wind_speed} метров в секунду.")
             else:
                 templates.append(
-                    f"Чистое небо, но на улице холодно! Всего {temperature:.1f} градусов, и ощущается как {feels_like:.1f} градусов. Ветер усиливается до {wind_speed} метров в секунду, так что не забудьте куртку!")
+                    f"Чистое небо, но на улице холодно! Всего {temperature:.1f} градусов, и ощущается как {feels_like:.1f}. Ветер усиливается до {wind_speed} метров в секунду, так что не забудьте куртку!")
         elif "cloud" in weather_description.lower():
             if temperature > 20:
                 templates.append(
-                    f"Облачное небо, но температура приятная – {temperature:.1f} градусов. Ощущается как {feels_like:.1f} градусов, так что вам может потребоваться легкая куртка. Ветер спокойный, {wind_speed} метров в секунду, так что хороший день для прогулки.")
+                    f"Облачное небо, но температура приятная – {temperature:.1f} градусов. Ощущается как {feels_like:.1f}, так что вам может потребоваться легкая куртка. Ветер спокойный, {wind_speed} метров в секунду, так что хороший день для прогулки.")
             elif temperature > 10:
                 templates.append(
                     f"Сегодня пасмурно, {temperature:.1f} градусов, но ощущается как {feels_like:.1f} градусов. Облака не пропускают солнце, а ветер дует со скоростью {wind_speed} метров в секунду – ничего слишком сильного.")
@@ -180,7 +183,7 @@ def generate_weather_sentence():
 
 
 def say_weather(**kwargs):
-    weather_sentence = numbers_to_strings(generate_weather_sentence(), app.lang)
+    weather_sentence = numbers_to_strings(generate_weather_sentence())
     app.say(weather_sentence)
 
 
@@ -224,14 +227,14 @@ def temperature(**kwargs):
     elif app.lang == "ru":
         responses = {
             "freezing": [
-                f"Бррр! {temperature} градусов. Холоднее, чем пальцы снеговика!",
+                f"Сейчас {temperature} градусов. Холоднее, чем пальцы снеговика!",
                 f"Сейчас {temperature} градусов. Лёд, детка—оставайтесь в тепле!",
                 f"При {temperature} градусах официально начинается сезон обморожений. Одевайтесь теплее!"
             ],
             "cold": [
                 f"Сейчас {temperature} градусов. Определённо погода для свитера!",
                 f"При {temperature} градусах на улице вам может понадобиться пальто—или два!",
-                f"Брр! {temperature} градусов. Тёплые носки сегодня необходимы."
+                f"Сейчас {temperature} градусов. Тёплые носки сегодня необходимы."
             ],
             "cool": [
                 f"Сейчас {temperature} градусов. Освежающий вид прохлады.",
@@ -249,7 +252,7 @@ def temperature(**kwargs):
                 f"Температура {temperature} градусов. Солнечное наслаждение!"
             ],
             "hot": [
-                f"Фух! {temperature} градусов. Как ходить по солнцу—оставайтесь в прохладе!",
+                f"Фух! {temperature} градусов. Прям как ходить по солнцу! Оставайтесь в прохладе!",
                 f"При {temperature} градусах жарче, чем ваше любимое острое блюдо!",
                 f"При {temperature} градусах лето в полном разгаре—не забудьте солнцезащитный крем!"
             ],

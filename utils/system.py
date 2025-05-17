@@ -16,6 +16,7 @@ from copy import deepcopy
 
 import requests
 import yaml
+import urllib.parse
 import g4f
 from bs4 import BeautifulSoup
 import lxml
@@ -327,31 +328,6 @@ def remove_non_letters(input_string):
     return cleaned_string
 
 
-def normalize(text: str) -> str:
-    """
-    Normalize the input text by converting numbers to words, removing unwanted characters,
-    reducing spaces, and converting to lowercase.
-
-    Parameters:
-    - text (str): The input text to normalize.
-
-    Returns:
-    str: Normalized text.
-    """
-    # Convert numbers to words
-    text = numbers_to_strings(text)
-
-    text = re.sub(r"[^a-zA-Z.\s]", "", text)
-
-    text = text.lower()
-
-    text = re.sub(r"\s+", " ", text)
-
-    text = text.strip()
-
-    return text
-
-
 def kelvin_to_c(k):
     """
     Convert the temperature from Kelvin to Celsius.
@@ -452,20 +428,20 @@ def track_time(func, *args, **kwargs):
 
 
 def find_link(search):
-    url = "https://www.google.com/search?"
+    url = "https://html.duckduckgo.com/html/"
     params = {'q': search}
 
-    def fetch_first_link(a, symbol):
-        params['q'] = params['q'].format(symbol)
-        res = a.get(url, params=params, headers={
+    def fetch_first_link(session):
+        res = session.post(url, data=params, headers={
             'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36'
         })
         soup = BeautifulSoup(res.text, "lxml")
-        link = soup.select_one("a:has(h3)")
-        return link['href'] if link else "https://google.com/"
+        link = soup.select_one('.result__a')
+        return link['href'] if link else "https://duckduckgo.com/"
 
     with requests.Session() as s:
-        webbrowser.open(fetch_first_link(s, search), autoraise=True)
+        fetched = fetch_first_link(s)
+        webbrowser.open(fetched, autoraise=True)
 
 
 def fetch_weather():

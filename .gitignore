@@ -24,7 +24,7 @@ test.py
 test
 test2.py
 commit.txt
-commit_rus.txt
+commit_ru.txt
 do.txt
 scripts/py/post_commit.session
 

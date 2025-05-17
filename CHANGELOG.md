@@ -3,6 +3,21 @@
 #### v1.9.2
 
 - Added some config commands
+- Fixed a bug in plugin `core/media` where `find_song` would not be used.
+- Fixed bugs with importing utils using the method introduced in `1.9.1`
+- Improved custom `taskwarrior` and `weather` plugins
+- Added the commands used in tik-tok videos to `custom/actions/tiktok.py`
+- Fixed utils bugs and moved language-dependent utils to utilize them properly
+- Improved `animation` gui to display particles and look better overall
+- Added `audio.stt.speaker-recognition: bool` config parameter for enabling speaker vectorization and recognition
+- Added `audio.tts.enable_caching: bool` config parameter for enabling caching of already generated phrases to avoid regenerating them.
+- Improved passing down the user request to the active trigger callback in api.scenarios
+- Made default pyaudio buffer and data chunk sizes smaller to make processing faster.
+- Documentation improvement
+
+#### v1.9.2
+
+- Added some config commands
 - Fixed a bug in plugin `core/media` where `find_song` would not be utilized
 
 #### v1.9.2
