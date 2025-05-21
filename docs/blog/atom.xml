@@ -2,18 +2,76 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://ilyamiro.github.io/stewart/blog</id>
     <title>Stewart Blog</title>
-    <updated>2025-05-14T00:00:00.000Z</updated>
+    <updated>2025-05-21T00:00:00.000Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://ilyamiro.github.io/stewart/blog"/>
     <subtitle>Stewart Blog</subtitle>
     <icon>https://ilyamiro.github.io/stewart/img/stewart.png</icon>
     <entry>
+        <title type="html"><![CDATA[Commit - v1.9.2-1]]></title>
+        <id>https://ilyamiro.github.io/stewart/blog/commit-v1-9-2-1</id>
+        <link href="https://ilyamiro.github.io/stewart/blog/commit-v1-9-2-1"/>
+        <updated>2025-05-21T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[New commit]]></summary>
+        <content type="html"><![CDATA[<p><strong>New commit</strong>
+Version: <strong>v1.9.2-1</strong></p>
+<p>Repository: <strong>stewart</strong>
+Branch: <strong>development</strong></p>
+<p>Date: <strong>2025-05-21 12:51:20 +0200</strong></p>
+<p>v1.9.2-1</p>
+<ul>
+<li>Fixed the path to locales being misinterpreted</li>
+<li>Fixed the manifest to other plugins having the same name as <code>core</code> plugin</li>
+<li>Added comments here and there</li>
+<li>Added logging to <code>api/locales/service.py</code></li>
+<li>Added <code>data/grammar</code> (made it public by removing from <code>.gitignore</code>. It is used to limit the grammar of a voice recognition system to speed it up.</li>
+<li>Updated documentation and commits are now posted in blogs aswell.</li>
+<li>Modified <code>auto_commit.py</code> to add the commit message into <code>documentation/blog</code></li>
+<li>Other minor fixes</li>
+</ul>
+<p>• .gitignore | 4 +-
+• CHANGELOG.md | 56 +-
+• README.md | 2 +-
+• api/app.py | 4 +-
+• api/commands/scenarios.py | 41 +-
+• api/commands/tree.py | 6 +-
+• api/locales/service.py | 18 +-
+• app/app.py | 4 +-
+• audio/tts/synthesis.py | 7 +-
+• config/config.yaml | 2 +-
+• config/langs/ru.yaml | 4 +-
+• data/grammar/grammar-en.txt | 1 +
+• data/grammar/grammar-ru.txt | 1 +
+• plugins/core/actions/core.py | 42 +-
+• plugins/core/locales/en.yaml | 44 +-
+• plugins/core/locales/ru.yaml | 60 +
+• plugins/custom/actions/black.mp4 | Bin 59803 -&gt; 0 bytes
+• plugins/custom/actions/holdme.mp3 | Bin 2875988 -&gt; 0 bytes
+• plugins/custom/actions/tiktok.py | 57 +-
+• plugins/custom/actions/ultra.mp3 | Bin 6620804 -&gt; 0 bytes
+• plugins/custom/manifest.yaml | 2 +-
+• plugins/gpt/gpt.py | 16 +-
+• plugins/gpt/manifest.yaml | 8 +-
+• requirements.txt | 3 +-
+• scripts/py/auto_commit.py | 61 +-
+• utils/system.py | 13 +-
+• version.txt | 2 +-
+• 27 files changed, 353 insertions(+), 105 deletions(-)</p>
+<p><strong><a href="https://github.com/ilyamiro/stewart/commit/b5862e60e91dcbc19b92bc5ac1feb066474c1e71" target="_blank" rel="noopener noreferrer">Link to a commit</a></strong></p>
+<p>Follow <strong>Stewart</strong> on telegram: <a href="https://t.me/stewart_github" target="_blank" rel="noopener noreferrer">https://t.me/stewart_github</a></p>]]></content>
+        <author>
+            <name>Ilya Miro</name>
+            <uri>https://github.com/ilyamiro</uri>
+        </author>
+        <category label="commit" term="commit"/>
+    </entry>
+    <entry>
         <title type="html"><![CDATA[Welcome!]]></title>
         <id>https://ilyamiro.github.io/stewart/blog/welcome-post</id>
         <link href="https://ilyamiro.github.io/stewart/blog/welcome-post"/>
         <updated>2025-05-14T00:00:00.000Z</updated>
-        <summary type="html"><![CDATA[Welcome! This is a first blog post. Here i will post all the updates and the news about the project, aswell asthe updates. Follow Stewart on telegram//t.me/stewart_github]]></summary>
-        <content type="html"><![CDATA[<p>Welcome! This is a first blog post. Here i will post all the updates and the news about the project, aswell asthe updates. Follow <strong>Stewart</strong> on telegram: <a href="https://t.me/stewart_github" target="_blank" rel="noopener noreferrer">https://t.me/stewart_github</a></p>]]></content>
+        <summary type="html"><![CDATA[Welcome! This is a first blog post. Here i will post all the updates and the news about the project, aswell as the updates. Follow Stewart on telegram//t.me/stewart_github]]></summary>
+        <content type="html"><![CDATA[<p>Welcome! This is a first blog post. Here i will post all the updates and the news about the project, aswell as the updates. Follow <strong>Stewart</strong> on telegram: <a href="https://t.me/stewart_github" target="_blank" rel="noopener noreferrer">https://t.me/stewart_github</a></p>]]></content>
         <author>
             <name>Ilya Miro</name>
             <uri>https://github.com/ilyamiro</uri>

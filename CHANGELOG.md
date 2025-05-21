@@ -11,39 +11,6 @@
 - Modified `auto_commit.py` to add the commit message into `documentation/blog`
 - Other minor fixes
 
-#### v1.9.2-1
-
-- Fixed the path to locales being misinterpreted
-- Fixed the manifest to other plugins having the same name as `core` plugin
-- Added comments here and there
-- Added logging to `api/locales/service.py`
-- Added `data/grammar` (made it public by removing from `.gitignore`. It is used to limit the grammar of a voice recognition system to speed it up.
-- Updated documentation and commits are now posted in blogs aswell.
-- Modified `auto_commit.py` to add the commit message into `documentation/blog`
-- Other minor fixes
-
-#### v1.9.2-1
-
-- Fixed the path to locales being misinterpreted
-- Fixed the manifest to other plugins having the same name as `core` plugin
-- Added comments here and there
-- Added logging to `api/locales/service.py`
-- Added `data/grammar` (made it public by removing from `.gitignore`. It is used to limit the grammar of a voice recognition system to speed it up.
-- Updated documentation and commits are now posted in blogs aswell.
-- Modified `auto_commit.py` to add the commit message into `documentation/blog`
-- Other minor fixes
-
-#### v1.9.2-1
-
-- Fixed the path to locales being misinterpreted
-- Fixed the manifest to other plugins having the same name as `core` plugin
-- Added comments here and there
-- Added logging to `api/locales/service.py`
-- Added `data/grammar` (made it public by removing from `.gitignore`. It is used to limit the grammar of a voice recognition system to speed it up.
-- Updated documentation and commits are now posted in blogs aswell.
-- Modified `auto_commit.py` to add the commit message into `documentation/blog`
-- Other minor fixes
-
 #### v1.9.2
 
 - Added some config commands

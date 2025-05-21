@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkstewart=self.webpackChunkstewart||[]).push([[472],{5513:e=>{e.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"Welcome!","permalink":"/stewart/blog/welcome-post","unlisted":false,"date":"2025-05-14T00:00:00.000Z"}]}')}}]);
