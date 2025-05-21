@@ -1,12 +1,13 @@
+import os
 from pathlib import Path
 import subprocess
 import re
 import logging
+from datetime import date
 from pyrogram import Client
+import shutil
 import pyrogram.errors
 
-# Removed temporarily
-# from translate_commit import process
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -53,7 +54,7 @@ def build_telegram_message(commit_info, changes, short=False):
 Автор: **{commit_info['author']}**
 Дата: **{commit_info['date']}**
 
-{commit_info['message']}
+{commit_info['message'][1]}
 
 {changes if not short else "Измененные файлы скрыты из-за превышения длины сообщения"}
 
@@ -74,7 +75,7 @@ def build_edit_message():
  
 Сайт проекта и документация: https://ilyamiro.github.io/stewart/
 
-GitHub: https://github.com/ilyamiro/Stewart
+GitHub: https://github.com/ilyamiro/Stewart/tree/development
 YouTube: https://youtube.com/@stewart.github
 
 Мой телеграм: http://t.me/sacrificeit
@@ -92,7 +93,7 @@ def load_rus():
 def get_commit_info():
     rus_commit = load_rus()
     commit_info = {
-        'message': run_git_command(['git', 'log', '-1', '--pretty=%B']) if not rus_commit else rus_commit,
+        'message': [run_git_command(['git', 'log', '-1', '--pretty=%B']), rus_commit],
         'hash': run_git_command(['git', 'log', '-1', '--pretty=%H']),
         'date': run_git_command(['git', 'log', '-1', '--pretty=%ad', '--date=iso']),
         'author': run_git_command(['git', 'log', '-1', '--pretty=%an']),
@@ -109,15 +110,63 @@ def get_commit_changes(commit_hash):
     return ""
 
 
+def construct_to_blog(commit_info, changes):
+    return f"""---
+slug: commit-{version.replace('.', '-')}
+title: Commit - {version}
+authors: [ilyamiro]
+tags: [commit]    
+---
+
+**New commit** 
+Version: **{version}**
+    
+Repository: **{commit_info["repository"]}**
+Branch: **{commit_info['branch']}**
+
+Date: **{commit_info['date']}**
+
+{commit_info['message'][0]}
+
+{changes}
+
+**[Link to a commit]({REPO_URL}/commit/{commit_info['hash']})**
+
+Follow **Stewart** on telegram: https://t.me/stewart_github
+"""
+
+
 def main():
     commit_info = get_commit_info()
-    if not commit_info['message'].startswith("v"):
+    if not commit_info['message'][0].startswith("v"):
         logging.info("No new version commit detected, exiting.")
         return
 
     changes = get_commit_changes(commit_info['hash'])
 
     telegram_message = build_telegram_message(commit_info, changes)
+    blog_message = construct_to_blog(commit_info, changes)
+
+    today_str = date.today().strftime("%Y-%m-%d")
+    filename = f"{today_str}-commit-{version.replace('.', '-')}.md"
+    wiki_dir = "/home/ilyamiro/Life/projects/stewart.wiki/"
+
+    file_path = os.path.join(f"{wiki_dir}/blog", filename)
+    with open(file_path, "w") as f:
+        f.write(blog_message)
+
+    subprocess.run(["npm", "run", "build"], cwd=wiki_dir, check=True)
+
+    # Step 4: Remove existing docs directory
+    if os.path.exists(f"{PROJECT_DIR}/docs"):
+        shutil.rmtree(f"{PROJECT_DIR}/docs")
+
+    shutil.copytree(f"{wiki_dir}/build", f"{PROJECT_DIR}/docs")
+
+    run_git_command(["git", "add", f"{PROJECT_DIR}/docs/*"])
+
+    logging.info("Blog post added, builds complete, docs updated.")
+
     logging.info("Posting message to Telegram")
 
     app = Client("post_commit")

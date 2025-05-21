@@ -27,9 +27,11 @@ commit.txt
 commit_ru.txt
 do.txt
 scripts/py/post_commit.session
+plugins/custom/actions/tiktok.py
+plugins/custom/actions/doom.mp3
 
 # Data Files
-data/grammar/
+#data/grammar/
 
 # Development Files
 dev/voice_activity.py

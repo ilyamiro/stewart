@@ -251,6 +251,8 @@ class App:
         Start the action thread
         """
         action = self.find_action(command[0].action)
+        if not action:
+            return
         thread = threading.Thread(target=action,
                                   kwargs={"command": command[0], "context": command[1], "history": self.api.eventLogger.history},
                                   daemon=True
@@ -266,7 +268,7 @@ class App:
             return self.api.__actions__.get(name)
         else:
             log.info(f"Action not found: {name}")
-            return self.api.__blank__
+            return None
 
     def grammar_recognition_restricted_create(self):
         """

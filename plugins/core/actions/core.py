@@ -198,20 +198,22 @@ def update(**kwargs) -> None:
 
 
 def tell_time(**kwargs):
+    s = time.time()
+
     now = datetime.now()
     hour = now.hour
     minute = now.minute
 
-    hour_words = num2words(hour, to='cardinal')
-    minute_words = num2words(minute, to='cardinal')
+    hour_words = num2words(hour, to='cardinal', lang=app.localeService.translate("core", "core.tell_time.num2words_lang"))
+    minute_words = num2words(minute, to='cardinal', lang=app.localeService.translate("core", "core.tell_time.num2words_lang"))
 
     phrases = [
-        f"It's {hour_words} {minute_words} at the moment, sir.",
-        f"It's {hour_words} hours and {minute_words} minutes now.",
-        f"The time is currently {hour_words} {minute_words}.",
-        f"Right now, it's {hour_words} {minute_words}.",
-        f"It's exactly {hour_words} {minute_words}.",
-        f"As of now, it's {hour_words} {minute_words}."
+        app.localeService.translate("core", "core.tell_time.variant_1", hour_words=hour_words, minute_words=minute_words),
+        app.localeService.translate("core", "core.tell_time.variant_2", hour_words=hour_words, minute_words=minute_words),
+        app.localeService.translate("core", "core.tell_time.variant_3", hour_words=hour_words, minute_words=minute_words),
+        app.localeService.translate("core", "core.tell_time.variant_4", hour_words=hour_words, minute_words=minute_words),
+        app.localeService.translate("core", "core.tell_time.variant_5", hour_words=hour_words, minute_words=minute_words),
+        app.localeService.translate("core", "core.tell_time.variant_6", hour_words=hour_words, minute_words=minute_words)
     ]
 
     app.say(random.choice(phrases))
@@ -219,15 +221,15 @@ def tell_time(**kwargs):
 
 def tell_day(**kwargs):
     now = datetime.now()
-    day_of_week = now.strftime("%A")
+    day_of_week = app.localeService.translate("core", f"core.tell_day.mapping.{now.strftime('%A')}")
 
     phrases = [
-        f"Today is {day_of_week}, sir.",
-        f"It's {day_of_week} today.",
-        f"Right now, it's {day_of_week}.",
-        f"Happy {day_of_week}! What can I do for you?",
-        f"As of now, it's {day_of_week}.",
-        f"It's a lovely {day_of_week} today, isn't it?"
+        app.localeService.translate("core", "core.tell_day.variant_1", day_of_week=day_of_week),
+        app.localeService.translate("core", "core.tell_day.variant_2", day_of_week=day_of_week),
+        app.localeService.translate("core", "core.tell_day.variant_3", day_of_week=day_of_week),
+        app.localeService.translate("core", "core.tell_day.variant_4", day_of_week=day_of_week),
+        app.localeService.translate("core", "core.tell_day.variant_5", day_of_week=day_of_week),
+        app.localeService.translate("core", "core.tell_day.variant_6", day_of_week=day_of_week)
     ]
 
     app.say(random.choice(phrases))
@@ -235,13 +237,13 @@ def tell_day(**kwargs):
 
 def tell_month(**kwargs):
     now = datetime.now()
-    month = now.strftime("%B")
+    month = app.localeService.translate("core", f"core.tell_month.mapping.{now.strftime('%B')}")
 
     phrases = [
-        f"It's {month} right now, sir.",
-        f"The current month is {month}.",
-        f"As of now, it's {month}.",
-        f"It's {month} at the moment.",
+        app.localeService.translate("core", "core.tell_month.variant_1", month=month),
+        app.localeService.translate("core", "core.tell_month.variant_2", month=month),
+        app.localeService.translate("core", "core.tell_month.variant_3", month=month),
+        app.localeService.translate("core", "core.tell_month.variant_4", month=month),
     ]
 
     app.say(random.choice(phrases))

@@ -30,7 +30,7 @@ from data.constants import *
 
 log = logging.getLogger("utils")
 
-nlp = spacy.load("en_core_web_sm")
+# nlp = spacy.load("en_core_web_sm")
 
 
 # --------------- Inspection Functions ---------------
@@ -207,9 +207,8 @@ def system_setup():
     current = platform.system()
 
     if current == "Linux":
-        run("jack_control", "start")
         run("xhost", "+local:$USER")
-        set_caching_directory()
+        # set_caching_directory()
 
 
 def cleanup(directory, limit: int):
@@ -313,14 +312,6 @@ def extract_links(text):
     all_links = [link[1] for link in markdown_links] + normal_links
 
     return all_links
-
-
-def extract_entities(text):
-    doc = nlp(text)
-
-    entities = [ent.text for ent in doc.ents]
-
-    return entities
 
 
 def remove_non_letters(input_string):

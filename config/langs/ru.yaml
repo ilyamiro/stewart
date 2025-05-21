@@ -1283,7 +1283,7 @@ commands:
           - всё
       parameters:
         hotkey:
-          - win
+          - cmd
           - d
       synonyms:
         закрой:

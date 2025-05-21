@@ -29,7 +29,7 @@ plugins:
   gpt:
     context: null
     enable: false
-    model: gpt_4o_mini
+    model: gemini-1.5-flash
     provider: null
     start-prompt:
       en:

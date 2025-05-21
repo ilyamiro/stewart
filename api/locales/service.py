@@ -3,6 +3,10 @@ from typing import List
 import random
 import yaml
 
+import logging
+
+log = logging.getLogger("locale")
+
 
 class Locale:
     def __init__(self, lang, path):
@@ -15,8 +19,12 @@ class Locale:
         try:
             with open(self.path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
-                self.translations = self.flatten(data)
-        except Exception:
+                if data:
+                    self.translations = self.flatten(data)
+                else:
+                    self.translations = {}
+        except Exception as e:
+            log.debug(f"Failed to load a locale from {self.path}: {e}")
             self.translations = {}
 
     def flatten(self, d, parent_key='', sep='.'):
@@ -54,7 +62,6 @@ class LocaleService:
             return f"[{plugin}.{key}]"
 
         raw = locale.get(key)
-        print(raw)
         if raw is None:
             return f"[{plugin}.{key}]"
 
@@ -65,11 +72,6 @@ class LocaleService:
             return raw.format(**kwargs)
         except Exception:
             return raw
-
-
-
-
-
 
 
 

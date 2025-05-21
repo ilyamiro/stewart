@@ -91,7 +91,7 @@ start_prompt_ru = """ТЕПЕРЬ ВЫ ИСПОЛНЯЕТЕ РОЛЬ Стюар�
 app.update_config({
     "gpt": {
         "enable": False,
-        "model": "gpt_4o_mini",
+        "model": "gemini-1.5-flash",
         "provider": None,
         "context": None,
         "start-prompt": {
@@ -124,12 +124,12 @@ config = app.get_config()
 gpt_history = []
 gpt_client = g4f.client.Client()
 
-try:
-    gpt_model = getattr(g4f.models, config["plugins"]["gpt"]["model"])
-except (AttributeError, TypeError) as e:
-    log.exception(f"There was an error setting a gpt model, {e}")
-    gpt_model = "default"
-
+# try:
+#     gpt_model = getattr(g4f.models, config["plugins"]["gpt"]["model"])
+# except (AttributeError, TypeError) as e:
+#     log.exception(f"There was an error setting a gpt model, {e}")
+#     gpt_model = "default"
+gpt_model = config["plugins"]["gpt"]["model"]
 try:
     gpt_provider = getattr(g4f.Provider, config["plugins"]["gpt"]["provider"]) if config["plugins"]["gpt"][
         "provider"] else None

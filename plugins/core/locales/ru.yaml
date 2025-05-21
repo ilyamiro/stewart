@@ -1,0 +1,60 @@
+core:
+  list_usb:
+    total_connected: "Всего подключено устройств: {count}. Это {device_list}."
+    no_connected: "Никакие устройства не подключены, сэр."
+  power_reload:
+    x_minutes: "Компьютер будет перезагружен через {minutes} минут, сэр."
+    one_minute: "Система будет перезагружена через минуту, сэр."
+    now: "Немедленно перезагружаю систему, сэр."
+    cancel: "Перезагрузка системы была отменена."
+  power_off:
+    x_minutes: "Система будет выключена через {minutes} минут, сэр."
+    one_minute: "Система будет выключена через минуту, сэр."
+    now: "Немедленно выключаю систему, сэр."
+    cancel: "Выключение было отменено."
+  update:
+    no_update: "Все пакеты обновлены, сэр."
+    update_before: "Обновляю {number_of_lines} пакетов, сэр."
+    update_after: "Система была успешно обновлена."
+  tell_time:
+    num2words_lang: "ru"
+    variant_1: "Сейчас {hour_words} {minute_words}, сэр."
+    variant_2: "Сейчас {hour_words} часов и {minute_words} минут, сэр."
+    variant_3: "В данный момент {hour_words} {minute_words}."
+    variant_4: "Прямо сейчас {hour_words} {minute_words}."
+    variant_5: "Ровно {hour_words} {minute_words}."
+    variant_6: "На данный момент {hour_words} {minute_words}."
+  tell_day:
+    mapping:
+      Monday: Понедельник
+      Tuesday: Вторник
+      Wednesday: Среда
+      Thursday: Четверг
+      Friday: Пятница
+      Saturday: Суббота
+      Sunday: Воскресенье
+    variant_1: "Сегодня {day_of_week}, сэр."
+    variant_2: "Сегодня {day_of_week}."
+    variant_3: "Прямо сейчас {day_of_week}."
+    variant_4: "Счастливого {day_of_week}!"
+    variant_5: "На данный момент {day_of_week}."
+    variant_6: "Сегодня чудесный {day_of_week}, не так ли?"
+  tell_month:
+    mapping:
+      January: Январь
+      February: Февраль
+      March: Март
+      April: Апрель
+      May: Май
+      June: Июнь
+      July: Июль
+      August: Август
+      September: Сентябрь
+      October: Октябрь
+      November: Ноябрь
+      December: Декабрь
+    variant_1: "Сейчас {month}, сэр."
+    variant_2: "Текущий месяц — {month}."
+    variant_3: "На данный момент {month}."
+    variant_4: "Сейчас {month}."
+

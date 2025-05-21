@@ -1,9 +1,14 @@
 import re
 import inspect
+
 from typing import List, Callable, Union, Optional, Dict
 
 
 class Trigger:
+    """
+    Trigger class, reacts to keywords and executes a callback inside of a timeline.
+    Can and should be used together with commands.
+    """
     def __init__(self,
                  keywords: List[str],
                  callback: Optional[Callable] = None,
@@ -19,6 +24,9 @@ class Trigger:
         pass
 
     def _generate_keyword_combinations(self) -> List[List[str]]:
+        """
+        Generates all possible keyword combinations a trigger could react to
+        """
         def generate_combinations(current_keywords: List[str], keyword_index: int) -> List[List[str]]:
             if keyword_index >= len(current_keywords):
                 return [current_keywords.copy()]
@@ -45,6 +53,9 @@ class Trigger:
         return all_combinations
 
     def match(self, request: str) -> bool:
+        """
+        Checks whether the trigger keywords match the user request
+        """
         request_lower = request.lower()
 
         for keyword_set in self.keyword_combinations:
@@ -55,6 +66,9 @@ class Trigger:
 
     @staticmethod
     def _match_keywords(request_lower: str, keywords: List[str]) -> bool:
+        """
+        Checks matches of all the possible keyword combinations with a request
+        """
         pattern = r'\b({0})\b'.format('|'.join(re.escape(kw) for kw in keywords))
         matches = re.findall(pattern, request_lower)
         if len(matches) == len(keywords):
@@ -70,22 +84,30 @@ class Timeline:
         self.current_trigger_index = 0
 
     def is_complete(self) -> bool:
-        """Check if we've reached the end of the timeline"""
+        """
+        Check if we've reached the end of the timeline
+        """
         return self.current_group_index >= len(self.timeline_structure)
 
     def get_current_triggers(self):
-        """Get current triggers or return empty list if timeline is complete"""
+        """
+        Get current triggers or return empty list if timeline is complete
+        """
         if self.is_complete():
             return []
         return self.timeline_structure[self.current_group_index]
 
     def advance(self):
-        """Advance the timeline, but don't exceed its length"""
+        """
+        Advance the timeline, but don't exceed its length
+        """
         self.current_group_index += 1
         self.current_trigger_index = 0
 
     def reset(self):
-        """Reset timeline to initial state"""
+        """
+        Reset timeline to initial state
+        """
         self.current_group_index = 0
         self.current_trigger_index = 0
 
@@ -100,6 +122,9 @@ class Scenario:
 
     @staticmethod
     def _call_callback(callback, request):
+        """
+        Checks what arguments does the active trigger callback accept
+        """
         sig = inspect.signature(callback)
         params = sig.parameters
 
@@ -123,6 +148,9 @@ class Scenario:
             callback(request)
 
     def check_scenario(self, request: str, request_history) -> bool:
+        """
+        Checks whether the user request activates the scenario
+        """
         request_history = [event.details.get("request") for event in request_history]
         if not self.active:
             start_triggers = self.timeline.get_current_triggers()
@@ -136,7 +164,6 @@ class Scenario:
                     return True
             return False
 
-        # Check if timeline is complete
         if self.timeline.is_complete():
             self.active = False
             self.timeline.reset()
@@ -145,13 +172,11 @@ class Scenario:
         current_triggers = self.timeline.get_current_triggers()
         self.request_since_last_trigger += 1
 
-        # Handle max gap exceeded
         if self.request_since_last_trigger > self.max_gap:
             self.active = False
             self.timeline.reset()
             return False
 
-        # Process current triggers
         for trigger in current_triggers:
             if isinstance(trigger, Trigger) and trigger.match(request):
                 self.request_since_last_trigger = 0

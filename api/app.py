@@ -423,8 +423,8 @@ class AppAPI:
         if locales:
             loaded_locales = []
             for lang, path in locales.items():
-                locale = self.Locale(lang, path)
-                locale.load()
+                locale = self.Locale(lang, f"{directory}/{path}")
+                # locale.load()
                 loaded_locales.append(locale)
             self.localeService.add(name, loaded_locales)
 

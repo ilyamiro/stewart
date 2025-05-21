@@ -196,15 +196,11 @@ class Manager:
 
     @staticmethod
     def is_constructed(keywords, constructed, synonyms):
-        # if not constructed:
-        #     return False
-
         if len(constructed) > len(keywords):
-            return False  # sub_list can't be a subset if it's longer than main_list
+            return False
 
         for i, sub_item in enumerate(constructed):
             main_item = keywords[i]
-            # Check for a direct match or a synonym match
             if sub_item != main_item and sub_item not in synonyms.get(main_item, []):
                 return False
 

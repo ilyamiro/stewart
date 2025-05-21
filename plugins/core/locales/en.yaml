@@ -16,3 +16,45 @@ core:
     no_update: "All packages are up to date, sir"
     update_before: "Updating {number_of_lines} packages, sir"
     update_after: "The system was successfully updated"
+  tell_time:
+    num2words_lang: "en"
+    variant_1: "It's {hour_words} {minute_words} at the moment, sir."
+    variant_2: "It's {hour_words} hours and {minute_words} minutes now."
+    variant_3: "The time is currently {hour_words} {minute_words}."
+    variant_4: "Right now, it's {hour_words} {minute_words}."
+    variant_5: "It's exactly {hour_words} {minute_words}."
+    variant_6: "As of now, it's {hour_words} {minute_words}."
+  tell_day:
+    mapping:
+      Monday: Monday
+      Tuesday: Tuesday
+      Wednesday: Wednesday
+      Thursday: Thursday
+      Friday: Friday
+      Saturday: Saturday
+      Sunday: Sunday
+    variant_1: "Today is {day_of_week}, sir."
+    variant_2: "It's {day_of_week} today."
+    variant_3: "Right now, it's {day_of_week}."
+    variant_4: "Happy {day_of_week}! What can I do for you?"
+    variant_5: "As of now, it's {day_of_week}."
+    variant_6: "It's a lovely {day_of_week} today, isn't it?"
+  tell_month:
+    mapping:
+      January: January
+      February: February
+      March: March
+      April: April
+      May: May
+      June: June
+      July: July
+      August: August
+      September: September
+      October: October
+      November: November
+      December: December
+    variant_1: "It's {month} right now, sir."
+    variant_2: "The current month is {month}."
+    variant_3: "As of now, it's {month}."
+    variant_4: "It's {month} at the moment."
+

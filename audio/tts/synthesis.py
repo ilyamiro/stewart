@@ -44,12 +44,12 @@ class TTS:
         self.active = ENABLE
 
     def say(self, text, no_audio=False, prosody=94, speaker=SPEAKER, path=f"{PROJECT_DIR}/audio/tts/audio.wav"):
+        func = self.synthesizer.say if not no_audio else self.synthesizer.synthesize
+        text = parse_config_answers(text)
+
         if speaker in self.model.speakers:
             self.model.set_speaker(speaker)
 
-        text = parse_config_answers(text)
-
-        func = self.synthesizer.say if not no_audio else self.synthesizer.synthesize
         kwargs = {
             "text": text,
             "path": path,
@@ -59,7 +59,6 @@ class TTS:
             kwargs["module"] = "playsound"
 
         func(**kwargs)
-
         called_from()
 
         log.debug(text)

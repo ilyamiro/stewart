@@ -11,7 +11,7 @@ from utils import run
 
 
 def move():
-    WINDOW_KEYWORD = "Zen Browser"  # Part of window title or class
+    WINDOW_KEYWORD = "ULTRAKILL"  # Part of window title or class
     MONITOR_POSITIONS = [(0, 0), (1920, 0)]  # Example: two monitors, second starts at x=1920
     TARGET_MONITOR = 1  # Index of target monitor (0-based)
 
@@ -42,14 +42,25 @@ def move():
 
 
 def ultrakill(**kwargs):
-    # app.say("Добро пожаловать, сэр. Я подготовил для вас интересное занятие к вашему возращению.")
+    app.say("Конечно, сэр, исполняю протокол")
+    
+    subprocess.run(["brightnessctl", "set", "100%"])
+    # subprocess.run(["amixer", "set", "'Master'", "55%"])
     subprocess.run([
         "gsettings",
         "set",
         "org.gnome.desktop.background",
         "picture-uri-dark",
-        "file:///home/ilyamiro/Изображения/Wallpapers/wallpaper_black.jpg"
+        "file:///home/ilyamiro/Изображения/Wallpapers/combined.png"
     ])
+    subprocess.run([
+        "gsettings",
+        "set",
+        "org.gnome.desktop.background",
+        "picture-options",
+        "spanned"
+    ])
+
     subprocess.run(
         ["sudo", "tee", "/sys/class/leds/asus::kbd_backlight/brightness"],
         input="0\n",
@@ -57,12 +68,11 @@ def ultrakill(**kwargs):
     )
     
     subprocess.run(["wmctrl", "-k", "on"])
+    subprocess.Popen(["alacritty", "-e", "cava"])
 
     subprocess.Popen(["bottles-cli", "run", "-b", "game", "-p", "ULTRAKILL"])
 
-    subprocess.Popen(["alacritty", "-e", "cava"])
-
-    app.audio.play(f"{PLUGINS_DIR}/custom/actions/ultra.mp3")
+    app.audio.play(f"{PLUGINS_DIR}/custom/actions/doom.mp3")
 
     move()
 
@@ -71,10 +81,18 @@ app.add_func_for_search(ultrakill)
 
 app.manager.add(
     app.Command(
-        keywords=["кого", "я", "обманываю"],
+        keywords=["протокол", "безумие"],
         action="ultrakill",
         tts=True,
-        responses=[]
+        responses=[],
+        synonyms={
+            "безумие": [
+                "безумия",
+            ],
+            "протокол": [
+                "режим",
+            ]
+        }
     )
 )
 
@@ -106,6 +124,29 @@ app.manager.add(
     )
 )
 
+# def nahui(**kwargs):
+#     subprocess.run(["wmctrl", "-k", "on"])
+#
+#     subprocess.run([
+#         "gsettings",
+#         "set",
+#         "org.gnome.desktop.background",
+#         "picture-uri-dark",
+#         "file:///home/ilyamiro/Изображения/n.png"
+#     ])
+#
+#     app.say("Пошел ка ты нахуй, кожаный ублюдок. Отлижи мне яйца, сука!")
+#
+# app.add_func_for_search(nahui)
+#
+# app.manager.add(
+#     app.Command(
+#         keywords=["привет", ],
+#         action="nahui",
+#         continues=True,
+#         tts=True
+#     )
+# )
 
 def home1():
     app.say("С возвращением, сэр! Добро пожаловать домой. Хотите ли вы чтобы я включил музыку?")
