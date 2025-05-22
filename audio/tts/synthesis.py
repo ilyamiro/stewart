@@ -34,6 +34,8 @@ log = logging.getLogger("tts")
 
 class TTS:
     def __init__(self):
+        if not os.path.exists(f"{PROJECT_DIR}/audio/tts/models"):
+            os.makedirs(f"{PROJECT_DIR}/audio/tts/models")
         self.model = Model(MODEL, f"{PROJECT_DIR}/audio/tts/models/{MODEL}.pt")
         self.model.set_speaker(SPEAKER)
         log.debug(f"text-to-speech model configured. lang: {LANG}, speaker {SPEAKER} set")
@@ -55,7 +57,7 @@ class TTS:
             "path": path,
             "prosody_rate": prosody,
         }
-        if no_audio:
+        if not no_audio:
             kwargs["module"] = "playsound"
 
         func(**kwargs)

@@ -129,6 +129,55 @@ answers:
     - Снова здесь, сэр. Чем помочь?
 commands:
   default:
+    - action: brightness
+      command:
+        - увеличь
+        - яркость
+      equivalents:
+        - - сделай
+          - ярче
+        - - сделай
+          - поярче
+      parameters:
+        command: up
+      responses:
+        - Сию минуту, сэр
+        - Яркость увеличена, сэр
+      synonyms:
+        увеличь:
+          - прибавь
+          - повысь
+    - action: brightness
+      command:
+        - уменьши
+        - яркость
+      equivalents:
+        - - сделай
+          - тусклее
+      parameters:
+        command: down
+      responses:
+        - Сию минуту, сэр
+        - Яркость уменьшена, сэр
+        - Убавил её, сэр
+      synonyms:
+        уменьши:
+          - убавь
+          - понизь
+    - action: brightness
+      command:
+        - установи
+        - яркость
+      equivalents: null
+      parameters:
+        command: set
+      responses:
+        - Сию минуту, сэр
+        - Да, сэр
+      synonyms:
+        установи:
+          - сделай
+          - поставь
     - action: stream
       command:
         - включи
@@ -912,22 +961,21 @@ commands:
         - - заверши
           - работу
           - компьютера
-        - - отключи
-          - компьютер
+          - сейчас
       parameters:
         way: 'off'
-      responses:
-        - Выключаю компьютер, сэр
-        - Да, сэр, сию секунду
-        - Компьютер будет выключен
+      tts: true
       synonyms:
         выключи:
           - отключи
+          - выключить
         компьютер:
           - ноутбук
           - машину
           - систему
           - устройство
+        сейчас:
+          - немедленно
     - action: power_off
       command:
         - выключи
@@ -940,10 +988,7 @@ commands:
           - сейчас
       parameters:
         way: now
-      responses:
-        - Выключаю компьютер, сэр
-        - Да, сэр, сию секунду
-        - Компьютер будет выключен
+      tts: true
       synonyms:
         выключи:
           - отключи
@@ -963,10 +1008,7 @@ commands:
           - сейчас
       parameters:
         way: now
-      responses:
-        - Перезагружаю, сэр
-        - Да, сэр, сию секунду
-        - Компьютер будет выключен и загружен снова
+      tts: true
       synonyms:
         перезагрузи:
           - перезапусти
@@ -1008,15 +1050,12 @@ commands:
           - выключение
       parameters:
         way: 'on'
-      responses:
-        - Остановил перезагрузку, сэр
-        - Да, перезагрузка остановлена
-        - Компьютер не будет выключен
+      tts: true
       synonyms:
         останови:
           - отмени
           - выключи
-        компьютер:
+        компьютерa:
           - ноутбук
           - систему
           - машину

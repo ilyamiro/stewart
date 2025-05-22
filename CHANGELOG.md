@@ -1,5 +1,13 @@
 # CHANGELOG
 
+#### v1.9.2-2
+
+- Fixed logging directory not being dynamically defined
+- Added some fixes to the documentation
+- Modified some methods in `core/core` plugin
+- Modified requirements
+- Some other minor fixes
+
 #### v1.9.2-1
 
 - Fixed the path to locales being misinterpreted

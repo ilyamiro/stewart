@@ -1,5 +1,6 @@
 import logging
 import subprocess as sp
+import threading
 import os
 from datetime import datetime
 import sys
@@ -169,18 +170,19 @@ def power_off(**kwargs) -> None:
         if num:
             minutes = num2words(num, lang="en")
             app.say(app.localeService.translate("core", "core.power_off.x_minutes", minutes=minutes))
-            os.system(f"shutdown -h +{num} /dev/null 2>&1")
+            sp.run(["sudo", "shutdown", "-h", f"+{num}"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
         else:
             app.say(app.localeService.translate("core", "core.power_off.one_minute"))
-            os.system("sudo shutdown -h +1 /dev/null 2>&1")
+            sp.run(["sudo", "shutdown", "-h", "+1"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+
     elif way == "now":
         app.say(app.localeService.translate("core", "core.power_off.now"))
-        thread = threading.Timer(2.5, os.system, args=["sudo shutdown now"])
+        thread = threading.Timer(2.5, lambda: sp.run(["sudo", "shutdown", "now"]))
         thread.start()
 
     else:
         tts.say(app.localeService.translate("core", "core.power_off.cancel"))
-        os.system("sudo shutdown -c /dev/null 2>&1")
+        sp.run(["sudo", "shutdown", "-c"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
 
 
 def update(**kwargs) -> None:
@@ -195,6 +197,52 @@ def update(**kwargs) -> None:
         app.say(app.localeService.translate("core", "core.update.update_before"), number_of_lines=num2words(number_of_lines, app.lang))
         sp.run(["sudo", "dnf", "update", "--refresh", "--best", "--allowerasing", "-y"])
         app.say(app.localeService.translate("core", "core.update.update_after"))
+
+
+def brightness(**kwargs):
+    results = find_num(kwargs["context"])
+    num = results[0] if results else None
+
+    command = kwargs["command"].parameters["command"]
+
+    try:
+        # Get brightnessctl output and parse percentage in Python
+        output = sp.check_output(
+            ["brightnessctl"],
+            text=True
+        )
+        match = re.search(r"\((\d+)%\)", output)
+        if not match:
+            log.error("Could not parse brightness percentage from brightnessctl output.")
+            return
+        current = int(match.group(1))
+    except Exception as e:
+        log.error(f"Failed to get current brightness: {e}")
+        return
+
+    adjustment = num if num is not None else 25  # Default step
+
+    if command == "set" and num is not None:
+        try:
+            sp.run(
+                ["brightnessctl", "set", f"{num}%"],
+                stdout=sp.DEVNULL,
+                stderr=sp.DEVNULL
+            )
+            log.info(f"Set brightness to {num}%")
+        except Exception as e:
+            log.error(f"Failed to set brightness: {e}")
+    else:
+        new_brightness = max(0, min(100, current + adjustment if command == "up" else current - adjustment))
+        try:
+            sp.run(
+                ["brightnessctl", "set", f"{new_brightness}%"],
+                stdout=sp.DEVNULL,
+                stderr=sp.DEVNULL
+            )
+            log.info(f"Set brightness to {new_brightness}%")
+        except Exception as e:
+            log.error(f"Failed to adjust brightness: {e}")
 
 
 def tell_time(**kwargs):

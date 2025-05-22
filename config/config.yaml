@@ -1,6 +1,6 @@
 audio:
   stt:
-    speaker-recognition: true
+    speaker-recognition: false
     speech-mode-restricted: false
   tts:
     en:

@@ -101,12 +101,19 @@ class Manager:
                 for command in matches:
                     if found_word:
                         break
+                    if keyword_index == len(command.keywords) and self.is_constructed(command.keywords, constructed,
+                                                                                          command.synonyms):
+                        results[index] = command
+                        found_command = index + 1
+                        keyword_index = 1
+                        break
                     if len(command.keywords) == 1 and self.is_constructed(command.keywords, constructed,
                                                                           command.synonyms):
                         results[index] = command
                         found_command = index + 1
                         keyword_index = 1
                         break
+
                     if (word == command.keywords[keyword_index] or word in command.synonyms.get(
                             command.keywords[keyword_index], [])) and self.is_constructed(command.keywords, constructed,
                                                                                           command.synonyms):

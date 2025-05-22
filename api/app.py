@@ -265,7 +265,7 @@ class AppAPI:
             return
 
         def call_tts_in_thread(**kwargs):
-            process = Process(target=self.ttsi.say, kwargs=kwargs)
+            process = threading.Thread(target=self.ttsi.say, kwargs=kwargs)
             process.start()
 
         if self.config["audio"]["tts"]["enable-caching"]:

@@ -126,9 +126,9 @@ Branch: **{commit_info['branch']}**
 
 Date: **{commit_info['date']}**
 
-{commit_info['message'][0]}
+<!-- truncate -->
 
-{changes}
+{commit_info['message'][0]}
 
 **[Link to a commit]({REPO_URL}/commit/{commit_info['hash']})**
 

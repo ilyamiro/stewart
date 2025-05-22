@@ -25,14 +25,11 @@ LANG_FILE = f"{CONFIG_DIR}/lang.txt"
 PLUGINS_DIR = f"{PROJECT_DIR}/plugins"
 
 # logs
-LOG_DIR = f"/home/ilyamiro/.cache/stewart/logs/"
+LOG_DIR = os.path.join(os.path.expanduser("~"), ".cache/stewart")
 LOG_FILENAME = os.path.join(LOG_DIR, f"log_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log")
 
 # MY PHONE LOCAL IP
 ADB_DEVICE_IP = "192.168.1.160"
-
-# Caching
-# CACHING_DIR = os.path.join(os.path.expanduser("~"), ".cache/stewart")
 
 # Weather
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
