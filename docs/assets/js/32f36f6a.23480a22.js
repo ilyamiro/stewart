@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkstewart=self.webpackChunkstewart||[]).push([[334],{3240:t=>{t.exports=JSON.parse('{"tags":[{"label":"commit","permalink":"/stewart/blog/tags/commit","description":"All the commits posted","count":1},{"label":"life","permalink":"/stewart/blog/tags/life","description":"All posts that are not commits","count":1}]}')}}]);

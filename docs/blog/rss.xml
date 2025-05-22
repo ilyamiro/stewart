@@ -4,10 +4,33 @@
         <title>Stewart Blog</title>
         <link>https://ilyamiro.github.io/stewart/blog</link>
         <description>Stewart Blog</description>
-        <lastBuildDate>Wed, 21 May 2025 00:00:00 GMT</lastBuildDate>
+        <lastBuildDate>Thu, 22 May 2025 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
         <language>en</language>
+        <item>
+            <title><![CDATA[Commit - v1.9.2-2]]></title>
+            <link>https://ilyamiro.github.io/stewart/blog/commit-v1-9-2-2</link>
+            <guid>https://ilyamiro.github.io/stewart/blog/commit-v1-9-2-2</guid>
+            <pubDate>Thu, 22 May 2025 00:00:00 GMT</pubDate>
+            <description><![CDATA[New commit]]></description>
+            <content:encoded><![CDATA[<p><strong>New commit</strong>
+Version: <strong>v1.9.2-2</strong></p>
+<p>Repository: <strong>stewart</strong>
+Branch: <strong>master</strong></p>
+<p>Date: <strong>2025-05-22 16:33:48 +0200</strong></p>
+<p>v1.9.2-2</p>
+<ul>
+<li>Fixed logging directory not being dynamically defined</li>
+<li>Added some fixes to the documentation</li>
+<li>Modified some methods in <code>core/core</code> plugin</li>
+<li>Modified requirements</li>
+<li>Some other minor fixes</li>
+</ul>
+<p><strong><a href="https://github.com/ilyamiro/stewart/commit/6a82c02b8d320e9f01306a3d04be0a329b68c0b5" target="_blank" rel="noopener noreferrer">Link to a commit</a></strong></p>
+<p>Follow <strong>Stewart</strong> on telegram: <a href="https://t.me/stewart_github" target="_blank" rel="noopener noreferrer">https://t.me/stewart_github</a></p>]]></content:encoded>
+            <category>commit</category>
+        </item>
         <item>
             <title><![CDATA[Commit - v1.9.2-1]]></title>
             <link>https://ilyamiro.github.io/stewart/blog/commit-v1-9-2-1</link>
