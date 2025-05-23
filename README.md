@@ -11,7 +11,6 @@
 <br>
 
 **[<kbd> <br> About <br> </kbd>][About]** 
-**[<kbd> <br> Install <br> </kbd>][Install]** 
 **[<kbd> <br> License <br> </kbd>][License]** 
 
 
@@ -20,11 +19,10 @@
 
 ## About
 
-Lines of code: **10170** 
+Lines of code: **10167** 
 
 A desktop voice assistant build with python
 
-> [!IMPORTANT]
 > All documentation can be found here: 
 > https://ilyamiro.github.io/stewart/
 
@@ -46,7 +44,6 @@ See the License for the specific language governing permissions and limitations 
 <!----------------------------------------------------------------------------->
 
 [About]: #About
-[Install]: #Installation
 [License]: #License
 
 <!----------------------------------{ Badges }--------------------------------->
