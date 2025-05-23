@@ -18,47 +18,15 @@
 <br>
 </div>
 
-> [!CAUTION]
-> The project is in development and is intended for personal use,
-> the project will most likely NOT work on other systems</h3>
-
 ## About
 
-Lines of code: **10206** 
+Lines of code: **10170** 
 
-A desktop-based voice assistant build with python.
-
-- A **local** vosk STT recognition model 
-- **local voice synthesis model** based on SileroTTS with a use of self-contained library [voicesynth](https://github.com/ilyamiro/voicesynth)
-- Complex **tree-based** command implementation 
-- **Improved but limited** recognition feature available (+99% voice recognition accuracy for commands)
-- Fast and efficient command **handling**
-- **Linux-based**
-
-## Installation
+A desktop voice assistant build with python
 
 > [!IMPORTANT]
-> Windows 7/8.1/10/11 is not supported 
-
-### Manual
-1.Clone repository and install dependencies:
-  ```commandline
-  git clone https://github.com/ilyamiro/Stewart.git
-  cd Stewart
-  python3.11 -m pip install -r requirements.txt
-  ```
-2. Launch main.py and wait till voice assistant starts:<br>
-```commandline
-python3.11 main.py
-```
-### Installator 
-
-> [!IMPORTANT]
-> This is an alpha version that is not stable at all
-
-```commandline
-RESERVED
-```
+> All documentation can be found here: 
+> https://ilyamiro.github.io/stewart/
 
 ### License
 

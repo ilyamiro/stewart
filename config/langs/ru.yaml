@@ -1312,24 +1312,20 @@ commands:
       parameters: null
       responses: null
       tts: true
-    - action: hotkey
+    - action: subprocess
       command:
         - закрой
         - все
-        - окна
       equivalents:
-        - - закрой
-          - всё
       parameters:
-        hotkey:
-          - cmd
-          - d
+        command:
+          - wmctrl
+          - "-k"
+          - "on"
       synonyms:
         закрой:
           - скрой
           - сверни
-        окна:
-          - окно
         все:
           - всё
     - action: sleep
