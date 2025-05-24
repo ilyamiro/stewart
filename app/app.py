@@ -306,7 +306,7 @@ class App:
 
     @staticmethod
     def stop(**kwargs):
-        time.sleep(1)
+        # time.sleep(1)
         os.kill(os.getpid(), signal.SIGKILL)
 
     def sleep(self, **kwargs):
