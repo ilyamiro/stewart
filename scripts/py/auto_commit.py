@@ -110,7 +110,7 @@ def get_commit_changes(commit_hash):
     return ""
 
 
-def construct_to_blog(commit_info, changes):
+def construct_to_blog(commit_info):
     return f"""---
 slug: commit-{version.replace('.', '-')}
 title: Commit - {version}
@@ -118,10 +118,12 @@ authors: [ilyamiro]
 tags: [commit]    
 ---
 
-**New commit** 
+**New commit**
+
 Version: **{version}**
     
 Repository: **{commit_info["repository"]}**
+
 Branch: **{commit_info['branch']}**
 
 Date: **{commit_info['date']}**
@@ -145,7 +147,7 @@ def main():
     changes = get_commit_changes(commit_info['hash'])
 
     telegram_message = build_telegram_message(commit_info, changes)
-    blog_message = construct_to_blog(commit_info, changes)
+    blog_message = construct_to_blog(commit_info)
 
     today_str = date.today().strftime("%Y-%m-%d")
     filename = f"{today_str}-commit-{version.replace('.', '-')}.md"
@@ -157,7 +159,6 @@ def main():
 
     subprocess.run(["npm", "run", "build"], cwd=wiki_dir, check=True)
 
-    # Step 4: Remove existing docs directory
     if os.path.exists(f"{PROJECT_DIR}/docs"):
         shutil.rmtree(f"{PROJECT_DIR}/docs")
 

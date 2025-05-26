@@ -56,8 +56,6 @@ class App:
 
         self.scenario_active = []
 
-        # self.api.__save_config__()
-
         log.debug("Finished app initialization")
 
         log.debug(f"Start up time: {time.time() - start_time:.6f}")
@@ -82,7 +80,7 @@ class App:
                 self.process_trigger_no_voice(input("Input: "))
 
     def recognition(self):
-        threshold = int(config["settings"]["inactivity-threshold"])
+        threshold = int(self.config["settings"]["inactivity-threshold"])
         while self.running:
             if time.time() - self.last_time > threshold:
                 log.debug(
@@ -306,7 +304,6 @@ class App:
 
     @staticmethod
     def stop(**kwargs):
-        # time.sleep(1)
         os.kill(os.getpid(), signal.SIGKILL)
 
     def sleep(self, **kwargs):

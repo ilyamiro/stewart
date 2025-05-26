@@ -24,7 +24,6 @@ def logging_imports_disable():
 
 
 def logging_setup():
-    # ensure that log directory is existent
     if not os.path.exists(LOG_DIR):
         os.makedirs(LOG_DIR)
 

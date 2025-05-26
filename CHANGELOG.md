@@ -1,5 +1,19 @@
 # CHANGELOG
 
+#### v1.9.3
+
+1. Added new configuration parameters: `animation: bool`, `react-no-command: bool`
+    1.1. `animation: true` starts a terminal symbol animation to use as a gui.
+    1.2. `react-no-command: true` makes Stewart answer with `answers.default` if no command was recognized, but the text was.
+2. Removed functions `parse_config_answers`, `cleanup`, `set_caching_directory` from `utils.system` as no longer in use.
+    2.1. `parse_config_answers` is now a method of `TTS` class
+3. Fixed `data.constants.LOG_DIR` being misconfigured
+4. Telegram auto-commit messages now don't show file changes to shorten them
+5. Removed indirect `config` loading to both `utils` and `tts` to avoid config overlaps. TTS now is given the config with an API instance.
+    5.1. Fixed an error where config would be imported from utils into the main app instance and be used there instead of the inherited API config instance
+6. Reworked the gpt plugin for better readability and compatibility
+7. Other minor fixes.
+
 #### v1.9.2-2
 
 - Fixed logging directory not being dynamically defined

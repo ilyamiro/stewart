@@ -11,7 +11,7 @@ from utils import run
 
 
 def move():
-    WINDOW_KEYWORD = "ULTRAKILL"  # Part of window title or class
+    WINDOW_KEYWORD = "Zen Browser"  # Part of window title or class
     MONITOR_POSITIONS = [(0, 0), (1920, 0)]  # Example: two monitors, second starts at x=1920
     TARGET_MONITOR = 1  # Index of target monitor (0-based)
 

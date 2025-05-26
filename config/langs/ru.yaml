@@ -189,7 +189,6 @@ commands:
         включи:
           - проиграй
         расслабляющую:
-          - релаксовую
           - вайбовую
       equivalents:
         - - добавь
@@ -256,9 +255,6 @@ commands:
         - Выполнил, сэр
         - Перенес окно, сэр
       equivalents:
-        - - перенеси
-          - рабочий
-          - стол
       synonyms:
         экран:
           - монитор
@@ -280,10 +276,6 @@ commands:
         - Окно было передвинуто, сэр
         - Выполнил, сэр
         - Перенес окно, сэр
-      equivalents:
-        - - перенеси
-          - рабочий
-          - стол
       synonyms:
         экран:
           - монитор
@@ -614,7 +606,6 @@ commands:
         подсветку:
           - подсветка
         включи:
-          - деактивируй
           - отключи
     - action: grammar_restrict
       command:
@@ -738,7 +729,7 @@ commands:
           пауза
     - action: resume_audio
       command:
-        - возообнови
+        - возобнови
         - музыку
       equivalents:
         - - запусти
@@ -770,9 +761,6 @@ commands:
       command:
         - выключи
         - блютуз
-      equivalents:
-        - - деактивируй
-          - блютуз
       parameters:
         command:
           - bluetoothctl
@@ -1284,8 +1272,6 @@ commands:
           - a
           - x
       synonyms:
-        вырежи:
-          - вырезай
         все:
           - текст
     - action: hotkey
@@ -1371,7 +1357,7 @@ commands:
         - - давай
           - учиться
         - - протокол
-          - учеба
+          - обучения
       parameters:
         protocol:
           - action: subprocess
@@ -1420,7 +1406,7 @@ commands:
       parameter: url
       synonyms:
         инстаграм:
-          - инсту
+          - инст
         ютуб:
           - ютюб
     - action: subprocess

@@ -28,15 +28,15 @@ utils.import_utils(iapp.lang, globals())
 
 def main():
     try:
+        system_setup()
+        set_logging(True)
+
         log.debug("Started running...")
 
         start_time = time.time()
 
-        system_setup()
-        set_logging(True)
-
         app = App(iapp)
-        config = app.api.get_config()
+        config = app.api.config
 
         if config["settings"]["text-mode"]:
             app.start(start_time)
@@ -52,9 +52,10 @@ def main():
                 app.api.say(random.choice(config[f"start-up"]["answers"]))
                 log.info("Played startup voice synthesis")
 
-            thread = threading.Thread(target=animation)
-            thread.daemon = True
-            thread.start()
+            if config["settings"]["animation"]:
+                thread = threading.Thread(target=animation)
+                thread.daemon = True
+                thread.start()
 
             app.run(stt, None)
             last_time = time.time()
@@ -68,7 +69,6 @@ def main():
                     if len(buffer) > 16000:
                         result = stt.check_speaker(buffer)
                         if result:
-                            run("loginctl", "unlock-session")
                             log.debug("Going out of the sleeping mode")
                             elapsed_time = time.time() - last_time
                             if elapsed_time < 600:

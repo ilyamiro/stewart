@@ -29,8 +29,6 @@ from data.constants import *
 
 log = logging.getLogger("utils")
 
-# nlp = spacy.load("en_core_web_sm")
-
 
 # --------------- Inspection Functions ---------------
 def get_caller_dir():
@@ -86,9 +84,6 @@ def load_yaml(path: str):
         log.warning(f"File {full_path} does not exist")
 
 
-config = load_yaml(CONFIG_FILE)
-
-
 def load_json(path: str):
     """
     Load JSON configuration from a file.
@@ -139,25 +134,6 @@ def filter_lang_config(file, lang_prefix):
 
 
 # --------------- System & Subprocess Functions ---------------
-def set_caching_directory():
-    home_dir = os.path.expanduser("~")
-
-    cache_dir = os.path.join(home_dir, ".cache")
-
-    stewart_dir = os.path.join(cache_dir, "stewart")
-
-    if not os.path.exists(cache_dir):
-        log.info(f"Creating .cache directory at {cache_dir}")
-        os.makedirs(cache_dir)
-
-    if not os.path.exists(stewart_dir):
-        log.info(f"Creating caching directory at {stewart_dir}")
-        os.makedirs(stewart_dir)
-    else:
-        log.info(f"Using existing caching directory at {stewart_dir}")
-
-    return stewart_dir
-
 
 def admin():
     current_platform = platform.system()
@@ -207,26 +183,6 @@ def system_setup():
 
     if current == "Linux":
         run("xhost", "+local:$USER")
-        # set_caching_directory()
-
-
-def cleanup(directory, limit: int):
-    if not os.path.isdir(directory):
-        log.info(f"Failed to cleanup a directory: {directory}. It's not a directory")
-        return
-
-    files = [os.path.join(directory, file) for file in os.listdir(directory) if
-             os.path.isfile(os.path.join(directory, file))]
-
-    if len(files) > limit:
-        files.sort(key=os.path.getctime, reverse=True)
-
-        while len(files) > limit:
-            try:
-                os.remove(files[0])
-                files.pop(0)
-            except Exception as e:
-                print(f"Error deleting file (cleanup) {last_created_file} in a {directory}: {e}")
 
 
 def notify(title: str, message: str, timeout: int = 10):
@@ -371,32 +327,6 @@ def import_all_from_module(module_name):
 
 
 # --------------- Config Parsing & Handling Functions ---------------
-def parse_config_answers(string, module=None):
-    """
-    Parse placeholders in a string and replace them with data from the configuration module.
-
-    Parameters:
-    - string (str): The input string containing placeholders.
-    - module: The module containing replacement functions. If not provided, default to language-specific module.
-
-    Returns:
-    str: The modified string with placeholders replaced.
-    """
-    if not module:
-        module = import_module(f"utils.lang.{config.get('lang').get('prefix')}")
-
-    pattern = re.compile(r"\[(.*?)]")
-    matches = pattern.findall(string)
-
-    for match in matches:
-        if hasattr(module, match):
-            func = getattr(module, match)
-            if callable(func):
-                string = string.replace(f'[{match}]', func())
-
-    return string
-
-
 def track_time(func, *args, **kwargs):
     """
     This function tracks the execution time of a given function.
@@ -449,6 +379,3 @@ def fetch_weather():
         return response.json()
     except requests.exceptions.RequestException:
         return None
-
-
-

@@ -2,11 +2,44 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://ilyamiro.github.io/stewart/blog</id>
     <title>Stewart Blog</title>
-    <updated>2025-05-22T00:00:00.000Z</updated>
+    <updated>2025-05-26T00:00:00.000Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://ilyamiro.github.io/stewart/blog"/>
     <subtitle>Stewart Blog</subtitle>
     <icon>https://ilyamiro.github.io/stewart/img/stewart.png</icon>
+    <entry>
+        <title type="html"><![CDATA[Commit - v1.9.3]]></title>
+        <id>https://ilyamiro.github.io/stewart/blog/commit-v1-9-3</id>
+        <link href="https://ilyamiro.github.io/stewart/blog/commit-v1-9-3"/>
+        <updated>2025-05-26T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[New commit]]></summary>
+        <content type="html"><![CDATA[<p><strong>New commit</strong></p>
+<p>Version: <strong>v1.9.3</strong></p>
+<p>Repository: <strong>stewart</strong></p>
+<p>Branch: <strong>development</strong></p>
+<p>Date: <strong>2025-05-26 16:52:06 +0200</strong></p>
+<p>v1.9.3</p>
+<ol>
+<li>Added new configuration parameters: <code>animation: bool</code>, <code>react-no-command: bool</code>
+1.1. <code>animation: true</code> starts a terminal symbol animation to use as a gui.
+1.2. <code>react-no-command: true</code> makes Stewart answer with <code>answers.default</code> if no command was recognized, but the text was.</li>
+<li>Removed functions <code>parse_config_answers</code>, <code>cleanup</code>, <code>set_caching_directory</code> from <code>utils.system</code> as no longer in use.
+2.1. <code>parse_config_answers</code> is now a method of <code>TTS</code> class</li>
+<li>Fixed <code>data.constants.LOG_DIR</code> being misconfigured</li>
+<li>Telegram auto-commit messages now don't show file changes to shorten them</li>
+<li>Removed indirect <code>config</code> loading to both <code>utils</code> and <code>tts</code> to avoid config overlaps. TTS now is given the config with an API instance.
+5.1. Fixed an error where config would be imported from utils into the main app instance and be used there instead of the inherited API config instance</li>
+<li>Reworked the gpt plugin for better readability and compatibility</li>
+<li>Other minor fixes.</li>
+</ol>
+<p><strong><a href="https://github.com/ilyamiro/stewart/commit/19caa0be8dc1ab0853b98739bda36299578562a5" target="_blank" rel="noopener noreferrer">Link to a commit</a></strong></p>
+<p>Follow <strong>Stewart</strong> on telegram: <a href="https://t.me/stewart_github" target="_blank" rel="noopener noreferrer">https://t.me/stewart_github</a></p>]]></content>
+        <author>
+            <name>Ilya Miro</name>
+            <uri>https://github.com/ilyamiro</uri>
+        </author>
+        <category label="commit" term="commit"/>
+    </entry>
     <entry>
         <title type="html"><![CDATA[Commit - v1.9.2-2]]></title>
         <id>https://ilyamiro.github.io/stewart/blog/commit-v1-9-2-2</id>

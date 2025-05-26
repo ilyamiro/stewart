@@ -1,7 +1,6 @@
 <div align = center>
 <img src="data/images/stewart_logo.png" alt="Logo" width="" height="220">
 
-![Badge Release]
 ![Badge License]
 ![Badge Language] 
 ![Badge Ahh]<br>
@@ -19,7 +18,7 @@
 
 ## About
 
-Lines of code: **10165** 
+Lines of code: **10087** 
 
 A desktop voice assistant build with python
 
@@ -48,7 +47,6 @@ See the License for the specific language governing permissions and limitations 
 
 <!----------------------------------{ Badges }--------------------------------->
 
-[Badge Release]: https://img.shields.io/github/v/release/ilyamiro/Stewart.svg
 [Badge Language]: https://img.shields.io/github/languages/top/ilyamiro/Stewart
 [Badge License]: https://img.shields.io/github/license/ilyamiro/Stewart
 [Badge Ahh]: https://img.shields.io/badge/Pet-project-C68FE6

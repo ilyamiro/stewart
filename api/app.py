@@ -26,7 +26,7 @@ from pynput.mouse import Button as MouseButton
 
 from data.constants import PROJECT_DIR, CONFIG_FILE, CONFIG_DIR, PLUGINS_DIR
 from audio.tts import TTS
-from utils import load_yaml, filter_lang_config, load_lang, notify, sanitize_filename, parse_config_answers
+from utils import load_yaml, filter_lang_config, load_lang, notify, sanitize_filename
 
 from .commands.tree import Manager
 from .commands.scenarios import Trigger, Timeline, Scenario
@@ -208,18 +208,19 @@ class AudioInterface:
 
 class AppAPI:
     def __init__(self):
-        self.ttsi = TTS()
+        self.lang = self.get_lang()
+        self.config = self.get_config()
+
+        self.Trigger = Trigger
+        self.Timeline = Timeline
+        self.Scenario = Scenario
+        self.Event = Event
 
         self.runtime = Runtime()
 
         self.manager = Manager()
         self.Command = self.manager.Command
 
-        self.Trigger = Trigger
-        self.Timeline = Timeline
-        self.Scenario = Scenario
-
-        self.Event = Event
         self.eventLogger = EventLogger()
 
         self.mouse = Mouse()
@@ -230,26 +231,29 @@ class AppAPI:
         self.MouseButton = MouseButton
         self.Key = KeyboardKey
 
-        self.lang = self.get_lang()
-
         self.localeService = LocaleService(self.lang)
         self.Locale = Locale
 
-        self.config = self.get_config()
+        self.tts = TTS(self.config, self.lang)
 
         self.__pre_init_callbacks__: list = []
         self.__post_init_callbacks__: list = []
 
-        self.__no_command_callback__ = self.__no_command_default__
+        self.__no_command_callback__ = self.__no_command_default__ if self.config["settings"]["react-no-command"] else self.__blank__
+
         self.__trigger_callback__ = self.__blank__
 
         self.__actions__: dict = {}
 
         self.scenarios: list = []
 
+    @staticmethod
+    def __blank__(context, history):
+        pass
+
     def __no_command_default__(self, context, history):
         answer = random.choice(self.config[f"answers"]["default"])
-        self.say(parse_config_answers(answer))
+        self.say(answer)
 
         self.eventLogger.record(self.Event(
             "wake_word_used",
@@ -260,12 +264,12 @@ class AppAPI:
         if not text:
             return
 
-        if not self.ttsi.active:
+        if not self.tts.active:
             log.debug(f"No sound: {text}")
             return
 
         def call_tts_in_thread(**kwargs):
-            process = threading.Thread(target=self.ttsi.say, kwargs=kwargs)
+            process = threading.Thread(target=self.tts.say, kwargs=kwargs)
             process.start()
 
         if self.config["audio"]["tts"]["enable-caching"]:
@@ -290,10 +294,6 @@ class AppAPI:
         else:
             call_tts_in_thread(text=text, path=f"{PROJECT_DIR}/audio/tts/audio.wav", no_audio=no_audio,
                                prosody=prosody, speaker=speaker)
-
-    @staticmethod
-    def __blank__(context, history):
-        pass
 
     def set_post_init(self, func: types.FunctionType, index: int = -1) -> None:
         """
