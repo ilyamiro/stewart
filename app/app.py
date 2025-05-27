@@ -307,7 +307,7 @@ class App:
         os.kill(os.getpid(), signal.SIGKILL)
 
     def sleep(self, **kwargs):
-        run("loginctl", "lock-session")
+        # run("loginctl", "lock-session")
         self.running = False
 
     def protocol(self, **kwargs):

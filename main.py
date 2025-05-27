@@ -9,7 +9,7 @@ import traceback
 
 import utils
 from logs import logging_setup, set_logging
-from utils import system_setup, admin, clear, run
+from utils import system_setup, admin, clear
 
 log = logging.getLogger("main")
 

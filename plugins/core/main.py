@@ -7,7 +7,7 @@ import random
 import playsound
 
 from data.constants import CONFIG_FILE, PROJECT_DIR, PLUGINS_DIR
-from utils import load_yaml, run, run_stdout, filter_lang_config
+from utils import load_yaml, filter_lang_config
 from api import app
 
 app.add_dir_for_search("plugins/core/actions", include_private=False)

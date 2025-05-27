@@ -3,6 +3,7 @@ import os
 import subprocess
 import logging
 import random
+import shutil
 import platform
 import sys
 import inspect
@@ -149,20 +150,20 @@ def admin():
     else:
         raise NotImplementedError(f"Unsupported platform: {current_platform}")
 
-
-def run(*args, stdout: bool = False):
-    """
-    Run a system command using subprocess.
-
-    Parameters:
-    - args: Command-line arguments for subprocess.
-    - stdout (bool): If True, output is shown. Otherwise, it's suppressed.
-    """
-    subprocess.run(
-        args,
-        stdout=subprocess.DEVNULL if not stdout else None,
-        stderr=subprocess.STDOUT
-    )
+# DEPRECATED
+# def run(*args, stdout: bool = False):
+#     """
+#     Run a system command using subprocess.
+#
+#     Parameters:
+#     - args: Command-line arguments for subprocess.
+#     - stdout (bool): If True, output is shown. Otherwise, it's suppressed.
+#     """
+#     subprocess.run(
+#         args,
+#         stdout=subprocess.DEVNULL if not stdout else None,
+#         stderr=subprocess.STDOUT
+#     )
 
 
 def run_stdout(*args, shell: bool = False):
@@ -177,12 +178,18 @@ def run_stdout(*args, shell: bool = False):
 def system_setup():
     """
     Perform platform-specific system setup.
-    Currently configured for Linux systems to start 'jack_control'.
     """
-    current = platform.system()
+    if platform.system() != "Linux":
+        return  # Only apply on Linux
 
-    if current == "Linux":
-        run("xhost", "+local:$USER")
+    # Check if xhost is available and DISPLAY is set (i.e., under X11/XWayland)
+    if shutil.which("xhost") and os.environ.get("DISPLAY"):
+        try:
+            subprocess.run(["xhost", f"+local:{os.environ['USER']}"], check=True)
+        except subprocess.CalledProcessError as e:
+            log.info(f"Warning: Failed to run xhost: {e}")
+    else:
+        log.info("xhost not available or not running under X11/XWayland; skipping xhost setup.")
 
 
 def notify(title: str, message: str, timeout: int = 10):
@@ -370,7 +377,7 @@ def fetch_weather():
         "lon": MY_CITY_LON,
         "appid": OPENWEATHER_API_KEY,
         "units": "metric",
-        "lang": config["lang"]["prefix"]
+        "lang": "en"
     }
 
     try:

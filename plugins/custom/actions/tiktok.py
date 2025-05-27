@@ -7,7 +7,6 @@ import lxml
 
 from api import app
 from data.constants import PLUGINS_DIR
-from utils import run
 
 
 def move():
