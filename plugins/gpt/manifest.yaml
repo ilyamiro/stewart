@@ -1,4 +1,4 @@
 name: gpt
-#locales:
-#  en: null
-#  ru: null
+locales:
+  en: null
+  ru: null

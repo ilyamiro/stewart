@@ -423,10 +423,15 @@ class AppAPI:
         if locales:
             loaded_locales = []
             for lang, path in locales.items():
+                if not path:
+                    continue
                 locale = self.Locale(lang, f"{directory}/{path}")
-                # locale.load()
                 loaded_locales.append(locale)
-            self.localeService.add(name, loaded_locales)
+            if loaded_locales:
+                self.localeService.add(name, loaded_locales)
+            else:
+                log.info(f"Loading plugin {directory} without locales")
+                self._load_plugin_modules(directory)
 
         if self.localeService.exists(name):
             log.info(f"Locale found, loading {directory}")

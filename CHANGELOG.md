@@ -1,5 +1,14 @@
 # CHANGELOG
 
+#### v1.9.3-1
+
+- Fixed a bug with plugin loading in `api/app.py` when the plugin would not be loaded if locales do not exist
+- Removed `run` function in utils due to being useless and replaced with direct call of `subprocess.run`
+- Updated documentation
+- Started creating GUI for stewart, though it is yet ignored by `.gitignore`
+- Added `launch.sh` script to be used by `.desktop` entries created by `stewart-installer`
+- Started creating `api/adapter` to properly adapt the assistant to user systems
+
 #### v1.9.3
 
 1. Added new configuration parameters: `animation: bool`, `react-no-command: bool`

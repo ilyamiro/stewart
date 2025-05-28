@@ -15,7 +15,7 @@ app.add_dir_for_search("plugins/core/actions", include_private=False)
 app.update_config(
     {
         "core": {
-            "music-download": True,
+            "music-download": False,
             "usb-default": ["linux foundation", "webcam", "network", "finger"]
         }
     }

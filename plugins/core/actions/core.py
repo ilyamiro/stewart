@@ -47,7 +47,7 @@ def hotkey(**kwargs) -> None:
     """
     key_list = kwargs["command"].parameters["hotkey"]
     if kwargs["command"].parameters.get("xdotool"):
-        sp.run("xdotool", "key", "--delay", "0", "+".join(key_list))
+        sp.run(["xdotool", "key", "--delay", "0", "+".join(key_list)])
     else:
         key_objects = []
         for k in key_list:
@@ -69,7 +69,7 @@ def key(**kwargs) -> None:
     Presses a key on the keyboard
     """
     name = kwargs["command"].parameters["key"]
-    sp.run("xdotool", "key", name)
+    sp.run(["xdotool", "key"], name)
 
 
 def scroll(**kwargs) -> None:

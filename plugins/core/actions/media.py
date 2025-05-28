@@ -18,8 +18,6 @@ from api import app
 
 import_utils(app.lang, globals())
 
-config = load_yaml(CONFIG_FILE)
-
 api_ytmusic = YTMusic()
 
 log = logging.getLogger("module: " + __file__)
@@ -73,7 +71,7 @@ def save_song(href, title):
 
     music_folder = app.runtime.mkdir_cache("music")
     app.runtime.cleanup(music_folder, max_files=25)
-    download = config["plugins"]["core"]["music-download"]
+    download = app.config["plugins"]["core"]["music-download"]
 
     filename = os.path.join(music_folder, sanitize_filename(title))
     max_file_size = 20 * 1024 * 1024
@@ -89,7 +87,7 @@ def save_song(href, title):
         'outtmpl': filename,
     }
 
-    if os.path.exists(filename + ".mp3") and download:
+    if os.path.exists(filename + ".mp3"):
         log.info(f"{filename} already exists. Playing the existing file.")
     else:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -105,6 +103,7 @@ def save_song(href, title):
                         return None
 
                     ydl.download([href])
+                    log.info(f"Downloading an audio file from {href} into a file")
 
                 except Exception as e:
                     log.error(f"Failed to download song {title}: {str(e)}")
@@ -124,7 +123,7 @@ def save_song(href, title):
 def play_song(**kwargs):
     search = kwargs["context"]
     log.info(f"Searching music sources for {search}")
-    results = api_ytmusic.search(search, filter="songs")  # Fetch multiple results
+    results = api_ytmusic.search(search, filter="songs")
 
     for result in results:
         if not result or not result.get("videoId"):
@@ -133,7 +132,6 @@ def play_song(**kwargs):
         link = "https://music.youtube.com/watch?v=" + result["videoId"]
         title = f'{result.get("artists")[0]["name"] if result.get("artists") else "Unknown"} - {result["title"]}'
 
-        # Attempt to save the song
         song = save_song(link, title)
         if song:
             notify(
