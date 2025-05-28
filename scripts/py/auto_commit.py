@@ -36,7 +36,13 @@ def replace_repeated_chars(input_string, char):
 
 def format_commit_changes(raw_changes):
     change_lines = raw_changes.strip().split("\n")
-    formatted_changes = "\n".join([f"• {line.strip()}" for line in change_lines if line.strip()])
+    filtered_lines = [
+        line.strip()
+        for line in change_lines
+        if line.strip() and not line.strip().startswith("docs/")
+    ]
+
+    formatted_changes = "\n".join([f"• {line.strip()}" for line in filtered_lines if line.strip()])
 
     formatted_changes = replace_repeated_chars(formatted_changes, "+")
     formatted_changes = replace_repeated_chars(formatted_changes, "-")

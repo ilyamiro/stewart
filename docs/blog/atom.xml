@@ -2,11 +2,39 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://ilyamiro.github.io/stewart/blog</id>
     <title>Stewart Blog</title>
-    <updated>2025-05-26T00:00:00.000Z</updated>
+    <updated>2025-05-28T00:00:00.000Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://ilyamiro.github.io/stewart/blog"/>
     <subtitle>Stewart Blog</subtitle>
     <icon>https://ilyamiro.github.io/stewart/img/stewart.png</icon>
+    <entry>
+        <title type="html"><![CDATA[Commit - v1.9.3-1]]></title>
+        <id>https://ilyamiro.github.io/stewart/blog/commit-v1-9-3-1</id>
+        <link href="https://ilyamiro.github.io/stewart/blog/commit-v1-9-3-1"/>
+        <updated>2025-05-28T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[New commit]]></summary>
+        <content type="html"><![CDATA[<p><strong>New commit</strong></p>
+<p>Version: <strong>v1.9.3-1</strong></p>
+<p>Repository: <strong>stewart</strong></p>
+<p>Branch: <strong>development</strong></p>
+<p>Date: <strong>2025-05-28 15:51:11 +0200</strong></p>
+<p>v1.9.3-1</p>
+<ul>
+<li>Fixed a bug with plugin loading in <code>api/app.py</code> when the plugin would not be loaded if locales do not exist</li>
+<li>Removed <code>run</code> function in utils due to being useless and replaced with direct call of <code>subprocess.run</code></li>
+<li>Updated documentation</li>
+<li>Started creating GUI for stewart, though it is yet ignored by <code>.gitignore</code></li>
+<li>Added <code>launch.sh</code> script to be used by <code>.desktop</code> entries created by <code>stewart-installer</code></li>
+<li>Started creating <code>api/adapter</code> to properly adapt the assistant to user systems</li>
+</ul>
+<p><strong><a href="https://github.com/ilyamiro/stewart/commit/7e25aa10ed0c3b03cddb9bb1dfb26070ba900628" target="_blank" rel="noopener noreferrer">Link to a commit</a></strong></p>
+<p>Follow <strong>Stewart</strong> on telegram: <a href="https://t.me/stewart_github" target="_blank" rel="noopener noreferrer">https://t.me/stewart_github</a></p>]]></content>
+        <author>
+            <name>Ilya Miro</name>
+            <uri>https://github.com/ilyamiro</uri>
+        </author>
+        <category label="commit" term="commit"/>
+    </entry>
     <entry>
         <title type="html"><![CDATA[Commit - v1.9.3]]></title>
         <id>https://ilyamiro.github.io/stewart/blog/commit-v1-9-3</id>
