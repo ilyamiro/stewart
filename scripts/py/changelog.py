@@ -3,7 +3,7 @@ import re
 import logging
 
 PROJECT_FOLDER = Path(__file__).resolve().parent.parent.parent
-VERSION_FILE = PROJECT_FOLDER / "version.txt"
+VERSION_FILE = PROJECT_FOLDER / ".updater.json"
 COMMIT_FILE = PROJECT_FOLDER / "commit.txt"
 CHANGELOG_FILE = PROJECT_FOLDER / "CHANGELOG.md"
 
@@ -53,11 +53,21 @@ def update_changelog(commit: str):
 
 def update_version_file(version: str):
     try:
+        if VERSION_FILE.exists():
+            with open(VERSION_FILE, "r", encoding="utf-8") as file:
+                config = json.load(file)
+        else:
+            config = {}
+
+        config["version"] = version
+
         with open(VERSION_FILE, "w", encoding="utf-8") as file:
-            file.write(version)
-        logging.info("Version file updated successfully.")
-    except FileNotFoundError:
-        logging.error(f"Version file {VERSION_FILE} not found.")
+            json.dump(config, file, indent=4)
+
+        logging.info("Version in config file updated successfully.")
+
+    except Exception as e:
+        logging.error(f"Failed to update version in config: {e}")
 
 
 def main():
