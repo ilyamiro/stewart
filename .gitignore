@@ -1,0 +1,50 @@
+# Logs
+logs/app_log
+
+# Virtual Environments
+venv/
+
+# Byte-compiled / Cached files
+**/__pycache__/
+
+# IDE Specific Files
+.idea/
+
+# Audio Output
+audio/tts/audio.wav
+audio/tts/models/
+audio/input/vector.txt
+
+# Configuration Files
+old_conf.yaml
+
+# Local Testing Files
+test.py
+test
+test2.py
+commit.txt
+commit_ru.txt
+do.txt
+scripts/py/post_commit.session
+plugins/custom/actions/tiktok.py
+plugins/custom/actions/doom.mp3
+
+# Data Files
+#data/grammar/
+
+# Development Files
+dev/voice_activity.py
+
+# Include Directory
+include/
+
+#plugins/*
+#!plugins/core/
+#!plugins/gpt/
+
+gui/*
+!gui/animation.py
+
+har_and_cookies
+.env
+
