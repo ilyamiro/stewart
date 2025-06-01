@@ -13,6 +13,7 @@ from utils import system_setup, admin, clear
 
 log = logging.getLogger("main")
 
+
 if admin():
     log.error("Program should not be run with super user (sudo or admin) privileges. Exiting...")
     sys.exit()
