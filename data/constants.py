@@ -11,9 +11,9 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 with open(f"{PROJECT_DIR}/version.txt", "r", encoding="utf-8") as file:
     APP_VERSION  = file.read()
-APP_NAME = "stewart"
+APP_NAME = "Hb"
 APP_ID = hashlib.sha256(f"{APP_NAME}:{APP_VERSION}".encode()).hexdigest()[:16]  # Unique but readable
-CACHING_MARKER_FILENAME = ".stewart_cache_info.json"
+CACHING_MARKER_FILENAME = ".Hb_cache_info.json"
 
 # config
 CONFIG_DIR = f"{PROJECT_DIR}/config"
@@ -25,7 +25,7 @@ LANG_FILE = f"{CONFIG_DIR}/lang.txt"
 PLUGINS_DIR = f"{PROJECT_DIR}/plugins"
 
 # logs
-LOG_DIR = os.path.join(os.path.expanduser("~"), ".cache/stewart")
+LOG_DIR = os.path.join(os.path.expanduser("~"), ".cache/Hb")
 LOG_FILENAME = os.path.join(LOG_DIR, f"log_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log")
 
 # MY PHONE LOCAL IP

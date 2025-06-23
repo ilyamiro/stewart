@@ -1,1 +1,1 @@
-"use strict";(self.webpackChunkstewart=self.webpackChunkstewart||[]).push([[903],{1912:t=>{t.exports=JSON.parse('{"blogBasePath":"/stewart/blog","blogTitle":"Blog","authorsListPath":"/stewart/blog/authors"}')}}]);
+"use strict";(self.webpackChunkHb=self.webpackChunkHb||[]).push([[903],{1912:t=>{t.exports=JSON.parse('{"blogBasePath":"/Hb/blog","blogTitle":"Blog","authorsListPath":"/Hb/blog/authors"}')}}]);

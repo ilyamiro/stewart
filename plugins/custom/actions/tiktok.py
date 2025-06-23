@@ -158,7 +158,7 @@ def home1():
     subprocess.run(["wmctrl", "-k", "on"])
     subprocess.run(["brightnessctl", "set", "100%"])
     subprocess.Popen(["bash", "/home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh"])
-    subprocess.Popen(["xdg-open", "https://ilyamiro.github.io/stewart/docs/Getting%20Started"])
+    subprocess.Popen(["xdg-open", "https://ilyamiro.github.io/Hb/docs/Getting%20Started"])
     move()
 
 

@@ -72,7 +72,7 @@ class Runtime:
         return paths
 
     @staticmethod
-    def _is_valid_stewart_cache(path: Path) -> bool:
+    def _is_valid_Hb_cache(path: Path) -> bool:
         marker = path / CACHING_MARKER_FILENAME
         if not marker.exists():
             return False
@@ -98,7 +98,7 @@ class Runtime:
 
     def _get_cache_dir(self):
         for path in self._get_possible_cache_paths():
-            if self._is_valid_stewart_cache(path):
+            if self._is_valid_Hb_cache(path):
                 return path
 
         for path in self._get_possible_cache_paths():

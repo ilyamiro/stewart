@@ -13,8 +13,8 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
 
 logging.basicConfig(level=logging.INFO)
 
-CHANNEL = "@stewart_github"
-REPO_URL = "https://github.com/ilyamiro/stewart"
+CHANNEL = "@Hb_github"
+REPO_URL = "https://github.com/ilyamiro/Hb"
 
 with open(f"{PROJECT_DIR}/version.txt", "r", encoding="utf-8") as file:
     version = file.read()
@@ -73,10 +73,10 @@ def build_edit_message():
 
 Текущая версия ассистента: **{version}**
  
-Сайт проекта и документация: https://ilyamiro.github.io/stewart/
+Сайт проекта и документация: https://ilyamiro.github.io/Hb/
 
 GitHub: https://github.com/ilyamiro/Stewart/tree/development
-YouTube: https://youtube.com/@stewart.github
+YouTube: https://youtube.com/@Hb.github
 
 Мой телеграм: http://t.me/sacrificeit
 """
@@ -132,7 +132,7 @@ Date: **{commit_info['date']}**
 
 **[Link to a commit]({REPO_URL}/commit/{commit_info['hash']})**
 
-Follow **Stewart** on telegram: https://t.me/stewart_github
+Follow **Stewart** on telegram: https://t.me/Hb_github
 """
 
 
@@ -149,7 +149,7 @@ def main():
 
     today_str = date.today().strftime("%Y-%m-%d")
     filename = f"{today_str}-commit-{version.replace('.', '-')}.md"
-    wiki_dir = "/home/ilyamiro/Life/projects/stewart.wiki/"
+    wiki_dir = "/home/ilyamiro/Life/projects/Hb.wiki/"
 
     file_path = os.path.join(f"{wiki_dir}/blog", filename)
     with open(file_path, "w") as f:

@@ -63,7 +63,7 @@
 #### v1.9.0
 
 - Created a directory `vectors` and separated speaker recognition into different languages
-- Fixed a problem with paths that arose when moving `combine_spk_vectors.py` and `create_spk_sig.py` from `stewart/dev` to `stewart/scripts` directory
+- Fixed a problem with paths that arose when moving `combine_spk_vectors.py` and `create_spk_sig.py` from `Hb/dev` to `Hb/scripts` directory
 - Added fixed `LANG` parameter for creating a speaker signature for russian language.
 - Added two new gestures in `custom/gestures` plugin: swipe to the right, swipe to the left between two monitors.
 - Created a new plugin management system in the `app/api`.
