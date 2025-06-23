@@ -30,7 +30,7 @@ def logging_setup():
 
     logging.basicConfig(
         level=logging.DEBUG,
-        format='stewart - %(name)s -  %(asctime)s:  (%(levelname)s) - %(message)s',
+        format='Hb - %(name)s -  %(asctime)s:  (%(levelname)s) - %(message)s',
         handlers=[
             logging.FileHandler(LOG_FILENAME),
             logging.StreamHandler()

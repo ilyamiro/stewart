@@ -208,7 +208,7 @@ commands:
             "--start-as=maximized",
             "bash",
             "-c",
-            "cd ~/Life/projects/stewart.wiki && tmux new-session -Ad -s stewartwiki -n editor \"nvim\" \\; split-window -h \\; resize-pane -R 20 \\; select-pane -L \\; attach-session -t stewartwiki"
+            "cd ~/Life/projects/Hb.wiki && tmux new-session -Ad -s Hbwiki -n editor \"nvim\" \\; split-window -h \\; resize-pane -R 20 \\; select-pane -L \\; attach-session -t Hbwiki"
           ]
       responses:
         - Произвел конфигурацию окружения, сэр.
@@ -1416,7 +1416,7 @@ commands:
         почту: https://gmail.com
         твиттер: https://twitter.com
         ютуб: https://www.youtube.com
-        документацию: https://ilyamiro.github.io/stewart/docs/Overview
+        документацию: https://ilyamiro.github.io/Hb/docs/Overview
       parameter: url
       synonyms:
         инстаграм:
@@ -1484,7 +1484,7 @@ commands:
           - gnome-software
         логи:
           - xdg-open
-          - /home/ilyamiro/.cache/stewart/logs
+          - /home/ilyamiro/.cache/Hb/logs
         игры:
           - steam
         телеграм:

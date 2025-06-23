@@ -1,5 +1,5 @@
 <div align = center>
-<img src="data/images/stewart_logo.png" alt="Logo" width="" height="220">
+<img src="data/images/Hb_logo.png" alt="Logo" width="" height="220">
 
 ![Badge Release]
 ![Badge License]
@@ -24,7 +24,7 @@ Lines of code: **10165**
 A desktop voice assistant build with python
 
 > All documentation can be found here: 
-> https://ilyamiro.github.io/stewart/
+> https://ilyamiro.github.io/Hb/
 
 ### License
 

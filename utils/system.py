@@ -144,19 +144,19 @@ def set_caching_directory():
 
     cache_dir = os.path.join(home_dir, ".cache")
 
-    stewart_dir = os.path.join(cache_dir, "stewart")
+    Hb_dir = os.path.join(cache_dir, "Hb")
 
     if not os.path.exists(cache_dir):
         log.info(f"Creating .cache directory at {cache_dir}")
         os.makedirs(cache_dir)
 
-    if not os.path.exists(stewart_dir):
-        log.info(f"Creating caching directory at {stewart_dir}")
-        os.makedirs(stewart_dir)
+    if not os.path.exists(Hb_dir):
+        log.info(f"Creating caching directory at {Hb_dir}")
+        os.makedirs(Hb_dir)
     else:
-        log.info(f"Using existing caching directory at {stewart_dir}")
+        log.info(f"Using existing caching directory at {Hb_dir}")
 
-    return stewart_dir
+    return Hb_dir
 
 
 def admin():
@@ -231,7 +231,7 @@ def cleanup(directory, limit: int):
 
 def notify(title: str, message: str, timeout: int = 10):
     notification.notify(
-        app_icon=f"{PROJECT_DIR}/data/images/stewart.png",
+        app_icon=f"{PROJECT_DIR}/data/images/Hb.png",
         app_name="Stewart",
         title=title,
         message=message,
