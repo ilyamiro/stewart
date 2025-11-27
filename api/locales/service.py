@@ -41,7 +41,7 @@ class Locale:
         return self.translations.get(key)
 
 
-class LocaleService:
+class LocalePluginService:
     def __init__(self, lang: str = "en"):
         self.localisations = {}
         self.lang = lang

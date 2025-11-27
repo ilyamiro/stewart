@@ -102,11 +102,11 @@ plugins:
       - content: Как я могу вам помочь, сэр?
         role: system
 settings:
-  animation: true
+  animation: false
   inactivity-threshold: 300
   max-history-length: 100
   react-no-command: false
-  text-mode: false
+  text-mode: true
   trigger:
     trigger-mode: enabled
     trigger-time: 30

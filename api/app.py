@@ -31,7 +31,7 @@ from utils import load_yaml, filter_lang_config, load_lang, notify, sanitize_fil
 from .commands.tree import Manager
 from .commands.scenarios import Trigger, Timeline, Scenario
 from .events.events import Event, EventLogger
-from .locales.service import Locale, LocaleService
+from .locales.service import Locale, LocalePluginService
 from .files.caching import Runtime
 
 log = logging.getLogger("API: app")
@@ -231,7 +231,7 @@ class AppAPI:
         self.MouseButton = MouseButton
         self.Key = KeyboardKey
 
-        self.localeService = LocaleService(self.lang)
+        self.localeService = LocalePluginService(self.lang)
         self.Locale = Locale
 
         self.tts = TTS(self.config, self.lang)

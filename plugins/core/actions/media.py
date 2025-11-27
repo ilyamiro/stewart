@@ -123,12 +123,11 @@ def save_song(href, title):
 def play_song(**kwargs):
     search = kwargs["context"]
     log.info(f"Searching music sources for {search}")
-    results = api_ytmusic.search(search, filter="songs")
+    results = api_ytmusic.search(search, filter="videos")
 
     for result in results:
         if not result or not result.get("videoId"):
-            continue  # Skip invalid results
-
+            continue
         link = "https://music.youtube.com/watch?v=" + result["videoId"]
         title = f'{result.get("artists")[0]["name"] if result.get("artists") else "Unknown"} - {result["title"]}'
 

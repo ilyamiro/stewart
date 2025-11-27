@@ -25,6 +25,7 @@ test2.py
 commit.txt
 commit_ru.txt
 do.txt
+configmy/*
 scripts/py/post_commit.session
 plugins/custom/actions/tiktok.py
 plugins/custom/actions/doom.mp3

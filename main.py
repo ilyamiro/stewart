@@ -13,9 +13,8 @@ from utils import system_setup, admin, clear
 
 log = logging.getLogger("main")
 
-
 if admin():
-    log.error("Program should not be run with super user (sudo or admin) privileges. Exiting...")
+    log.error("The app should not be run with super user (sudo or admin) privileges. Exiting. ")
     sys.exit()
 
 from data.constants import PLUGINS_DIR
@@ -70,6 +69,7 @@ def main():
                     if len(buffer) > 16000:
                         result = stt.check_speaker(buffer)
                         if result:
+                            # subprocess.run(["wmctrl", "-a", ""])
                             log.debug("Going out of the sleeping mode")
                             elapsed_time = time.time() - last_time
                             if elapsed_time < 600:

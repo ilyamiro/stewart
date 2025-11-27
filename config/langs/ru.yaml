@@ -1474,17 +1474,9 @@ commands:
         игры:
           - steam
         телеграм:
-          - /usr/bin/flatpak
-          - run
-          - --branch=stable
-          - --arch=x86_64
-          - --command=telegram-desktop
-          - --file-forwarding
-          - org.telegram.desktop
-          - '@@u'
-          - '%u'
-          - '@@'
-          - /dev/null 2>&1
+          - "/usr/bin/flatpak"
+          - "run"
+          - "org.telegram.desktop"
         терминал:
           - kitty
         видео:
@@ -1495,6 +1487,9 @@ commands:
           - "-i"
       parameter: command
       synonyms:
+        шахматы:
+          - партию
+          - пулю
         блокнот:
           - заметки
           - записки
