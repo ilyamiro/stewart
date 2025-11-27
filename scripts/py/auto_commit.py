@@ -156,6 +156,10 @@ def main():
         logging.info("No new version commit detected, exiting.")
         return
 
+    if commit_info['branch'] == "personal":
+        logging.info("Personal branch, skipping...")
+        return
+
     changes = get_commit_changes(commit_info['hash'])
 
     telegram_message = build_telegram_message(commit_info, changes)
