@@ -17,7 +17,6 @@ audio/input/vector.txt
 
 # Configuration Files
 old_conf.yaml
-config/lang.txt
 
 # Local Testing Files
 test.py
@@ -26,6 +25,7 @@ test2.py
 commit.txt
 commit_ru.txt
 do.txt
+configmy/*
 scripts/py/post_commit.session
 plugins/custom/actions/tiktok.py
 plugins/custom/actions/doom.mp3
@@ -48,4 +48,3 @@ gui/*
 
 har_and_cookies
 .env
-

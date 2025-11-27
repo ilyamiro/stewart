@@ -8,7 +8,6 @@ from pyrogram import Client
 import shutil
 import pyrogram.errors
 
-
 PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
 
 logging.basicConfig(level=logging.INFO)
@@ -36,7 +35,13 @@ def replace_repeated_chars(input_string, char):
 
 def format_commit_changes(raw_changes):
     change_lines = raw_changes.strip().split("\n")
-    formatted_changes = "\n".join([f"• {line.strip()}" for line in change_lines if line.strip()])
+    filtered_lines = [
+        line.strip()
+        for line in change_lines
+        if line.strip() and not line.strip().startswith("docs/")
+    ]
+
+    formatted_changes = "\n".join([f"• {line.strip()}" for line in filtered_lines if line.strip()])
 
     formatted_changes = replace_repeated_chars(formatted_changes, "+")
     formatted_changes = replace_repeated_chars(formatted_changes, "-")
@@ -47,7 +52,7 @@ def format_commit_changes(raw_changes):
 def build_telegram_message(commit_info, changes, short=False):
     return f"""**Новый коммит** 
 Версия: **{version}**
-    
+
 Репозиторий: **{commit_info["repository"]}**
 Ветка: **{commit_info['branch']}**
 
@@ -67,18 +72,24 @@ __автоматически сгенерированное сообщение__
 def build_edit_message():
     return f"""Всем привет!
 
-Меня зовут Илья, я 17 летний разработчик
+Меня зовут Илья и мне 17 лет. Я единственный разработчик Стюарта.
 
-В этом телеграм канале я буду показывать свой прогресс в создании помощника по имени Стюарт. Я буду постить мой прогресс, дневные задачи и прогресс на русском и английском языках
+⚠️Стюарт не готов к использованию широкой аудиторией, так как находится в **активной разработке**. Если вы все же хотите его запустить, вам потребуются навыки программирования, но процесс довольно простой. За помощью пишите мне @sacrificeit
+
+⚠️ **Windows 10/11** не поддерживаются! Их поддержку можно ожидать только на релизе. Сейчас запуск возможен лишь на дистрибутивах **Linux**. Для них существует установщик.
+
+💻 Стюарт на релизе будет абсолютно бесплатным, вам просто нужно будет его скачать. 
+
+Дополнительную информацию вы сможете найти на сайте с документацией, который активно обновляется, смотрите ниже. Стюарт имеет открытый исходный код
 
 Текущая версия ассистента: **{version}**
- 
-Сайт проекта и документация: https://ilyamiro.github.io/stewart/
 
+Сайт проекта и документация: https://ilyamiro.github.io/stewart/
 GitHub: https://github.com/ilyamiro/Stewart/tree/development
 YouTube: https://youtube.com/@stewart.github
-
 Мой телеграм: http://t.me/sacrificeit
+
+Чат: https://t.me/stewart_comments
 """
 
 
@@ -110,7 +121,7 @@ def get_commit_changes(commit_hash):
     return ""
 
 
-def construct_to_blog(commit_info, changes):
+def construct_to_blog(commit_info):
     return f"""---
 slug: commit-{version.replace('.', '-')}
 title: Commit - {version}
@@ -118,10 +129,12 @@ authors: [ilyamiro]
 tags: [commit]    
 ---
 
-**New commit** 
+**New commit**
+
 Version: **{version}**
-    
+
 Repository: **{commit_info["repository"]}**
+
 Branch: **{commit_info['branch']}**
 
 Date: **{commit_info['date']}**
@@ -142,10 +155,14 @@ def main():
         logging.info("No new version commit detected, exiting.")
         return
 
+    if commit_info['branch'] == "personal":
+        logging.info("Personal branch, skipping...")
+        return
+
     changes = get_commit_changes(commit_info['hash'])
 
     telegram_message = build_telegram_message(commit_info, changes)
-    blog_message = construct_to_blog(commit_info, changes)
+    blog_message = construct_to_blog(commit_info)
 
     today_str = date.today().strftime("%Y-%m-%d")
     filename = f"{today_str}-commit-{version.replace('.', '-')}.md"
@@ -157,7 +174,6 @@ def main():
 
     subprocess.run(["npm", "run", "build"], cwd=wiki_dir, check=True)
 
-    # Step 4: Remove existing docs directory
     if os.path.exists(f"{PROJECT_DIR}/docs"):
         shutil.rmtree(f"{PROJECT_DIR}/docs")
 
