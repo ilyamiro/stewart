@@ -18,7 +18,10 @@
 
 ## About
 
-Lines of code: **14036** 
+> [!NOTE]
+> As of October 2026, this project is mostly managed by AI agents and is intended for personal use only.
+
+Lines of code: **14039** 
 
 A desktop voice assistant build with python
 
