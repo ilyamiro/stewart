@@ -1,11 +1,12 @@
 {
     "schema_version": 2,
-    "commit": "17d84d871a797cbe350084a368583e654f4f341a",
-    "indexed_at": "2026-10-03T20:32:07Z",
+    "commit": "b833599c26b88b55582160315b1b0029a8e39b75",
+    "indexed_at": "2026-10-03T20:32:16Z",
     "project": "home-ilyamiro-Projects-stewart",
     "nodes": 2736,
     "edges": 10055,
     "original_size": 14024704,
-    "compressed_size": 2743837,
-    "compression_level": 3
+    "compressed_size": 2748735,
+    "compression_level": 3,
+    "reconcile_basis": "git-clean-head"
 }
