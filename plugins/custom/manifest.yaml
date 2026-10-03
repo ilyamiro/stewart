@@ -1,4 +1,4 @@
-name: gpt
+name: custom
 locales:
   en: locales/en.yaml
   ru: locales/ru.yaml

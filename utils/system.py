@@ -14,19 +14,14 @@ from pathlib import Path
 from importlib import import_module
 from copy import deepcopy
 
-import requests
 import yaml
 import urllib.parse
-import g4f
-from bs4 import BeautifulSoup
-import lxml
-
-import requests
-
-from num2words import num2words
-from plyer import notification
 
 from data.constants import *
+
+def num2words(*args, **kwargs):
+    from num2words import num2words as _num2words
+    return _num2words(*args, **kwargs)
 
 log = logging.getLogger("utils")
 
@@ -100,10 +95,43 @@ def load_json(path: str):
             return json.load(file)
 
 
-def load_lang():
-    if os.path.exists(LANG_FILE):
-        with open(LANG_FILE, "r", encoding="utf-8") as file:
-            return file.read()
+def load_lang() -> str:
+    # 1. Environment variable override
+    env_lang = os.environ.get("STEWART_LANG")
+    if env_lang:
+        return env_lang.strip().lower()
+
+    # 2. Command line flag override (--lang, -l)
+    for idx, arg in enumerate(sys.argv):
+        if arg in ("--lang", "-l") and idx + 1 < len(sys.argv):
+            return sys.argv[idx + 1].strip().lower()
+        if arg.startswith("--lang="):
+            return arg.split("=", 1)[1].strip().lower()
+
+    # 3. Read from lang file
+    from data.constants import get_lang_file
+    lang_file = get_lang_file()
+    if lang_file and os.path.exists(lang_file):
+        try:
+            with open(lang_file, "r", encoding="utf-8") as file:
+                val = file.read().strip().lower()
+                if val:
+                    return val
+        except Exception:
+            pass
+
+    return "en"
+
+
+def set_lang(lang: str) -> str:
+    """Permanently sets the active language in USER_CONFIG_DIR / 'lang.txt'."""
+    from data.constants import USER_CONFIG_DIR
+    lang = lang.strip().lower()
+    os.makedirs(USER_CONFIG_DIR, exist_ok=True)
+    target = USER_CONFIG_DIR / "lang.txt"
+    with open(target, "w", encoding="utf-8") as file:
+        file.write(f"{lang}\n")
+    return str(target)
 
 
 def filter_lang_config(file, lang_prefix):
@@ -193,14 +221,17 @@ def system_setup():
 
 
 def notify(title: str, message: str, timeout: int = 10):
-    notification.notify(
-        app_icon=f"{PROJECT_DIR}/data/images/stewart.png",
-        app_name="Stewart",
-        title=title,
-        message=message,
-        timeout=timeout,
-
-    )
+    try:
+        from plyer import notification
+        notification.notify(
+            app_icon=f"{PROJECT_DIR}/data/images/stewart.png",
+            app_name="Stewart",
+            title=title,
+            message=message,
+            timeout=timeout,
+        )
+    except Exception as e:
+        log.warning(f"Could not display notification: {e}")
 
 
 # --------------- Internet & System Functions ---------------
@@ -216,10 +247,11 @@ def internet(host="https://google.com", timeout=3) -> bool:
     bool: True if the host is reachable, otherwise False.
     """
     try:
+        import requests
         requests.get(host, timeout=timeout)
         log.info("Network connection check: successful")
         return True
-    except requests.ConnectionError as e:
+    except Exception as e:
         log.info(f"Failed to establish internet connection with the host {host}: {e}")
     return False
 
@@ -355,6 +387,8 @@ def track_time(func, *args, **kwargs):
 
 
 def find_link(search):
+    import requests
+    from bs4 import BeautifulSoup
     url = "https://html.duckduckgo.com/html/"
     params = {'q': search}
 
@@ -372,6 +406,7 @@ def find_link(search):
 
 
 def fetch_weather():
+    import requests
     params = {
         "lat": MY_CITY_LAT,
         "lon": MY_CITY_LON,
@@ -384,5 +419,5 @@ def fetch_weather():
         response = requests.get(OPENWEATHER_API, params=params)
         response.raise_for_status()
         return response.json()
-    except requests.exceptions.RequestException:
+    except Exception:
         return None

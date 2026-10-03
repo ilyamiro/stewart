@@ -1,5 +1,16 @@
+import re
 import datetime
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Set, Tuple
+
+CONNECTORS = {
+    "and", "then", "also", "after", "that", "please", "now", "so", "to",
+    "и", "потом", "затем", "также", "пожалуйста", "сейчас", "давай", "чтобы"
+}
+
+_PUNCT_TABLE = str.maketrans(
+    ",.!?;:()[]{}\"'`~*¿¡",
+    "                   "
+)
 
 
 class Command:
@@ -14,29 +25,102 @@ class Command:
         if equivalents is None:
             equivalents = []
 
-        self.keywords = keywords
-        self.synonyms = synonyms
+        self.keywords = [k.lower().strip() for k in keywords]
+        self.synonyms = {k.lower().strip(): [s.lower().strip() for s in v] for k, v in synonyms.items()}
         self.responses = responses
         self.action = action
         self.parameters = parameters
         self.continues = continues
         self.equivalents = equivalents
         self.tts = tts
+        self._action_callable = None
+
+        # Precompute set of all words and fast synonym-to-keyword lookup
+        self._all_words_set = set(self.keywords)
+        self._synonym_to_key_map = {}
+        for kw, syns in self.synonyms.items():
+            for syn in syns:
+                self._all_words_set.add(syn)
+                self._synonym_to_key_map[syn] = kw
+
+        # Precompute requirement clusters for fast matching
+        self._req_groups = [
+            frozenset([kw] + self.synonyms.get(kw, []))
+            for kw in self.keywords
+        ]
+        self._all_req_words = frozenset().union(*self._req_groups) if self._req_groups else frozenset()
 
     def copy(self, keywords):
         return Command(keywords, self.action, self.synonyms, self.responses, self.parameters, self.continues,
                        tts=self.tts)
 
 
+class Token:
+    __slots__ = ('text', 'clean', 'start_char', 'end_char', 'index')
+
+    def __init__(self, text: str, clean: str, start_char: int, end_char: int, index: int):
+        self.text = text
+        self.clean = clean
+        self.start_char = start_char
+        self.end_char = end_char
+        self.index = index
+
+
+class CandidateMatch:
+    __slots__ = ('command', 'start', 'end', 'matched_indices', 'in_order', 'k_len', 'span', 'score')
+
+    def __init__(self, command: Command, start: int, end: int, matched_indices: Tuple[int, ...], in_order: bool, k_len: int):
+        self.command = command
+        self.start = start
+        self.end = end
+        self.matched_indices = matched_indices
+        self.in_order = in_order
+        self.k_len = k_len
+        self.span = end - start + 1
+        # Specificity score: keyword count dominates (1000 per keyword),
+        # penalize span (-10 per word), bonus for canonical order (+50)
+        self.score = (k_len * 1000) - (self.span * 10) + (50 if in_order else 0)
+
+
 class Manager:
     def __init__(self):
         self.Command = Command
-        self.commands = []
+        self.commands: List[Command] = []
+        self._first_keywords = {}
+        self._commands_by_first_kw = {}
+        self._all_first_words = set()
+        self._all_known_words: Set[str] = set()
+        self._word_to_cmd_indices: Dict[str, List[int]] = {}
+        self._query_cache: Dict[str, List] = {}
+
+    def _rebuild_index(self):
+        self._first_keywords = {}
+        self._commands_by_first_kw = {}
+        self._all_first_words = set()
+        self._all_known_words = set()
+        self._word_to_cmd_indices = {}
+        self._query_cache.clear()
+
+        for idx, command in enumerate(self.commands):
+            first_kw = command.keywords[0]
+            self._first_keywords[first_kw] = command
+            self._all_first_words.add(first_kw)
+            self._commands_by_first_kw.setdefault(first_kw, []).append(command)
+
+            for synonym in command.synonyms.get(first_kw, []):
+                self._first_keywords[synonym] = command
+                self._all_first_words.add(synonym)
+                self._commands_by_first_kw.setdefault(synonym, []).append(command)
+
+            for word in command._all_req_words:
+                self._all_known_words.add(word)
+                self._word_to_cmd_indices.setdefault(word, []).append(idx)
 
     def add(self, *commands: Command):
         """
         Add one or more Command instances to the manager.
         """
+        changed = False
         for command in commands:
             if isinstance(command, Command):
                 for cmd in self.commands[:]:
@@ -45,8 +129,11 @@ class Manager:
                 self.commands.append(command)
                 for equivalent in command.equivalents:
                     self.commands.append(command.copy(equivalent))
+                changed = True
             else:
                 raise TypeError(f"Expected Command instance, got {type(command).__name__}")
+        if changed:
+            self._rebuild_index()
 
     def construct_recognizer_string(self):
         words = []
@@ -56,150 +143,197 @@ class Manager:
                 words.extend(synonyms)
         return " ".join(set(words))
 
+    @staticmethod
+    def _tokenize(request: str) -> List[Token]:
+        tokens = []
+        # Find all words ignoring surrounding punctuation
+        for m in re.finditer(r"[^\s,!?;:()[\]{}\"'`~*.]+", request):
+            text = m.group(0)
+            clean = text.lower()
+            tokens.append(Token(text, clean, m.start(), m.end(), len(tokens)))
+        return tokens
+
     def find(self, request: str):
-        request = request.lower().strip()
-        words = request.split()
+        cached = self._query_cache.get(request)
+        if cached is not None:
+            return [[c[0], c[1]] for c in cached]
 
-        results = {}
+        if not request or not request.strip():
+            return []
 
-        first_keywords = {}
-        for command in self.commands:
-            first_keywords[command.keywords[0]] = command
-            for synonym in command.synonyms.get(command.keywords[0], []):
-                first_keywords[synonym] = command
+        tokens = self._tokenize(request)
+        if not tokens:
+            return []
 
-        mapping = self.map_words_to_indexes(words, first_keywords)
-        found_command = len(words)
-        previous_index = None
+        query_words = set(t.clean for t in tokens)
+        if query_words.isdisjoint(self._all_known_words):
+            if len(self._query_cache) < 1000:
+                self._query_cache[request] = []
+            return []
 
-        for index, keyword in mapping.items():
-            if results and previous_index is not None and results.get(previous_index, None) is not None:
-                if results.get(previous_index).continues:
-                    results = {previous_index: results.get(previous_index)}
+        # Find candidate commands whose requirement groups are all present in query_words
+        candidate_cmd_indices = set()
+        for w in query_words:
+            if w in self._word_to_cmd_indices:
+                candidate_cmd_indices.update(self._word_to_cmd_indices[w])
 
-            previous_index = index
-            constructed = [keyword]
+        candidates: List[CandidateMatch] = []
+        max_gap = 4
 
-            matches = self.get_matching_commands(constructed)
+        for cmd_idx in candidate_cmd_indices:
+            cmd = self.commands[cmd_idx]
+            req_groups = cmd._req_groups
+            k_len = len(req_groups)
 
-            keyword_index = 1
-            last_index = 0
-            for command in matches:
-                if len(command.keywords) == 1 and not words[index + 1:found_command] and self.is_constructed(
-                        command.keywords, constructed, command.synonyms):
-                    results[index] = command
-                    found_command = index + 1
-                    constructed = []
-
-            for word_index, word in enumerate(words[index + 1:found_command]):
-                matches = self.get_matching_commands(constructed)
-                matches.sort(key=lambda cmd: len(cmd.keywords), reverse=True)
-
-                found_word = False
-                if word_index - last_index > 2:
+            # Check if all requirement groups have at least one matching token
+            pos_lists = []
+            possible = True
+            for group in req_groups:
+                positions = [t.index for t in tokens if t.clean in group]
+                if not positions:
+                    possible = False
                     break
-                for command in matches:
-                    if found_word:
-                        break
-                    if keyword_index == len(command.keywords) and self.is_constructed(command.keywords, constructed,
-                                                                                          command.synonyms):
-                        results[index] = command
-                        found_command = index + 1
-                        keyword_index = 1
-                        break
-                    if len(command.keywords) == 1 and self.is_constructed(command.keywords, constructed,
-                                                                          command.synonyms):
-                        results[index] = command
-                        found_command = index + 1
-                        keyword_index = 1
-                        break
+                pos_lists.append(positions)
 
-                    if (word == command.keywords[keyword_index] or word in command.synonyms.get(
-                            command.keywords[keyword_index], [])) and self.is_constructed(command.keywords, constructed,
-                                                                                          command.synonyms):
-                        keyword_index += 1
-                        constructed.append(word)
-                        last_index = word_index
-                        found_word = True
-                        if keyword_index == len(command.keywords):
-                            results[index] = command
-                            found_command = index + 1
-                            keyword_index = 1
-                            break
+            if not possible:
+                continue
 
-        if results and previous_index is not None and results.get(previous_index, None) is not None:
-            if results.get(previous_index).continues:
-                results = {previous_index: results.get(previous_index)}
+            if k_len == 1:
+                for p in pos_lists[0]:
+                    candidates.append(CandidateMatch(cmd, p, p, (p,), True, 1))
 
-        used_indices = set()
+            elif k_len == 2:
+                for p0 in pos_lists[0]:
+                    for p1 in pos_lists[1]:
+                        if p0 == p1:
+                            continue
+                        gap = abs(p0 - p1) - 1
+                        if gap > max_gap:
+                            continue
+                        start = min(p0, p1)
+                        end = max(p0, p1)
+                        in_order = (p0 < p1)
+                        candidates.append(CandidateMatch(cmd, start, end, (p0, p1), in_order, 2))
 
-        def matches_keyword(word1, keyword1, synonyms):
-            if word1 == keyword1:
-                return True
-            if keyword1 in synonyms and word1 in synonyms[keyword1]:
-                return True
-            return False
+            elif k_len == 3:
+                for p0 in pos_lists[0]:
+                    for p1 in pos_lists[1]:
+                        if p0 == p1:
+                            continue
+                        for p2 in pos_lists[2]:
+                            if p2 == p0 or p2 == p1:
+                                continue
+                            indices = (p0, p1, p2)
+                            start = min(indices)
+                            end = max(indices)
+                            span = end - start + 1
+                            if span - 3 > max_gap * 2:
+                                continue
+                            in_order = (p0 < p1 < p2)
+                            candidates.append(CandidateMatch(cmd, start, end, indices, in_order, 3))
 
-        for start_index in sorted(results.keys()):
-            command = results[start_index]
-            command_keywords = command.keywords
-            command_synonyms = command.synonyms
-            temp_used_indices = set()
-            word_index = 0
-
-            for keyword in command_keywords:
-                while word_index < len(words):
-                    if (
-                            word_index not in used_indices
-                            and matches_keyword(words[word_index], keyword, command_synonyms)
-                    ):
-                        temp_used_indices.add(word_index)
-                        word_index += 1
-                        break
-                    word_index += 1
-                else:
-                    del results[start_index]
-                    break
-
-            if start_index in results:
-                used_indices.update(temp_used_indices)
-
-        sorted_keys = sorted(results.keys())
-        number = 1
-        context = {number + i: [key, ""] for i, key in enumerate(results.values())}
-
-        for index, result in results.items():
-            if result.continues:
-                boundary = len(words)
             else:
-                sorted_index = sorted_keys.index(index)
+                def search_comb(group_idx, current_indices):
+                    if group_idx == k_len:
+                        start = min(current_indices)
+                        end = max(current_indices)
+                        span = end - start + 1
+                        if span - k_len <= max_gap * (k_len - 1):
+                            in_order = all(current_indices[i] < current_indices[i + 1] for i in range(k_len - 1))
+                            candidates.append(CandidateMatch(cmd, start, end, tuple(current_indices), in_order, k_len))
+                        return
+                    for p in pos_lists[group_idx]:
+                        if p not in current_indices:
+                            search_comb(group_idx + 1, current_indices + [p])
 
-                if sorted_index < len(sorted_keys) - 1:
-                    boundary = sorted_keys[sorted_index + 1]
+                search_comb(0, [])
+
+        if not candidates:
+            if len(self._query_cache) < 1000:
+                self._query_cache[request] = []
+            return []
+
+        # Sort candidates by end index, then by score descending
+        candidates.sort(key=lambda c: (c.end, -c.score))
+
+        # Dynamic Programming for Weighted Non-Overlapping Intervals
+        n = len(candidates)
+        dp: List[Tuple[float, List[CandidateMatch]]] = [(0, [])] * (n + 1)
+
+        for i in range(1, n + 1):
+            curr = candidates[i - 1]
+            curr_indices_set = set(curr.matched_indices)
+
+            # Option 1: Do not include candidate curr
+            best_without = dp[i - 1]
+
+            # Option 2: Include candidate curr; find best non-overlapping predecessor
+            best_prev_score = 0
+            best_prev_list = []
+            for j in range(i - 1, 0, -1):
+                prev_cands = dp[j][1]
+                overlap = False
+                for p in prev_cands:
+                    if not set(p.matched_indices).isdisjoint(curr_indices_set):
+                        overlap = True
+                        break
+                    if max(p.start, curr.start) <= min(p.end, curr.end):
+                        overlap = True
+                        break
+                if not overlap:
+                    if dp[j][0] > best_prev_score:
+                        best_prev_score = dp[j][0]
+                        best_prev_list = prev_cands
+
+            with_score = curr.score + best_prev_score
+            with_list = best_prev_list + [curr]
+
+            if with_score > best_without[0]:
+                dp[i] = (with_score, with_list)
+            else:
+                dp[i] = best_without
+
+        selected = dp[n][1]
+        selected.sort(key=lambda c: c.start)
+
+        final_results = []
+        m = len(selected)
+
+        for i, match in enumerate(selected):
+            cmd = match.command
+            next_start = selected[i + 1].start if i + 1 < m else len(tokens)
+
+            subsequent_words = [tokens[idx] for idx in range(match.end + 1, next_start)]
+
+            # If there's a next command, strip trailing connector words before the next command
+            if i + 1 < m:
+                while subsequent_words and subsequent_words[-1].clean in CONNECTORS:
+                    subsequent_words.pop()
+
+            if cmd.continues:
+                while subsequent_words and subsequent_words[0].clean in CONNECTORS:
+                    subsequent_words.pop(0)
+                payload_words = [t.text for t in subsequent_words]
+                context_str = " ".join(payload_words).strip()
+            else:
+                filtered = [t for t in subsequent_words if t.clean not in CONNECTORS]
+                clean_words = [t.clean for t in filtered]
+                common_noise = {
+                    "right", "now", "the", "a", "an", "please", "just", "for",
+                    "thank", "you", "so", "much", "thanks", "very",
+                    "сейчас", "прямо", "пожалуйста", "спасибо", "большое"
+                }
+                if not filtered or all(w in common_noise for w in clean_words):
+                    context_str = ""
                 else:
-                    boundary = len(words)
+                    context_str = " ".join(t.text for t in filtered).strip()
 
-            found = False
-            track_command = []
+            final_results.append([cmd, context_str])
 
-            for word in words[index:boundary]:
-                if word not in result.keywords and all(word not in synonyms for synonyms in result.synonyms.values()):
-                    found = True
-                    context[number] = [result, context.get(number)[1] + " " + word]
-                else:
-                    track_command.append(next((key for key, value in result.synonyms.items() if word in value), word))
-                    if word in track_command and result.keywords[:len(track_command)] != track_command:
-                        found = True
-                        context[number] = [result, context.get(number)[1] + " " + word]
+        if len(self._query_cache) < 1000:
+            self._query_cache[request] = [[c[0], c[1]] for c in final_results]
 
-            if not found:
-                context[number] = [result, ""]
-
-            number += 1
-
-        context = {key: context[len(context) - key + 1] for key in context}
-
-        return list(context.values())
+        return final_results
 
     @staticmethod
     def is_constructed(keywords, constructed, synonyms):
@@ -216,20 +350,25 @@ class Manager:
     @staticmethod
     def map_words_to_indexes(words, word_list):
         word_map = {}
-
-        for index, word in enumerate(words):
-            if word in word_list:
-                word_map[index] = word
-
-        word_map = dict(sorted(word_map.items(), key=lambda item: item[0], reverse=True))
+        for index in range(len(words) - 1, -1, -1):
+            w = words[index]
+            if w in word_list:
+                word_map[index] = w
         return word_map
 
     def get_matching_commands(self, keywords):
         if not keywords:
             return self.commands
+        first = keywords[0]
+        candidates = self._commands_by_first_kw.get(first, [])
+        if not candidates:
+            return []
+        if len(keywords) == 1:
+            return candidates
         commands = []
-        for cmd in self.commands:
+        for cmd in candidates:
             if self.is_constructed(cmd.keywords, keywords, cmd.synonyms):
                 commands.append(cmd)
 
         return commands
+

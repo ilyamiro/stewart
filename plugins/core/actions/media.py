@@ -7,10 +7,9 @@ import urllib.request
 import urllib.parse
 import webbrowser
 import subprocess
+import shutil
+import functools
 from importlib import import_module
-
-import yt_dlp
-from ytmusicapi import YTMusic
 
 from data.constants import CONFIG_FILE, PROJECT_DIR
 from utils import *
@@ -18,9 +17,20 @@ from api import app
 
 import_utils(app.lang, globals())
 
-api_ytmusic = YTMusic()
+_api_ytmusic = None
+
+def _get_ytmusic():
+    global _api_ytmusic
+    if _api_ytmusic is None:
+        from ytmusicapi import YTMusic
+        _api_ytmusic = YTMusic()
+    return _api_ytmusic
 
 log = logging.getLogger("module: " + __file__)
+
+@functools.lru_cache(maxsize=32)
+def _which(cmd):
+    return shutil.which(cmd)
 
 boost_amount = 0.5
 
@@ -43,27 +53,64 @@ def resume_audio(**kwargs):
 
 
 def mute_volume(**kwargs):
-    os.system(f'amixer set Master {kwargs["command"].parameters["command"]} > /dev/null 2>&1')
+    cmd = kwargs["command"].parameters.get("command", "toggle")
+    # PipeWire
+    if _which("wpctl"):
+        val = "1" if cmd == "mute" else ("0" if cmd == "unmute" else "toggle")
+        subprocess.run(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", val], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return
+    # PulseAudio
+    if _which("pactl"):
+        val = "1" if cmd == "mute" else ("0" if cmd == "unmute" else "toggle")
+        subprocess.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", val], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return
+    # ALSA fallback
+    if _which("amixer"):
+        subprocess.run(["amixer", "set", "Master", cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def volume(**kwargs):
     results = find_num(kwargs["context"])
-    if results:
-        num = results[0]
-    else:
-        num = None
+    num = results[0] if results else None
+    command = kwargs["command"].parameters.get("command", "set")
+    adjustment = num if num is not None else 25
 
-    command = kwargs["command"].parameters["command"]
-    current = int(os.popen('amixer get Master | grep -oP "\[\d+%\]"').read().split()[0][1:-2])
-    adjustment = num if num else 25
-    new_volume = current + adjustment if command == "up" else current - adjustment
+    # PipeWire support
+    if _which("wpctl"):
+        if command == "set" and num is not None:
+            subprocess.run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{num}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            log.info(f"Set volume to {num}% via wpctl")
+        elif command == "up":
+            subprocess.run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{adjustment}%+"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            log.info(f"Increased volume by {adjustment}% via wpctl")
+        elif command == "down":
+            subprocess.run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{adjustment}%-"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            log.info(f"Decreased volume by {adjustment}% via wpctl")
+        return
 
-    if command == "set" and num:
-        os.system(f"amixer set 'Master' {num}% > /dev/null 2>&1")
-        log.info(f"Set system volume to {num}")
-    else:
-        os.system(f"amixer set 'Master' {new_volume}% > /dev/null 2>&1")
-        log.info(f"Set system volume to {new_volume}")
+    # PulseAudio support
+    if _which("pactl"):
+        if command == "set" and num is not None:
+            subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{num}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            log.info(f"Set volume to {num}% via pactl")
+        elif command == "up":
+            subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"+{adjustment}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        elif command == "down":
+            subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"-{adjustment}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return
+
+    # ALSA fallback
+    if _which("amixer"):
+        try:
+            current_raw = os.popen('amixer get Master | grep -oP "\\[\\d+%\\]"').read().split()
+            current = int(current_raw[0][1:-2]) if current_raw else 50
+        except Exception:
+            current = 50
+        new_volume = current + adjustment if command == "up" else current - adjustment
+        new_volume = max(0, min(100, new_volume))
+        target = num if (command == "set" and num is not None) else new_volume
+        os.system(f"amixer set 'Master' {target}% > /dev/null 2>&1")
+        log.info(f"Set system volume to {target}% via amixer")
 
 
 def save_song(href, title):
@@ -90,6 +137,7 @@ def save_song(href, title):
     if os.path.exists(filename + ".mp3"):
         log.info(f"{filename} already exists. Playing the existing file.")
     else:
+        import yt_dlp
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             if download:
                 try:
@@ -123,7 +171,7 @@ def save_song(href, title):
 def play_song(**kwargs):
     search = kwargs["context"]
     log.info(f"Searching music sources for {search}")
-    results = api_ytmusic.search(search, filter="videos")
+    results = _get_ytmusic().search(search, filter="videos")
 
     for result in results:
         if not result or not result.get("videoId"):

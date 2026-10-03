@@ -41,11 +41,12 @@ include/
 
 #plugins/*
 #!plugins/core/
-#!plugins/gpt/
 
 gui/*
 !gui/animation.py
 
 har_and_cookies
 .env
+result
+result-*
 

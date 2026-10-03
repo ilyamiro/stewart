@@ -35,8 +35,16 @@ def get_battery_info():
 
         # Try to get more detailed information from sysfs
         try:
-            battery_path = '/sys/class/power_supply/BAT0'
-            if os.path.exists(battery_path):
+            # Dynamically locate battery under /sys/class/power_supply
+            base_ps = '/sys/class/power_supply'
+            battery_path = None
+            if os.path.exists(base_ps):
+                for d in os.listdir(base_ps):
+                    if d.startswith('BAT') or 'battery' in d.lower():
+                        battery_path = os.path.join(base_ps, d)
+                        break
+
+            if battery_path and os.path.exists(battery_path):
                 # Get cycle count
                 cycle_path = os.path.join(battery_path, 'cycle_count')
                 if os.path.exists(cycle_path):
@@ -68,14 +76,17 @@ def get_battery_info():
             pass
 
         try:
-            # Some systems allow accessing SMART info of batteries
-            smart_info = subprocess.check_output(["smartctl", "-a", "/dev/nvme0"], text=True, stderr=subprocess.DEVNULL)
-            if "Temperature:" in smart_info:
-                for line in smart_info.split('\n'):
-                    if "Temperature:" in line:
-                        match = re.search(r'Temperature:\s+(\d+)\s+Celsius', line)
-                        if match:
-                            info['system_temperature'] = f"{match.group(1)}°C"
+            # Dynamically detect NVMe drive
+            nvme_candidates = ['/dev/nvme0n1', '/dev/nvme0', '/dev/sda']
+            target_drive = next((d for d in nvme_candidates if os.path.exists(d)), None)
+            if target_drive and shutil.which("smartctl"):
+                smart_info = subprocess.check_output(["smartctl", "-a", target_drive], text=True, stderr=subprocess.DEVNULL)
+                if "Temperature:" in smart_info:
+                    for line in smart_info.split('\n'):
+                        if "Temperature:" in line:
+                            match = re.search(r'Temperature:\s+(\d+)\s+Celsius', line)
+                            if match:
+                                info['system_temperature'] = f"{match.group(1)}°C"
         except (subprocess.SubprocessError, FileNotFoundError):
             # SMART info is optional
             pass

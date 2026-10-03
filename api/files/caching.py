@@ -18,6 +18,8 @@ class Runtime:
     def __init__(self):
         self.path = self._get_cache_dir()
         self.runtime_file = self.path / "runtime.json"
+        self._cache = self._load()
+        self._cached_dirs = set()
         log.info(f"Using preferable caching directory: {self.path}")
 
     def _load(self):
@@ -37,21 +39,19 @@ class Runtime:
             log.error(f"Failed to write runtime file: {e}")
 
     def write(self, key, value):
-        data = self._load()
-        data[key] = value
-        self._save(data)
+        self._cache[key] = value
+        self._save(self._cache)
 
     def read(self, key, default=None):
-        data = self._load()
-        return data.get(key, default)
+        return self._cache.get(key, default)
 
     def delete(self, key):
-        data = self._load()
-        if key in data:
-            del data[key]
-            self._save(data)
+        if key in self._cache:
+            del self._cache[key]
+            self._save(self._cache)
 
     def clear(self):
+        self._cache.clear()
         if self.runtime_file.exists():
             self.runtime_file.unlink()
 
@@ -121,8 +121,11 @@ class Runtime:
         """
         safe_name = Path(name).name  # prevent path traversal like "../../etc"
         full_path = self.path / safe_name
+        if safe_name in self._cached_dirs:
+            return full_path
         try:
             full_path.mkdir(parents=True, exist_ok=True)
+            self._cached_dirs.add(safe_name)
             return full_path
         except Exception as e:
             log.warning(f"Failed to create cache subdirectory '{safe_name}': {e}")

@@ -1,11 +1,9 @@
 import re
 import threading
-import requests
 import random
 from datetime import datetime
 
-from num2words import num2words
-
+from utils import num2words
 from utils.system import fetch_weather
 
 

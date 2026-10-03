@@ -4,7 +4,6 @@ import os
 import logging
 import time
 import random
-import playsound
 
 from data.constants import CONFIG_FILE, PROJECT_DIR, PLUGINS_DIR
 from utils import load_yaml, filter_lang_config

@@ -1,6 +1,5 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 DEVICE_IP=$1
 
-sudo adb connect "$DEVICE_IP":5555
-
+adb connect "$DEVICE_IP":5555

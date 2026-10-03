@@ -1,8 +1,7 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
-DEVICE_IP=$1  # Take the device's IP address as an argument
+DEVICE_IP=$1
 
-# Check if the device is connected by looking at the output of 'adb devices'
 connected_device=$(adb devices | grep "$DEVICE_IP")
 
 if [[ -n $connected_device ]]; then

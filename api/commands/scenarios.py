@@ -1,7 +1,6 @@
 import re
 import inspect
-
-from typing import List, Callable, Union, Optional, Dict
+from typing import List, Callable, Union, Optional, Dict, Any, Set
 
 
 class Trigger:
@@ -14,11 +13,27 @@ class Trigger:
                  callback: Optional[Callable] = None,
                  synonyms: Dict[str, List[str]] = None,
                  equivalents: List[List[str]] = None):
-        self.keywords = keywords
-        self.synonyms = synonyms if synonyms is not None else {}
-        self.equivalents = equivalents if equivalents is not None else []
+        self.keywords = [k.lower().strip() for k in keywords]
+        self.synonyms = {k.lower().strip(): [s.lower().strip() for s in v] for k, v in (synonyms or {}).items()}
+        self.equivalents = [[k.lower().strip() for k in eq] for eq in (equivalents or [])]
         self.callback = self.blank if callback is None else callback
-        self.keyword_combinations = self._generate_keyword_combinations()
+
+        # Build requirement clusters for fast set-based matching without regex combinatorial explosion
+        self._patterns: List[List[frozenset]] = []
+        primary_pattern = [
+            frozenset([kw] + self.synonyms.get(kw, []))
+            for kw in self.keywords
+        ]
+        self._patterns.append(primary_pattern)
+
+        for eq in self.equivalents:
+            eq_pattern = [
+                frozenset([kw] + self.synonyms.get(kw, []))
+                for kw in eq
+            ]
+            self._patterns.append(eq_pattern)
+
+        self._cached_keyword_combinations = None
 
     def blank(self, request):
         pass
@@ -52,15 +67,56 @@ class Trigger:
 
         return all_combinations
 
+    @property
+    def keyword_combinations(self) -> List[List[str]]:
+        if self._cached_keyword_combinations is None:
+            self._cached_keyword_combinations = self._generate_keyword_combinations()
+        return self._cached_keyword_combinations
+
     def match(self, request: str) -> bool:
         """
-        Checks whether the trigger keywords match the user request
+        Checks whether the trigger keywords match the user request.
+        Handles duplicate words, punctuation, and flexible word order reliably.
         """
-        request_lower = request.lower()
+        tokens = [t.lower() for t in re.findall(r"[^\s,!?;:()[\]{}\"'`~*.]+", request)]
+        if not tokens:
+            return False
 
-        for keyword_set in self.keyword_combinations:
-            if self._match_keywords(request_lower, keyword_set):
+        for pattern in self._patterns:
+            k_len = len(pattern)
+            pos_lists = []
+            possible = True
+            for cluster in pattern:
+                matches = [i for i, t in enumerate(tokens) if t in cluster]
+                if not matches:
+                    possible = False
+                    break
+                pos_lists.append(matches)
+
+            if not possible:
+                continue
+
+            if k_len == 1:
                 return True
+            elif k_len == 2:
+                for p0 in pos_lists[0]:
+                    for p1 in pos_lists[1]:
+                        if p0 != p1:
+                            return True
+            else:
+                def can_match(cluster_idx: int, used_indices: Set[int]) -> bool:
+                    if cluster_idx == k_len:
+                        return True
+                    for p in pos_lists[cluster_idx]:
+                        if p not in used_indices:
+                            used_indices.add(p)
+                            if can_match(cluster_idx + 1, used_indices):
+                                return True
+                            used_indices.remove(p)
+                    return False
+
+                if can_match(0, set()):
+                    return True
 
         return False
 
@@ -69,12 +125,13 @@ class Trigger:
         """
         Checks matches of all the possible keyword combinations with a request
         """
-        pattern = r'\b({0})\b'.format('|'.join(re.escape(kw) for kw in keywords))
-        matches = re.findall(pattern, request_lower)
-        if len(matches) == len(keywords):
-            keyword_indices = [request_lower.index(match) for match in matches]
-            return all(keyword_indices[i] < keyword_indices[i + 1] for i in range(len(keyword_indices) - 1))
-        return False
+        tokens = [t.lower() for t in re.findall(r"[^\s,!?;:()[\]{}\"'`~*.]+", request_lower)]
+        req_set = set(keywords)
+        matched = set()
+        for t in tokens:
+            if t in req_set:
+                matched.add(t)
+        return len(matched) == len(req_set)
 
 
 class Timeline:
@@ -149,43 +206,50 @@ class Scenario:
 
     def check_scenario(self, request: str, request_history) -> bool:
         """
-        Checks whether the user request activates the scenario
+        Checks whether the user request activates the scenario or advances it.
         """
-        request_history = [event.details.get("request") for event in request_history]
-        if not self.active:
-            start_triggers = self.timeline.get_current_triggers()
-            for trigger in start_triggers:
-                if isinstance(trigger, Trigger) and trigger.match(request):
-                    self.active = True
-                    self.request_since_last_trigger = 0
-                    if trigger.callback:
-                        self._call_callback(trigger.callback, request)
-                    self.timeline.advance()
-                    return True
-            return False
-
         if self.timeline.is_complete():
             self.active = False
             self.timeline.reset()
             return False
 
         current_triggers = self.timeline.get_current_triggers()
-        self.request_since_last_trigger += 1
 
+        # Check if any trigger in the current step matches
+        matched_trigger = None
+        for trigger in current_triggers:
+            if isinstance(trigger, Trigger) and trigger.match(request):
+                matched_trigger = trigger
+                break
+            elif isinstance(trigger, Timeline):
+                sub_scenario = Scenario("sub", trigger, self.max_gap)
+                if sub_scenario.check_scenario(request, request_history):
+                    matched_trigger = trigger
+                    break
+
+        if matched_trigger is not None:
+            self.active = True
+            self.request_since_last_trigger = 0
+            if isinstance(matched_trigger, Trigger) and matched_trigger.callback:
+                self._call_callback(matched_trigger.callback, request)
+            self.timeline.advance()
+
+            # If the timeline has reached completion after this step:
+            if self.timeline.is_complete():
+                self.active = False
+                self.timeline.reset()
+            return True
+
+        # If it did not match:
+        if not self.active:
+            return False
+
+        # If already active, count this as an intervening gap request:
+        self.request_since_last_trigger += 1
         if self.request_since_last_trigger > self.max_gap:
             self.active = False
             self.timeline.reset()
             return False
 
-        for trigger in current_triggers:
-            if isinstance(trigger, Trigger) and trigger.match(request):
-                self.request_since_last_trigger = 0
-                if trigger.callback:
-                    self._call_callback(trigger.callback, request)
-                self.timeline.advance()
-                return True
-            elif isinstance(trigger, Timeline):
-                sub_scenario = Scenario("sub", trigger, self.max_gap)
-                if sub_scenario.check_scenario(request, request_history):
-                    return True
         return True
+

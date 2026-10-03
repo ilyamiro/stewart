@@ -2,13 +2,15 @@ import logging
 import subprocess as sp
 import threading
 import os
+import shutil
 from datetime import datetime
 import sys
 import time
 import webbrowser
+from pathlib import Path
 
 from utils import *
-from data.constants import CONFIG_FILE, PROJECT_DIR
+from data.constants import CONFIG_FILE, PROJECT_DIR, BEEP_SOUND
 
 from api import app
 
@@ -19,10 +21,36 @@ log = logging.getLogger("module: " + __file__)
 stopwatch_start_time = None
 
 
+def _get_system_layout():
+    try:
+        result = sp.run(
+            ["localectl", "status"], stdout=sp.PIPE, text=True, check=True
+        )
+
+        # Parse the output to find X11 Layout
+        for line in result.stdout.splitlines():
+            if "X11 Layout:" in line:
+                return line.split(":", 1)[1].strip()
+
+        return "us"  # Default to US if not found
+    except Exception:
+        return "us"  # Default to US on error
+
+
+def _set_xwayland_layout(layout: str) -> None:
+    if shutil.which("setxkbmap") and os.environ.get("DISPLAY"):
+        try:
+            sp.run(["setxkbmap", layout], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        except Exception:
+            pass
+
+
 def typing(**kwargs) -> None:
     """
     Types a specified text from the context
     """
+    system_layout = _get_system_layout()
+    _set_xwayland_layout(system_layout)
     app.keyboard.type(kwargs["context"])
 
 
@@ -121,7 +149,8 @@ def list_usb(**kwargs) -> None:
     if devices:
         count = num2words(len(devices))
         device_list = ', and '.join(devices)
-        app.say(app.localeService.translate("core", "core.list_usb.total_connected", count=count, device_list=device_list))
+        app.say(
+            app.localeService.translate("core", "core.list_usb.total_connected", count=count, device_list=device_list))
     else:
         app.say(app.localeService.translate("core", "core.list_usb.no_connected"))
 
@@ -134,27 +163,36 @@ def power_reload(**kwargs) -> None:
 
     if way == "off":
         results = find_num(kwargs["context"])
-        if results:
-            num = results[0]
-        else:
-            num = None
+        num = results[0] if results else None
 
         if num:
             minutes = num2words(num, lang="en")
             app.say(app.localeService.translate("core", "core.power_reload.x_minutes", minutes=minutes))
-            os.system(f"shutdown -r -h +{num} /dev/null 2>&1")
+            if shutil.which("shutdown"):
+                sp.run(["shutdown", "-r", f"+{num}"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif shutil.which("systemctl"):
+                sp.run(["systemctl", "reboot"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
         else:
             app.say(app.localeService.translate("core", "core.power_reload.one_minute"))
-            os.system(f"sudo shutdown -r -h +1 /dev/null 2>&1")
+            if shutil.which("shutdown"):
+                sp.run(["shutdown", "-r", "+1"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif shutil.which("systemctl"):
+                sp.run(["systemctl", "reboot"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
 
     elif way == "now":
         app.say(app.localeService.translate("core", "core.power_reload.now"))
-        thread = threading.Timer(2.5, os.system, args=["sudo shutdown -r now"])
+        def _do_reboot():
+            if shutil.which("systemctl"):
+                sp.run(["systemctl", "reboot"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            else:
+                sp.run(["shutdown", "-r", "now"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        thread = threading.Timer(2.5, _do_reboot)
         thread.start()
 
     else:
         app.say(app.localeService.translate("core", "core.power_reload.cancel"))
-        os.system("sudo shutdown -c /dev/null 2>&1")
+        if shutil.which("shutdown"):
+            sp.run(["shutdown", "-c"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
 
 
 def power_off(**kwargs) -> None:
@@ -162,41 +200,86 @@ def power_off(**kwargs) -> None:
 
     if way == "off":
         results = find_num(kwargs["context"])
-        if results:
-            num = results[0]
-        else:
-            num = None
+        num = results[0] if results else None
 
         if num:
             minutes = num2words(num, lang="en")
             app.say(app.localeService.translate("core", "core.power_off.x_minutes", minutes=minutes))
-            sp.run(["sudo", "shutdown", "-h", f"+{num}"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            if shutil.which("shutdown"):
+                sp.run(["shutdown", "-h", f"+{num}"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif shutil.which("systemctl"):
+                sp.run(["systemctl", "poweroff"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
         else:
             app.say(app.localeService.translate("core", "core.power_off.one_minute"))
-            sp.run(["sudo", "shutdown", "-h", "+1"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            if shutil.which("shutdown"):
+                sp.run(["shutdown", "-h", "+1"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif shutil.which("systemctl"):
+                sp.run(["systemctl", "poweroff"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
 
     elif way == "now":
         app.say(app.localeService.translate("core", "core.power_off.now"))
-        thread = threading.Timer(2.5, lambda: sp.run(["sudo", "shutdown", "now"]))
+        def _do_poweroff():
+            if shutil.which("systemctl"):
+                sp.run(["systemctl", "poweroff"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            else:
+                sp.run(["shutdown", "-h", "now"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        thread = threading.Timer(2.5, _do_poweroff)
         thread.start()
 
     else:
-        tts.say(app.localeService.translate("core", "core.power_off.cancel"))
-        sp.run(["sudo", "shutdown", "-c"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        app.say(app.localeService.translate("core", "core.power_off.cancel"))
+        if shutil.which("shutdown"):
+            sp.run(["shutdown", "-c"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
 
 
 def update(**kwargs) -> None:
-    dnf_check = sp.run(["sudo", "dnf", "check-update"], capture_output=True, text=True)
-    tail_output = sp.run(["tail", "-n", "+3"], input=dnf_check.stdout, capture_output=True, text=True)
-    wc_output = sp.run(["wc", "-l"], input=tail_output.stdout, capture_output=True, text=True)
-    number_of_lines = int(wc_output.stdout.strip())
+    config = app.get_config()
+    custom_update = config.get("system", {}).get("update_command")
+    if custom_update:
+        app.say("Starting system update.")
+        if isinstance(custom_update, str):
+            sp.run(custom_update, shell=True)
+        else:
+            sp.run(custom_update)
+        app.say("System update completed.")
+        return
 
-    if number_of_lines == 0:
-        app.say(app.localeService.translate("core", "core.update.no_update"))
-    else:
-        app.say(app.localeService.translate("core", "core.update.update_before"), number_of_lines=num2words(number_of_lines, app.lang))
-        sp.run(["sudo", "dnf", "update", "--refresh", "--best", "--allowerasing", "-y"])
-        app.say(app.localeService.translate("core", "core.update.update_after"))
+    # NixOS
+    if shutil.which("nixos-rebuild"):
+        app.say("NixOS detected. Please run nixos-rebuild switch to update your system.")
+        return
+
+    # Fedora / RHEL
+    if shutil.which("dnf"):
+        dnf_check = sp.run(["dnf", "check-update"], capture_output=True, text=True)
+        lines = [l for l in dnf_check.stdout.splitlines() if l.strip() and not l.startswith("Last metadata")]
+        number_of_lines = len(lines)
+
+        if number_of_lines == 0:
+            app.say(app.localeService.translate("core", "core.update.no_update"))
+        else:
+            app.say(app.localeService.translate("core", "core.update.update_before"),
+                    number_of_lines=num2words(number_of_lines, app.lang))
+            sp.run(["sudo", "dnf", "update", "--refresh", "--best", "--allowerasing", "-y"])
+            app.say(app.localeService.translate("core", "core.update.update_after"))
+        return
+
+    # Debian / Ubuntu
+    if shutil.which("apt"):
+        app.say("Updating package lists.")
+        sp.run(["sudo", "apt", "update"])
+        sp.run(["sudo", "apt", "upgrade", "-y"])
+        app.say("System update completed.")
+        return
+
+    # Arch
+    if shutil.which("pacman"):
+        app.say("Updating Arch packages.")
+        sp.run(["sudo", "pacman", "-Syu", "--noconfirm"])
+        app.say("System update completed.")
+        return
+
+    app.say("No supported package manager found to update the system.")
 
 
 def brightness(**kwargs):
@@ -252,16 +335,24 @@ def tell_time(**kwargs):
     hour = now.hour
     minute = now.minute
 
-    hour_words = num2words(hour, to='cardinal', lang=app.localeService.translate("core", "core.tell_time.num2words_lang"))
-    minute_words = num2words(minute, to='cardinal', lang=app.localeService.translate("core", "core.tell_time.num2words_lang"))
+    hour_words = num2words(hour, to='cardinal',
+                           lang=app.localeService.translate("core", "core.tell_time.num2words_lang"))
+    minute_words = num2words(minute, to='cardinal',
+                             lang=app.localeService.translate("core", "core.tell_time.num2words_lang"))
 
     phrases = [
-        app.localeService.translate("core", "core.tell_time.variant_1", hour_words=hour_words, minute_words=minute_words),
-        app.localeService.translate("core", "core.tell_time.variant_2", hour_words=hour_words, minute_words=minute_words),
-        app.localeService.translate("core", "core.tell_time.variant_3", hour_words=hour_words, minute_words=minute_words),
-        app.localeService.translate("core", "core.tell_time.variant_4", hour_words=hour_words, minute_words=minute_words),
-        app.localeService.translate("core", "core.tell_time.variant_5", hour_words=hour_words, minute_words=minute_words),
-        app.localeService.translate("core", "core.tell_time.variant_6", hour_words=hour_words, minute_words=minute_words)
+        app.localeService.translate("core", "core.tell_time.variant_1", hour_words=hour_words,
+                                    minute_words=minute_words),
+        app.localeService.translate("core", "core.tell_time.variant_2", hour_words=hour_words,
+                                    minute_words=minute_words),
+        app.localeService.translate("core", "core.tell_time.variant_3", hour_words=hour_words,
+                                    minute_words=minute_words),
+        app.localeService.translate("core", "core.tell_time.variant_4", hour_words=hour_words,
+                                    minute_words=minute_words),
+        app.localeService.translate("core", "core.tell_time.variant_5", hour_words=hour_words,
+                                    minute_words=minute_words),
+        app.localeService.translate("core", "core.tell_time.variant_6", hour_words=hour_words,
+                                    minute_words=minute_words)
     ]
 
     app.say(random.choice(phrases))
@@ -297,9 +388,20 @@ def tell_month(**kwargs):
     app.say(random.choice(phrases))
 
 
+def _find_battery():
+    base = Path("/sys/class/power_supply")
+    if base.exists():
+        for p in base.iterdir():
+            if (p / "capacity").exists() and (p / "status").exists():
+                return p / "capacity", p / "status"
+    return None, None
+
+
 def battery(**kwargs):
-    battery_path = "/sys/class/power_supply/BAT0/capacity"
-    charging_path = "/sys/class/power_supply/BAT0/status"
+    battery_path, charging_path = _find_battery()
+    if not battery_path or not charging_path:
+        app.say("No battery detected or unable to read battery information.")
+        return
 
     try:
         with open(battery_path, "r") as f:
@@ -307,12 +409,13 @@ def battery(**kwargs):
 
         with open(charging_path, "r") as f:
             status = f.read().strip()
-            
+
         word_percent = num2words(percentage, lang=app.lang)
 
         if status.lower() == "charging":
             if percentage >= 80:
-                app.say(f"Your laptop is charging and already at {word_percent} percent. You might consider unplugging soon.")
+                app.say(
+                    f"Your laptop is charging and already at {word_percent} percent. You might consider unplugging soon.")
             elif percentage >= 50:
                 app.say(f"Your laptop is charging and currently at {word_percent} percent. Keep it plugged in for now.")
             else:
@@ -325,7 +428,8 @@ def battery(**kwargs):
             elif percentage >= 20:
                 app.say(f"Your battery is getting low at {word_percent} percent. Please find a charger.")
             else:
-                app.say(f"Warning! Your battery is critically low at {word_percent} percent. Plug in your charger immediately!")
+                app.say(
+                    f"Warning! Your battery is critically low at {word_percent} percent. Plug in your charger immediately!")
     except FileNotFoundError:
         app.say("No battery detected or unable to read battery information.")
 
@@ -374,8 +478,10 @@ def timer(**kwargs):
     def countdown():
         time.sleep(total_seconds)
         app.say(f"Timer is up!. Your {readable_time} are over.")
+        beep_file = str(BEEP_SOUND) if Path(BEEP_SOUND).exists() else f"{PROJECT_DIR}/data/sounds/beep.wav"
         for i in range(6):
-            app.audio.play(f"{PROJECT_DIR}/data/sounds/beep.wav")
+            if os.path.exists(beep_file):
+                app.audio.play(beep_file)
             app.audio.player.wait_for_playback()
 
     threading.Thread(target=countdown, daemon=True).start()
@@ -397,8 +503,31 @@ def stopwatch(**kwargs):
 
 
 def backlight(**kwargs):
-    sp.run(
-        ["sudo", "tee", "/sys/class/leds/asus::kbd_backlight/brightness"],
-        input="3\n" if kwargs["command"].parameters["way"] == "on" else "0\n",
-        text=True
-    )
+    way = kwargs["command"].parameters.get("way", "on")
+
+    # Try brightnessctl first
+    if shutil.which("brightnessctl"):
+        val = "100%" if way == "on" else "0%"
+        res = sp.run(["brightnessctl", "--device=*kbd_backlight*", "set", val], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        if res.returncode == 0:
+            return
+
+    # Fallback to sysfs search
+    base = Path("/sys/class/leds")
+    if base.exists():
+        for p in base.iterdir():
+            if "kbd_backlight" in p.name:
+                b_file = p / "brightness"
+                max_file = p / "max_brightness"
+                max_val = "3"
+                if max_file.exists():
+                    try:
+                        max_val = max_file.read_text().strip()
+                    except Exception:
+                        pass
+                val = max_val if way == "on" else "0"
+                try:
+                    b_file.write_text(f"{val}\n")
+                except PermissionError:
+                    sp.run(["sudo", "tee", str(b_file)], input=f"{val}\n", text=True, stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+                return

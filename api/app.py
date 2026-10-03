@@ -1,4 +1,5 @@
 import json
+import sys
 import os.path
 import time
 import logging
@@ -16,15 +17,24 @@ import hashlib
 from importlib import import_module
 from pathlib import Path
 from multiprocessing import Process
-from playsound import playsound
 
-from pynput.keyboard import Controller as Keyboard
-from pynput.keyboard import Key as KeyboardKey
+try:
+    from pynput.keyboard import Controller as Keyboard
+    from pynput.keyboard import Key as KeyboardKey
+except (ImportError, Exception):
+    Keyboard = KeyboardKey = None
 
-from pynput.mouse import Controller as Mouse
-from pynput.mouse import Button as MouseButton
+try:
+    from pynput.mouse import Controller as Mouse
+    from pynput.mouse import Button as MouseButton
+except (ImportError, Exception):
+    Mouse = MouseButton = None
 
-from data.constants import PROJECT_DIR, CONFIG_FILE, CONFIG_DIR, PLUGINS_DIR
+from data.constants import (
+    PROJECT_DIR, CONFIG_FILE, CONFIG_DIR, PLUGINS_DIR,
+    USER_CONFIG_DIR, DEFAULT_CONFIG_DIR, USER_PLUGINS_DIR,
+    DEFAULT_PLUGINS_DIR, TTS_CACHE_DIR
+)
 from audio.tts import TTS
 from utils import load_yaml, filter_lang_config, load_lang, notify, sanitize_filename
 
@@ -36,19 +46,18 @@ from .files.caching import Runtime
 
 log = logging.getLogger("API: app")
 
-__GPT_CALLBACK_TYPE__ = typing.Callable[[str], str]
-
 
 # runtime = Runtime()
 
 class AudioInterface:
     def __init__(self):
+        self.ipc_socket_path = "/tmp/mpv-socket"
         try:
             self.player = mpv.MPV(
                 ytdl=True,
                 input_default_bindings=True,
                 video=False,
-                input_ipc_server="/tmp/mpv-socket"
+                input_ipc_server=self.ipc_socket_path
             )
 
         except Exception as e:
@@ -223,8 +232,17 @@ class AppAPI:
 
         self.eventLogger = EventLogger()
 
-        self.mouse = Mouse()
-        self.keyboard = Keyboard()
+        try:
+            self.mouse = Mouse() if Mouse else None
+        except Exception as e:
+            log.warning(f"Could not initialize Mouse controller: {e}")
+            self.mouse = None
+
+        try:
+            self.keyboard = Keyboard() if Keyboard else None
+        except Exception as e:
+            log.warning(f"Could not initialize Keyboard controller: {e}")
+            self.keyboard = None
 
         self.audio = AudioInterface()
 
@@ -260,6 +278,42 @@ class AppAPI:
             {"answer": answer}
         ))
 
+    def get_cached_audio_path(self, text: str, prosody=94, speaker=None):
+        """Returns the file path of the cached audio file if it exists, otherwise None."""
+        if not text or not self.config.get("audio", {}).get("tts", {}).get("enable-caching", True):
+            return None
+        parsed = self.tts.parse_config_answers(text)
+        normalized = parsed.strip().lower()
+        hash_input = str(f"{normalized}|prosody={prosody}|speaker={speaker or ''}")
+        cached_hash = self.runtime.read(f"tts:{hash_input}")
+        if cached_hash:
+            tts_cache: Path = self.runtime.mkdir_cache("tts")
+            cached_file = tts_cache / f"{cached_hash}.wav"
+            if cached_file.exists():
+                return str(cached_file)
+        return None
+
+    def get_cached_answers(self, answers: list, prosody=94, speaker=None):
+        """Batch-evaluates a list of answer templates and returns (raw_template, parsed_text, wav_path) for cached ones."""
+        if not answers or not self.config.get("audio", {}).get("tts", {}).get("enable-caching", True):
+            return []
+        tts_cache: Path = self.runtime.mkdir_cache("tts")
+        cached = []
+        for text in answers:
+            parsed = self.tts.parse_config_answers(text)
+            normalized = parsed.strip().lower()
+            hash_input = f"{normalized}|prosody={prosody}|speaker={speaker or ''}"
+            cached_hash = self.runtime.read(f"tts:{hash_input}")
+            if cached_hash:
+                wav_file = tts_cache / f"{cached_hash}.wav"
+                if wav_file.exists():
+                    cached.append((text, parsed, str(wav_file)))
+        return cached
+
+    def is_cached(self, text: str, prosody=94, speaker=None) -> bool:
+        """Returns True if the text audio is already synthesized and present on disk."""
+        return self.get_cached_audio_path(text, prosody=prosody, speaker=speaker) is not None
+
     def say(self, text: str, no_audio=False, prosody=94, speaker=None):
         if not text:
             return
@@ -268,8 +322,11 @@ class AppAPI:
             log.debug(f"No sound: {text}")
             return
 
+        # Resolve dynamic expressions (e.g. [get_part_of_day]) before hashing
+        text = self.tts.parse_config_answers(text)
+
         def call_tts_in_thread(**kwargs):
-            process = threading.Thread(target=self.tts.say, kwargs=kwargs)
+            process = threading.Thread(target=self.tts.say, kwargs=kwargs, daemon=True)
             process.start()
 
         if self.config["audio"]["tts"]["enable-caching"]:
@@ -286,13 +343,15 @@ class AppAPI:
                 if cached_file.exists():
                     log.debug(f"Using cached tts file {cached_file} for text: {text}")
                     self.runtime.write(f"tts:{hash_input}", cached_hash)  # Reinforce mapping
-                    playsound(str(cached_file), block=False)
+                    self.audio.play(str(cached_file))
                     return
 
             call_tts_in_thread(text=text, path=str(filename), no_audio=no_audio, prosody=prosody, speaker=speaker)
             self.runtime.write(f"tts:{hash_input}", phrase_hash)
         else:
-            call_tts_in_thread(text=text, path=f"{PROJECT_DIR}/audio/tts/audio.wav", no_audio=no_audio,
+            fallback_wav = str(TTS_CACHE_DIR / "audio.wav")
+            TTS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            call_tts_in_thread(text=text, path=fallback_wav, no_audio=no_audio,
                                prosody=prosody, speaker=speaker)
 
     def set_post_init(self, func: types.FunctionType, index: int = -1) -> None:
@@ -396,25 +455,24 @@ class AppAPI:
     # < ------------------- Plugins ------------------- >
     @staticmethod
     def _load_plugin_modules(directory):
-        modules = []
+        import importlib.util
+        plugin_base = os.path.basename(directory)
 
         for root, _, files in os.walk(directory):
             for filename in files:
-                if filename.endswith('.py'):
-                    rel_path = os.path.relpath(root, directory)
-                    if rel_path == '.':
-                        module_path = directory.replace(os.sep, ".") + "." + filename[:-3]
-                    else:
-                        # For subdirectories, include the subdirectory in the module path
-                        module_path = directory.replace(os.sep, ".") + "." + rel_path.replace(os.sep,
-                                                                                              ".") + "." + filename[:-3]
-                    modules.append(module_path)
-
-        for path in modules:
-            try:
-                import_module(path)
-            except ImportError as e:
-                log.info(f"Failed to import {path}: {e}")
+                if filename.endswith('.py') and not filename.startswith('__'):
+                    file_path = os.path.join(root, filename)
+                    rel_path = os.path.relpath(file_path, directory)
+                    mod_suffix = rel_path[:-3].replace(os.sep, ".")
+                    mod_name = f"plugins.{plugin_base}.{mod_suffix}"
+                    try:
+                        spec = importlib.util.spec_from_file_location(mod_name, file_path)
+                        if spec and spec.loader:
+                            module = importlib.util.module_from_spec(spec)
+                            sys.modules[mod_name] = module
+                            spec.loader.exec_module(module)
+                    except Exception as e:
+                        log.debug(f"Optional module {file_path} skipped: {e}")
 
     def _import_plugin(self, directory, manifest):
         name = manifest.get("name")
@@ -447,25 +505,25 @@ class AppAPI:
             log.info(f"manifest.yaml found in {path}, proceeding")
             return content
         except Exception as e:
-            log.info(f"Error reading manifest.yaml for plugin {directory}: {e}")
+            log.info(f"Error reading manifest.yaml for plugin {path}: {e}")
             return None
 
     def load_plugins(self):
-
         skip_dirs = ["__pycache__", ".idea", "venv", "locales"]
-        plugin_list = []
-        base_directory = Path(PLUGINS_DIR)
+        plugin_sources = []
+        if Path(PLUGINS_DIR).exists():
+            plugin_sources.append(Path(PLUGINS_DIR))
+        if USER_PLUGINS_DIR.exists() and USER_PLUGINS_DIR != Path(PLUGINS_DIR):
+            plugin_sources.append(USER_PLUGINS_DIR)
 
-        for path in base_directory.iterdir():
-            if path.is_dir() and path.name not in skip_dirs:
-                plugin_list.append(str(path.relative_to(Path(PROJECT_DIR))))
-
-        for plugin_dir in plugin_list:
-            manifest = self._load_plugin_manifest(plugin_dir)
-            if manifest:
-                self._import_plugin(plugin_dir, manifest)
-            else:
-                log.info(f"There was an error loading manifest.yaml for plugin {plugin_dir}")
+        for base_dir in plugin_sources:
+            for path in base_dir.iterdir():
+                if path.is_dir() and path.name not in skip_dirs:
+                    manifest = self._load_plugin_manifest(str(path))
+                    if manifest:
+                        self._import_plugin(str(path), manifest)
+                    else:
+                        log.info(f"There was an error loading manifest.yaml for plugin {path}")
 
     #
     # # <! ----------------------- get ----------------------- !>
@@ -478,29 +536,62 @@ class AppAPI:
 
     # <! ----------------------- config ----------------------- !>
     @staticmethod
+    def _recursive_merge(base: dict, override: dict) -> dict:
+        merged = base.copy()
+        for k, v in override.items():
+            if k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
+                merged[k] = AppAPI._recursive_merge(merged[k], v)
+            else:
+                merged[k] = v
+        return merged
+
+    @staticmethod
     def deep_merge(base: dict, lang: dict):
         merged = base.copy()
-        specs = lang.get("specifications")
+        specs = lang.get("specifications", {}) if lang else {}
 
-        merged["audio"]["stt"].update(specs.get("audio").get("stt"))
-        merged["settings"]["trigger"]["triggers"] = (specs.get("triggers"))
-        merged["settings"]["user"] = specs.get("user")
-        merged["start-up"].update(specs.get("start-up"))
-        merged["answers"] = lang.get("answers")
-        merged["commands"] = lang.get("commands")
+        if "audio" in merged and specs.get("audio"):
+            merged["audio"].setdefault("stt", {}).update(specs.get("audio", {}).get("stt", {}))
+        if "settings" in merged and specs.get("triggers"):
+            if not isinstance(merged.get("settings"), dict):
+                merged["settings"] = {}
+            if "trigger" not in merged["settings"] or not isinstance(merged["settings"]["trigger"], dict):
+                merged["settings"]["trigger"] = {}
+            merged["settings"]["trigger"]["triggers"] = specs.get("triggers")
+        if "settings" in merged and specs.get("user"):
+            merged["settings"]["user"] = specs.get("user")
+        if "start-up" in merged and specs.get("start-up"):
+            merged.setdefault("start-up", {}).update(specs.get("start-up", {}))
+        if lang and "answers" in lang:
+            merged["answers"] = lang.get("answers")
+        if lang and "commands" in lang:
+            merged["commands"] = lang.get("commands")
 
         return merged
 
     def get_config(self):
-        base_config = load_yaml(CONFIG_FILE)
-        lang_config_path = f'{CONFIG_DIR}/langs/{self.lang}.yaml'
+        # 1. Base default config
+        base_config_path = DEFAULT_CONFIG_DIR / "config.yaml"
+        base_config = load_yaml(str(base_config_path)) or {}
 
-        if os.path.exists(lang_config_path):
-            lang_config = load_yaml(lang_config_path)
+        # 2. User config overrides if present
+        user_config_file = USER_CONFIG_DIR / "config.yaml"
+        if user_config_file.exists() and user_config_file != base_config_path:
+            user_config = load_yaml(str(user_config_file)) or {}
+            base_config = self._recursive_merge(base_config, user_config)
+
+        # 3. Language specific config
+        lang_config_path = USER_CONFIG_DIR / f"langs/{self.lang}.yaml"
+        if not lang_config_path.exists():
+            lang_config_path = DEFAULT_CONFIG_DIR / f"langs/{self.lang}.yaml"
+
+        if lang_config_path.exists():
+            lang_config = load_yaml(str(lang_config_path))
             return self.deep_merge(base_config, lang_config)
 
-        return self.deep_merge(base_config,
-                               load_yaml(f'{CONFIG_DIR}/langs/en.yaml'))  # TODO MAKE A DEFAULT ROLLBACK LANGUAGE
+        # Fallback to en.yaml
+        fallback_lang = DEFAULT_CONFIG_DIR / "langs/en.yaml"
+        return self.deep_merge(base_config, load_yaml(str(fallback_lang)) or {})
 
     def update_config(self, config: dict):
         self.config["plugins"].update(config)
@@ -516,12 +607,20 @@ class AppAPI:
             raise FileNotFoundError()
 
     def __save_config_plugins__(self):
-        if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, "r", encoding="utf-8") as file:
-                data = yaml.safe_load(file)
-            data["plugins"].update(self.config["plugins"])
-            with open(CONFIG_FILE, "w", encoding="utf-8") as file:
+        try:
+            USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+            user_config_file = USER_CONFIG_DIR / "config.yaml"
+            data = {}
+            if user_config_file.exists():
+                with open(user_config_file, "r", encoding="utf-8") as file:
+                    data = yaml.safe_load(file) or {}
+            if "plugins" not in data:
+                data["plugins"] = {}
+            data["plugins"].update(self.config.get("plugins", {}))
+            with open(user_config_file, "w", encoding="utf-8") as file:
                 yaml.safe_dump(data, file, allow_unicode=True)
+        except Exception as e:
+            log.warning(f"Could not save plugins config to user config: {e}")
 
     # <! --------------- background processes --------------- !>
     @staticmethod

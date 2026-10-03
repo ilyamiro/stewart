@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stewart"
+version = "1.9.3.1"
+description = "Voice assistant for Linux"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-only" }
+dependencies = [
+    "PyYAML",
+    "num2words>=0.5.13",
+    "yt_dlp",
+    "python-dotenv",
+    "pynput>=1.7.7",
+    "numpy>=1.26.0",
+    "pydub>=0.25.1",
+    "python-mpv",
+    "requests",
+    "lxml>=5.3.0",
+    "beautifulsoup4>=4.12.3",
+    "plyer>=2.1.0",
+    "ytmusicapi>=1.9.1",
+    "icalendar>=6.0.1",
+]
+
+[project.optional-dependencies]
+stt = ["vosk", "pyaudio", "faster-whisper"]
+tts = ["kokoro>=0.9.4", "soundfile"]
+vision = ["opencv-python", "mediapipe"]
+all = ["stewart[stt,tts,vision]"]
+
+[project.scripts]
+stewart = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["api*", "app*", "audio*", "config*", "data*", "gui*", "logs*", "modules*", "plugins*", "utils*"]
+
+[tool.setuptools.package-data]
+"*" = [
+    "*.yaml",
+    "*.txt",
+    "*.wav",
+    "*.png",
+    "*.gif",
+    "*.pt",
+    "*.jit",
+    "*.conf",
+    "*.fst",
+    "*.ie",
+    "*.mat",
+    "*.dubm",
+    "*.stats",
+    "*.raw",
+    "*.vec",
+    "*.json",
+    "*.mdl",
+    "*.int",
+    "*.pth",
+    "README*",
+]
+
+[tool.setuptools]
+py-modules = ["main"]

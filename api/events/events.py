@@ -12,17 +12,6 @@ class Event:
         self.details = details
         self.timestamp = time.time()
 
-    def gpt(self):
-        event_type_str = f"Type: {self.type}"
-        timestamp_str = f"Timestamp: {datetime.fromtimestamp(self.timestamp).strftime('%Y-%m-%d %H:%M:%S')}"
-        details_str = "Details:\n"
-        for key, value in self.details.items():
-            details_str += f"  {key}: {value}\n"
-
-        return f"""{event_type_str}
-{timestamp_str}
-{details_str}"""
-
 
 class EventLogger:
     def __init__(self):

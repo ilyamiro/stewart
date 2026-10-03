@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+PROJECT="home-ilyamiro-Projects-stewart"
+REPO_DIR="/home/ilyamiro/Projects/stewart"
+
+if [ "$#" -eq 0 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    echo "Usage: .agents/bin/cbm <tool> [args...]"
+    echo "       .agents/bin/cbm reindex"
+    echo ""
+    echo "Helper wrapper for codebase-memory-mcp on stewart."
+    echo ""
+    echo "Available commands & tools:"
+    echo "  reindex                                     Re-indexes the entire repository"
+    echo "  search_graph --name-pattern <regex>         Find symbols matching pattern"
+    echo "  get_architecture                            Get architectural summary of stewart"
+    echo "  trace_path --function-name <name>           Trace inbound/outbound call chains"
+    echo "  get_code_snippet --qualified-name <symbol>  Retrieve symbol code snippet"
+    echo "  get_file_outline --file-path <path>         Get outline for file"
+    echo "  query_graph --query <cypher>                Run Cypher query against knowledge graph"
+    echo "  index_status                                Check status of the knowledge graph"
+    echo "  check_index_coverage --paths <csv>          Check index coverage for paths"
+    exit 0
+fi
+
+if [ "$1" = "reindex" ]; then
+    codebase-memory-mcp cli index_repository --repo-path "$REPO_DIR" --persistence=true "${@:2}"
+    exit $?
+fi
+
+HAS_PROJECT=false
+for arg in "$@"; do
+    if [[ "$arg" == --project* ]]; then
+        HAS_PROJECT=true
+        break
+    fi
+done
+
+if [ "$HAS_PROJECT" = true ]; then
+    codebase-memory-mcp cli "$@"
+else
+    TOOL="$1"
+    shift
+    codebase-memory-mcp cli "$TOOL" --project "$PROJECT" "$@"
+fi

@@ -7,6 +7,7 @@ import os
 import json
 import signal
 import inspect
+import concurrent.futures
 from datetime import datetime
 from pathlib import Path
 
@@ -19,6 +20,7 @@ log = logging.getLogger("app")
 class App:
     def __init__(self, api):
         self.api = api
+        self._action_executor = concurrent.futures.ThreadPoolExecutor(max_workers=8, thread_name_prefix="stewart-action")
 
     @staticmethod
     def decorator(func):
@@ -67,7 +69,7 @@ class App:
             self.stt = stt
             self.last_time = time.time() if not last_time else last_time
 
-            if self.config["audio"]["stt"]["speech-mode-restricted"]:
+            if self.config["audio"]["stt"]["speech-mode-restricted"] and getattr(self.stt, "backend", "vosk") == "vosk":
                 self.grammar_recognition_restricted_create()
                 self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_DIR}/data/grammar/grammar-{self.lang}.txt",
                                                            self.stt.create_new_recognizer())
@@ -76,8 +78,25 @@ class App:
 
             self.recognition()
         else:
-            while self.running:
-                self.process_trigger_no_voice(input("Input: "))
+            try:
+                while self.running:
+                    user_input = input("Input: ").strip()
+                    if not user_input:
+                        continue
+                    if user_input.lower() in ("exit", "quit", ":q"):
+                        log.info("Exiting text mode.")
+                        self.running = False
+                        break
+                    if user_input.lower().startswith("lang ") or user_input.lower().startswith(":lang "):
+                        new_lang = user_input.split()[-1].lower()
+                        from utils.system import set_lang
+                        target = set_lang(new_lang)
+                        print(f"Default language set to '{new_lang}' in {target}. Please restart Stewart to apply.")
+                        continue
+                    self.process_trigger_no_voice(user_input)
+            except (EOFError, KeyboardInterrupt):
+                log.info("Exiting text mode.")
+                self.running = False
 
     def recognition(self):
         threshold = int(self.config["settings"]["inactivity-threshold"])
@@ -91,6 +110,11 @@ class App:
                 self.process_trigger(word)
 
     def handle(self, request):
+        if not request:
+            if self.config["settings"]["trigger"]["trigger-mode"] != "disabled" and not self.scenario_active:
+                self.api.__no_command_default__(context=None, history=None)
+            return
+
         self.api.eventLogger.record(self.api.Event(
             "user_request",
             {"request": request}
@@ -98,54 +122,44 @@ class App:
 
         self.scan_scenarios(request)
 
-        if (not request or not self.remove_trigger_word(request)) and self.config["settings"]["trigger"]["trigger-mode"] != "disabled" and not self.scenario_active:
-            self.api.__no_command_default__(context=None, history=None)
-        else:
-            result, execution_time = track_time(lambda: self.api.manager.find(request))
-            if result:
-                self.last_time = time.time()
+        result, execution_time = track_time(lambda: self.api.manager.find(request))
+        if result:
+            self.last_time = time.time()
 
-                result_visual = {" ".join(cmd[0].keywords): cmd[1] for cmd in result}
-                log.info(f"Command search time: {execution_time:.6f}")
-                log.debug(f"Recognized commands: {result_visual}")
+            # Execute action IMMEDIATELY without waiting for TTS, logging, or event recording
+            if len(result) == 1:
+                command = result[0]
+                self.do(command)
 
-                answer = None
-
-                if len(result) == 1:
-                    command = result[0]
-                    if command[0].responses and not command[0].tts:
-                        answer = random.choice(command[0].responses)
-                        self.api.say(answer)
-                    elif not command[0].responses and not command[0].tts:
-                        answer = random.choice(self.config["answers"]["multi"])
-                        self.api.say(answer)
-
-                    self.api.eventLogger.record(self.api.Event(
-                        "command_detected",
-                        {
-                            "user_request": request,
-                            "commands": result_visual,
-                        }
-                    ))
-
+                # Process TTS / responses after action has been launched
+                if command[0].responses and not command[0].tts:
+                    answer = random.choice(command[0].responses)
+                    self.api.say(answer)
+                elif not command[0].responses and not command[0].tts:
+                    answer = random.choice(self.config["answers"]["multi"])
+                    self.api.say(answer)
+            else:
+                for command in result:
                     self.do(command)
-                elif len(result) > 1:
-                    if all(not command[0].tts for command in result):
-                        answer = random.choice(self.config["answers"]["multi"])
-                        self.api.say(answer)
 
-                    self.api.eventLogger.record(self.api.Event(
-                        "command_detected",
-                        {
-                            "user_request": request,
-                            "commands": result_visual,
-                        }
-                    ))
-                    for command in result:
-                        self.do(command)
+                if all(not command[0].tts for command in result):
+                    answer = random.choice(self.config["answers"]["multi"])
+                    self.api.say(answer)
 
-            elif not result and not self.scenario_active:
-                self.api.__no_command_callback__(context=request, history=self.api.eventLogger.history)
+            result_visual = {" ".join(cmd[0].keywords): cmd[1] for cmd in result}
+            log.info(f"Command search time: {execution_time:.6f}")
+            log.debug(f"Recognized commands: {result_visual}")
+
+            self.api.eventLogger.record(self.api.Event(
+                "command_detected",
+                {
+                    "user_request": request,
+                    "commands": result_visual,
+                }
+            ))
+
+        elif not result and not self.scenario_active:
+            self.api.__no_command_callback__(context=request, history=self.api.eventLogger.history)
 
         self.api.eventLogger.length(self.config["settings"]["max-history-length"])
 
@@ -171,10 +185,15 @@ class App:
         """
         Removes trigger words from the input
         """
-        for trigger in self.config["settings"]["trigger"][f"triggers"]:
-            if trigger in request:
-                request = " ".join(request.split(trigger)[1:])[1:]
-                return trigger, request
+        req_clean = request.strip()
+        for trigger in self.config["settings"]["trigger"]["triggers"]:
+            if req_clean == trigger:
+                return trigger, ""
+            if req_clean.startswith(trigger + " "):
+                return trigger, req_clean[len(trigger) + 1:].strip()
+            if trigger in req_clean:
+                parts = req_clean.split(trigger, 1)
+                return trigger, parts[1].strip()
         return "blank", "blank"
 
     def trigger_counter(self, times):
@@ -234,6 +253,10 @@ class App:
         self.api.manager.add(command)
 
     def scan_scenarios(self, request):
+        if not self.api.scenarios:
+            self.scenario_active = []
+            return
+
         user_requests = [event for event in self.api.eventLogger.history if event.type == "user_request"]
 
         updated_scenarios = []
@@ -246,27 +269,31 @@ class App:
 
     def do(self, command):
         """
-        Start the action thread
+        Start the action thread via pre-warmed thread pool executor
         """
-        action = self.find_action(command[0].action)
+        cmd_obj = command[0]
+        action = getattr(cmd_obj, "_action_callable", None)
+        if action is None:
+            action = self.find_action(cmd_obj.action)
+            cmd_obj._action_callable = action
         if not action:
             return
-        thread = threading.Thread(target=action,
-                                  kwargs={"command": command[0], "context": command[1], "history": self.api.eventLogger.history},
-                                  daemon=True
-                                  )
-        thread.start()
+        self._action_executor.submit(
+            action,
+            command=cmd_obj,
+            context=command[1],
+            history=self.api.eventLogger.history
+        )
 
     def find_action(self, name):
         """
         Find a module that has a function that corresponds to an action that has to be done
         """
-        if name in self.api.__actions__.keys():
-            log.info(f"Action found: {name}")
-            return self.api.__actions__.get(name)
-        else:
-            log.info(f"Action not found: {name}")
-            return None
+        action = self.api.__actions__.get(name)
+        if action is not None:
+            return action
+        log.info(f"Action not found: {name}")
+        return None
 
     def grammar_recognition_restricted_create(self):
         """
@@ -286,13 +313,16 @@ class App:
         An action function inside an app class that enables or disables 'improved but limited' speech recognition
         """
         if not self.config["settings"]["text-mode"]:
-            match kwargs["command"].parameters["way"]:
-                case "on":
-                    self.stt.recognizer = self.stt.create_new_recognizer()
-                case "off":
-                    self.stt.recognizer = self.stt.set_grammar(
-                        f"{PROJECT_DIR}/data/grammar/grammar-{self.lang}.txt",
-                        self.stt.create_new_recognizer())
+            if getattr(self.stt, "backend", "vosk") == "vosk":
+                match kwargs["command"].parameters["way"]:
+                    case "on":
+                        self.stt.recognizer = self.stt.create_new_recognizer()
+                    case "off":
+                        self.stt.recognizer = self.stt.set_grammar(
+                            f"{PROJECT_DIR}/data/grammar/grammar-{self.lang}.txt",
+                            self.stt.create_new_recognizer())
+            else:
+                log.info("Whisper backend active; open vocabulary is supported natively.")
         else:
             self.api.say("voice recognition is not active, sir")
 

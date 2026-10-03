@@ -1,5 +1,4 @@
 import random
-import requests
 import sys
 
 from utils import fetch_weather, import_utils

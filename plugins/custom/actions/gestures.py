@@ -5,11 +5,23 @@ import math
 from api import app
 import subprocess
 
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
+try:
+    import pyautogui
+    SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
+except Exception:
+    SCREEN_WIDTH = 1920
+    SCREEN_HEIGHT = 1080
 
-SCREEN_WIDTH = 1920
-SCREEN_HEIGHT = 1080
+mp_hands = None
+hands = None
+
+
+def get_hands():
+    global mp_hands, hands
+    if hands is None:
+        mp_hands = mp.solutions.hands
+        hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
+    return hands
 
 smoothing_factor = 0.1
 
@@ -111,8 +123,15 @@ def move_window_to_monitor(direction):
         return False
 
 
-# Open the webcam
-cap = cv2.VideoCapture(0)
+# Webcam capture
+cap = None
+
+
+def get_cap(index: int = 0):
+    global cap
+    if cap is None or not cap.isOpened():
+        cap = cv2.VideoCapture(index)
+    return cap
 
 
 def enable_mouse_control(**kwargs):
@@ -127,15 +146,18 @@ def enable_mouse_control(**kwargs):
     last_swipe_time = 0
     swipe_cooldown = 1.5  # Seconds between swipe actions to prevent accidental triggers
 
-    while cap.isOpened():
-        success, frame = cap.read()
+    camera = get_cap()
+    hand_detector = get_hands()
+
+    while camera and camera.isOpened():
+        success, frame = camera.read()
         if not success:
             break
 
         frame = cv2.flip(frame, 1)  # Flip the frame horizontally
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert the frame to RGB
 
-        result = hands.process(rgb_frame)  # Process the frame for hand landmarks
+        result = hand_detector.process(rgb_frame)  # Process the frame for hand landmarks
 
         if result.multi_hand_landmarks:
             hands_open_count = 0  # Count of open hands detected

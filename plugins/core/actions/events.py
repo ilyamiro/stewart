@@ -1,8 +1,6 @@
-from icalendar import Calendar
 from datetime import datetime, timedelta
-from num2words import num2words
 
-from utils import tracker
+from utils import tracker, num2words
 
 from api import app
 
@@ -27,6 +25,7 @@ def __parse_ics_file__(ics_file_path):
         with open(ics_file_path, 'rb') as f:
             ics_content = f.read()
 
+        from icalendar import Calendar
         calendar = Calendar.from_ical(ics_content)
 
         for component in calendar.walk():
