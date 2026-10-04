@@ -74,7 +74,15 @@ class App:
                 self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_DIR}/data/grammar/grammar-{self.lang}.txt",
                                                            self.stt.create_new_recognizer())
 
+            # Prime and contextualize Whisper STT with active command tree vocabulary & hotwords
+            if self.stt and hasattr(self.stt, "set_command_vocabulary"):
+                triggers = self.config.get("settings", {}).get("trigger", {}).get("triggers", ["stewart"])
+                self.stt.set_command_vocabulary(self.api.manager, triggers=triggers)
+
             log.debug("Speech to text instance initialized")
+
+            if hasattr(self.stt, "flush"):
+                self.stt.flush()
 
             self.recognition()
         else:
@@ -100,14 +108,28 @@ class App:
 
     def recognition(self):
         threshold = int(self.config["settings"]["inactivity-threshold"])
+        was_speaking = False
         while self.running:
             if time.time() - self.last_time > threshold:
                 log.debug(
                     f"Going into sleep mode due to inactivity for {threshold} seconds (~{threshold / 60} minutes)")
                 self.running = False
             data = self.stt.stream.read(1024, exception_on_overflow=False)
+
+            # Prevent assistant from hearing its own voice while speaking responses
+            if getattr(self.api, "is_speaking", False):
+                was_speaking = True
+                continue
+            elif was_speaking:
+                was_speaking = False
+                if hasattr(self.stt, "flush"):
+                    self.stt.flush()
+                continue
+
             for word in self.stt.listen(data):
+                log.info(f"Speech recognized: '{word}'")
                 self.process_trigger(word)
+
 
     def handle(self, request):
         if not request:
@@ -171,6 +193,8 @@ class App:
                     self.trigger_timed_needed = False
                     self.trigger_counter(int(self.config["settings"]["trigger"]["trigger-time"]))
                 self.handle(result)
+            else:
+                log.debug(f"Input '{request}' did not match wake word")
         else:
             self.handle(request)
 
@@ -183,17 +207,59 @@ class App:
 
     def remove_trigger_word(self, request):
         """
-        Removes trigger words from the input
+        Removes trigger words from the input with phonetic tolerance,
+        split-word repairing, and conversational greeting stripping.
         """
-        req_clean = request.strip()
-        for trigger in self.config["settings"]["trigger"]["triggers"]:
-            if req_clean == trigger:
-                return trigger, ""
-            if req_clean.startswith(trigger + " "):
-                return trigger, req_clean[len(trigger) + 1:].strip()
-            if trigger in req_clean:
-                parts = req_clean.split(trigger, 1)
-                return trigger, parts[1].strip()
+        req_clean = request.strip().lower()
+        if not req_clean:
+            return "blank", "blank"
+
+        greetings = {"hey", "hi", "ok", "okay", "привет", "хей", "эй", "слушай"}
+        tokens = req_clean.split()
+        if not tokens:
+            return "blank", "blank"
+
+        if tokens[0] in greetings and len(tokens) > 1:
+            tokens = tokens[1:]
+
+        # Split wake-word merge (e.g. 'stew art' -> 'stewart')
+        if len(tokens) >= 2 and tokens[0] == "stew" and tokens[1] in ("art", "ward", "ert"):
+            tokens = ["stewart"] + tokens[2:]
+
+        configured_triggers = self.config.get("settings", {}).get("trigger", {}).get("triggers", [])
+        all_triggers = list(configured_triggers)
+        for standard in ("стюарт", "стюард", "stewart", "steward", "stuart", "stewert"):
+            if standard not in all_triggers:
+                all_triggers.append(standard)
+
+        # 1. Exact match on first token
+        for trigger in all_triggers:
+            trig_clean = trigger.strip().lower()
+            if tokens[0] == trig_clean:
+                return trig_clean, " ".join(tokens[1:]).strip()
+
+        # 2. Check whole string starts with multi-word or exact trigger
+        cleaned_str = " ".join(tokens)
+        for trigger in all_triggers:
+            trig_clean = trigger.strip().lower()
+            if cleaned_str == trig_clean:
+                return trig_clean, ""
+            if cleaned_str.startswith(trig_clean + " "):
+                return trig_clean, cleaned_str[len(trig_clean) + 1:].strip()
+            if trig_clean in cleaned_str:
+                parts = cleaned_str.split(trig_clean, 1)
+                return trig_clean, parts[1].strip()
+
+        # 3. Fuzzy match on first token
+        from audio.input.corrector import fast_damerau_levenshtein
+        first = tokens[0]
+        for trigger in all_triggers:
+            trig_clean = trigger.strip().lower()
+            if abs(len(first) - len(trig_clean)) <= 2:
+                d = fast_damerau_levenshtein(first, trig_clean, max_dist=2)
+                if d <= 1 or (len(trig_clean) >= 6 and d <= 2):
+                    return trig_clean, " ".join(tokens[1:]).strip()
+
         return "blank", "blank"
 
     def trigger_counter(self, times):
@@ -232,7 +298,15 @@ class App:
                     repeat.get(f"synonyms"),
                 )
 
-        log.info("Command manager initialized")
+        # Synchronize tools from all loaded plugins and actions
+        if hasattr(self.api, "tool_registry"):
+            self.api.tool_registry.sync_from_app(self.api)
+        # Initialize router (model loading/auto-training)
+        if hasattr(self.api, "router"):
+            self.api.router.config = self.config
+            self.api.router.initialize()
+
+        log.info("Command manager and tool router initialized")
 
     def add_command(self, com: list, action: str, parameters: dict = None, responses: list = None,
                     synonyms: dict = None, equivalents: list = None, tts: bool = False, continues: bool = False):
@@ -252,7 +326,7 @@ class App:
 
         self.api.manager.add(command)
 
-    def scan_scenarios(self, request):
+    def scan_scenarios(self, request, intent=None):
         if not self.api.scenarios:
             self.scenario_active = []
             return
@@ -262,7 +336,7 @@ class App:
         updated_scenarios = []
 
         for scenario in self.api.scenarios:
-            if scenario.check_scenario(request, user_requests):
+            if scenario.check_scenario(request, user_requests, intent=intent):
                 updated_scenarios.append(scenario)
 
         self.scenario_active = updated_scenarios

@@ -40,6 +40,10 @@ from utils import load_yaml, filter_lang_config, load_lang, notify, sanitize_fil
 
 from .commands.tree import Manager
 from .commands.scenarios import Trigger, Timeline, Scenario
+from .commands.tools import ToolRegistry, ActionTool
+from .commands.router import CommandRouter
+from .commands.classifier import SpacyActionClassifier
+from .commands.ollama import OllamaToolCaller
 from .events.events import Event, EventLogger
 from .locales.service import Locale, LocalePluginService
 from .files.caching import Runtime
@@ -229,6 +233,10 @@ class AppAPI:
 
         self.manager = Manager()
         self.Command = self.manager.Command
+        self.tool_registry = ToolRegistry(self)
+        self.router = CommandRouter(self.manager, self.tool_registry, self.config)
+        self.manager.set_router(self.router)
+        self.ActionTool = ActionTool
 
         self.eventLogger = EventLogger()
 
@@ -253,6 +261,7 @@ class AppAPI:
         self.Locale = Locale
 
         self.tts = TTS(self.config, self.lang)
+        self.is_speaking = False
 
         self.__pre_init_callbacks__: list = []
         self.__post_init_callbacks__: list = []
@@ -284,7 +293,8 @@ class AppAPI:
             return None
         parsed = self.tts.parse_config_answers(text)
         normalized = parsed.strip().lower()
-        hash_input = str(f"{normalized}|prosody={prosody}|speaker={speaker or ''}")
+        engine = getattr(self.tts, "engine", "kokoro")
+        hash_input = str(f"engine={engine}|{normalized}|prosody={prosody}|speaker={speaker or ''}")
         cached_hash = self.runtime.read(f"tts:{hash_input}")
         if cached_hash:
             tts_cache: Path = self.runtime.mkdir_cache("tts")
@@ -299,10 +309,11 @@ class AppAPI:
             return []
         tts_cache: Path = self.runtime.mkdir_cache("tts")
         cached = []
+        engine = getattr(self.tts, "engine", "kokoro")
         for text in answers:
             parsed = self.tts.parse_config_answers(text)
             normalized = parsed.strip().lower()
-            hash_input = f"{normalized}|prosody={prosody}|speaker={speaker or ''}"
+            hash_input = f"engine={engine}|{normalized}|prosody={prosody}|speaker={speaker or ''}"
             cached_hash = self.runtime.read(f"tts:{hash_input}")
             if cached_hash:
                 wav_file = tts_cache / f"{cached_hash}.wav"
@@ -313,6 +324,38 @@ class AppAPI:
     def is_cached(self, text: str, prosody=94, speaker=None) -> bool:
         """Returns True if the text audio is already synthesized and present on disk."""
         return self.get_cached_audio_path(text, prosody=prosody, speaker=speaker) is not None
+
+    def say_sync(self, text: str, no_audio=False, prosody=94, speaker=None):
+        """Synchronously synthesizes and plays audio, waiting for playback to finish."""
+        if not text or not self.tts.active:
+            if not text:
+                return
+            log.debug(f"No sound: {text}")
+            return
+
+        text = self.tts.parse_config_answers(text)
+        self.is_speaking = True
+        try:
+            cached_file = self.get_cached_audio_path(text, prosody=prosody, speaker=speaker)
+            if cached_file and os.path.exists(cached_file):
+                from audio.tts.synthesis import play_audio
+                play_audio(cached_file)
+                return
+
+            if self.config.get("audio", {}).get("tts", {}).get("enable-caching", True):
+                tts_cache: Path = self.runtime.mkdir_cache("tts")
+                normalized = text.strip().lower()
+                engine = getattr(self.tts, "engine", "kokoro")
+                hash_input = str(f"engine={engine}|{normalized}|prosody={prosody}|speaker={speaker or ''}")
+                phrase_hash = hashlib.sha256(hash_input.encode()).hexdigest()
+                filename = tts_cache / sanitize_filename(f"{phrase_hash}.wav")
+
+                self.tts.say(text=text, path=str(filename), no_audio=no_audio, prosody=prosody, speaker=speaker)
+                self.runtime.write(f"tts:{hash_input}", phrase_hash)
+            else:
+                self.tts.say(text=text, no_audio=no_audio, prosody=prosody, speaker=speaker)
+        finally:
+            self.is_speaking = False
 
     def say(self, text: str, no_audio=False, prosody=94, speaker=None):
         if not text:
@@ -326,14 +369,18 @@ class AppAPI:
         text = self.tts.parse_config_answers(text)
 
         def call_tts_in_thread(**kwargs):
-            process = threading.Thread(target=self.tts.say, kwargs=kwargs, daemon=True)
-            process.start()
+            self.is_speaking = True
+            try:
+                self.tts.say(**kwargs)
+            finally:
+                self.is_speaking = False
 
         if self.config["audio"]["tts"]["enable-caching"]:
             tts_cache: Path = self.runtime.mkdir_cache("tts")
 
             normalized = text.strip().lower()
-            hash_input = str(f"{normalized}|prosody={prosody}|speaker={speaker or ''}")
+            engine = getattr(self.tts, "engine", "kokoro")
+            hash_input = str(f"engine={engine}|{normalized}|prosody={prosody}|speaker={speaker or ''}")
             phrase_hash = hashlib.sha256(hash_input.encode()).hexdigest()
             filename = tts_cache / sanitize_filename(f"{phrase_hash}.wav")
 
@@ -343,16 +390,26 @@ class AppAPI:
                 if cached_file.exists():
                     log.debug(f"Using cached tts file {cached_file} for text: {text}")
                     self.runtime.write(f"tts:{hash_input}", cached_hash)  # Reinforce mapping
-                    self.audio.play(str(cached_file))
+                    def play_cached():
+                        self.is_speaking = True
+                        try:
+                            from audio.tts.synthesis import play_audio
+                            play_audio(str(cached_file))
+                        finally:
+                            self.is_speaking = False
+                    threading.Thread(target=play_cached, daemon=True, name="TTS-Cached").start()
                     return
 
-            call_tts_in_thread(text=text, path=str(filename), no_audio=no_audio, prosody=prosody, speaker=speaker)
+            call_process = threading.Thread(target=call_tts_in_thread, kwargs=dict(text=text, path=str(filename), no_audio=no_audio, prosody=prosody, speaker=speaker), daemon=True)
+            call_process.start()
             self.runtime.write(f"tts:{hash_input}", phrase_hash)
         else:
             fallback_wav = str(TTS_CACHE_DIR / "audio.wav")
             TTS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-            call_tts_in_thread(text=text, path=fallback_wav, no_audio=no_audio,
-                               prosody=prosody, speaker=speaker)
+            call_process = threading.Thread(target=call_tts_in_thread, kwargs=dict(text=text, path=fallback_wav, no_audio=no_audio,
+                                               prosody=prosody, speaker=speaker), daemon=True)
+            call_process.start()
+
 
     def set_post_init(self, func: types.FunctionType, index: int = -1) -> None:
         """
@@ -575,8 +632,13 @@ class AppAPI:
         base_config = load_yaml(str(base_config_path)) or {}
 
         # 2. User config overrides if present
+        dot_stewart_cfg = Path.home() / ".stewart" / "config.yaml"
+        if dot_stewart_cfg.exists():
+            stewart_config = load_yaml(str(dot_stewart_cfg)) or {}
+            base_config = self._recursive_merge(base_config, stewart_config)
+
         user_config_file = USER_CONFIG_DIR / "config.yaml"
-        if user_config_file.exists() and user_config_file != base_config_path:
+        if user_config_file.exists() and user_config_file != base_config_path and user_config_file != dot_stewart_cfg:
             user_config = load_yaml(str(user_config_file)) or {}
             base_config = self._recursive_merge(base_config, user_config)
 

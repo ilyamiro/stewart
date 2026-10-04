@@ -76,37 +76,51 @@ from api import app as iapp
 utils.import_utils(iapp.lang, globals())
 
 
+STARTUP_AUDIO_DONE = threading.Event()
+
+
 def trigger_startup_feedback(api, config):
-    """Triggers startup sound and voice synthesis as early as possible."""
-    startup_cfg = config.get("start-up", {})
-    voice_enable = startup_cfg.get("voice-enable", True)
-    sound_enable = startup_cfg.get("sound-enable", True)
+    """Triggers startup sound and voice synthesis as early as possible with answer variation."""
+    try:
+        startup_cfg = config.get("start-up", {})
+        voice_enable = startup_cfg.get("voice-enable", True)
+        sound_enable = startup_cfg.get("sound-enable", True)
 
-    sound_path = startup_cfg.get("sound-path", "data/sounds/startup.wav")
-    if not os.path.exists(sound_path):
-        from data.constants import DEFAULT_DATA_DIR
-        candidate = DEFAULT_DATA_DIR / "sounds/startup.wav"
-        if candidate.exists():
-            sound_path = str(candidate)
+        sound_path = startup_cfg.get("sound-path", "data/sounds/startup.wav")
+        if not os.path.exists(sound_path):
+            from data.constants import DEFAULT_DATA_DIR
+            candidate = DEFAULT_DATA_DIR / "sounds/startup.wav"
+            if candidate.exists():
+                sound_path = str(candidate)
 
-    if sound_enable and os.path.exists(sound_path):
         from audio.tts.synthesis import play_audio
-        threading.Thread(target=play_audio, args=(sound_path,), daemon=True, name="Startup-Sound").start()
-        log.info("Triggered early startup sound")
 
-    if voice_enable:
-        answers = startup_cfg.get("answers", [])
-        if answers:
-            # Prioritize cached audio for instantaneous voice feedback (<2ms)
-            cached_list = api.get_cached_answers(answers)
-            if cached_list:
-                raw_text, parsed_text, wav_path = random.choice(cached_list)
-                api.audio.play(wav_path)
-                log.info(f"Triggered early startup voice playback: '{parsed_text}'")
-            else:
+        if sound_enable and os.path.exists(sound_path):
+            try:
+                play_audio(sound_path)
+                log.info("Finished startup sound playback")
+            except Exception as e:
+                log.warning(f"Startup sound error: {e}")
+
+        if voice_enable:
+            answers = startup_cfg.get("answers", [])
+            if answers:
                 chosen = random.choice(answers)
-                api.say(chosen)
-                log.info(f"Triggered early startup voice synthesis: '{chosen}'")
+                cached_wav = api.get_cached_audio_path(chosen)
+                if cached_wav and os.path.exists(cached_wav):
+                    log.info(f"Triggered early startup voice playback (cached): '{chosen}'")
+                    api.is_speaking = True
+                    try:
+                        play_audio(cached_wav)
+                    finally:
+                        api.is_speaking = False
+                else:
+                    log.info(f"Triggered early startup voice synthesis: '{chosen}'")
+                    api.say_sync(chosen)
+    except Exception as e:
+        log.error(f"Error during startup feedback: {e}")
+    finally:
+        STARTUP_AUDIO_DONE.set()
 
 
 def main():
@@ -145,7 +159,12 @@ def main():
             def init_stt():
                 try:
                     from audio.input import STT
-                    stt_result["stt"] = STT(app.api.lang)
+                    stt = STT(app.api.lang)
+                    if hasattr(stt, "wait_ready"):
+                        ready = stt.wait_ready(timeout=60)
+                        if not ready:
+                            log.warning("STT background model loading did not signal ready in 60s")
+                    stt_result["stt"] = stt
                 except Exception as e:
                     stt_result["error"] = e
 
@@ -169,6 +188,14 @@ def main():
 
             stt = stt_result["stt"]
 
+            # Wait for startup sound and voice greeting to finish before listening
+            if not STARTUP_AUDIO_DONE.wait(timeout=15):
+                log.warning("Startup audio playback timed out waiting to complete")
+
+            # Cleanly flush microphone backlog and reset VAD state
+            if hasattr(stt, "flush"):
+                stt.flush()
+
             if config["settings"]["animation"]:
                 from gui.animation import animation
                 thread = threading.Thread(target=animation)
@@ -176,6 +203,7 @@ def main():
                 thread.start()
 
             app.run(stt, None)
+
             last_time = time.time()
 
             buffer = b""
@@ -184,7 +212,7 @@ def main():
                 if stt.vad(data):
                     buffer += data
                 else:
-                    if len(buffer) > 16000:
+                    if len(buffer) > 6000:
                         result = stt.check_speaker(buffer)
                         if result:
                             # subprocess.run(["wmctrl", "-a", ""])

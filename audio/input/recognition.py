@@ -51,6 +51,8 @@ openai_whisper = None
 
 from data.constants import PROJECT_DIR, CONFIG_FILE, USER_DATA_DIR
 from utils import load_yaml
+from audio.input.corrector import WhisperVoiceCorrector
+from audio.input.voice_isolator import isolate_voice
 
 # Logging setup
 log = logging.getLogger("stt")
@@ -58,6 +60,18 @@ log = logging.getLogger("stt")
 # Configuration and model paths
 SPK_MODEL_PATH = f"{PROJECT_DIR}/audio/input/models/vosk-model-speaker-recognition"
 MODEL_BASE_PATH = f"{PROJECT_DIR}/audio/input/models"
+
+WHISPER_STRENGTH_PRESETS = {
+    "low": {"model": "tiny", "beam_size": 1},
+    "fast": {"model": "tiny", "beam_size": 1},
+    "medium": {"model": "base", "beam_size": 2},
+    "balanced": {"model": "base", "beam_size": 2},
+    "high": {"model": "small", "beam_size": 5},
+    "precise": {"model": "small", "beam_size": 5},
+    "very_high": {"model": "medium", "beam_size": 5},
+    "ultra": {"model": "large-v3", "beam_size": 5},
+    "maximum": {"model": "large-v3", "beam_size": 5},
+}
 
 _config = None
 
@@ -150,14 +164,23 @@ class STT:
             raise RuntimeError(f"Missing STT dependencies for backend '{self.backend}': {', '.join(missing)}")
 
         self.lang = lang
+        strength = str(stt_cfg.get("strength", "high")).lower()
+        preset = WHISPER_STRENGTH_PRESETS.get(strength, WHISPER_STRENGTH_PRESETS["high"])
+
         if self.backend == "vosk":
             vosk_model = size or stt_cfg.get("vosk_model") or stt_cfg.get("model")
             if not vosk_model or vosk_model in ("tiny", "base", "medium", "large"):
                 vosk_model = "small"
             self.size = vosk_model
+            self.beam_size = 1
         else:
-            whisper_model = size or stt_cfg.get("whisper_model") or stt_cfg.get("model") or "tiny"
+            whisper_model = size or stt_cfg.get("whisper_model") or stt_cfg.get("model") or preset["model"]
             self.size = whisper_model
+            self.beam_size = int(stt_cfg.get("beam_size", preset["beam_size"]))
+
+        self.vad_threshold = float(stt_cfg.get("vad_threshold", 0.5))
+        self.pause_threshold = float(stt_cfg.get("pause_threshold", 0.8))
+        self.min_speech_duration = float(stt_cfg.get("min_speech_duration", 0.25))
 
         # -------- Audio Stream Initialization --------
         with silence_c_stderr():
@@ -193,7 +216,14 @@ class STT:
             self.pre_buffer = []
             self.silence_count = 0
             self.is_speaking = False
-            log.info(f"Initialized Whisper STT engine (model: {self.size}, lang: {self.lang})")
+            self.corrector = WhisperVoiceCorrector(lang=self.lang)
+            self.hotwords_str = None
+            configured_triggers = self.config.get("settings", {}).get("trigger", {}).get("triggers", ["stewart"])
+            if self.lang == "ru":
+                self.initial_prompt = f"{', '.join(configured_triggers)}, Стюарт, закрой вкладку, открой страницу, поставь на паузу, включи музыку, сделай громче, выключи свет, поставь таймер, найди видео."
+            else:
+                self.initial_prompt = f"{', '.join(configured_triggers)}, Stewart, open tab, close tab, pause video, play music, volume up, volume down, next video, set timer, turn off lights, find video."
+            log.info(f"Initialized Whisper STT engine (model: {self.size}, strength: {strength}, beam_size: {self.beam_size}, lang: {self.lang})")
 
     def _initialize_audio_stream(self):
         """
@@ -246,8 +276,17 @@ class STT:
         if self.lang == "en" and model_name in ("tiny", "base", "small", "medium"):
             model_name = f"{model_name}.en"
 
-        device = stt_cfg.get("device", "cpu")
-        compute_type = stt_cfg.get("compute_type", "int8" if device == "cpu" else "float16")
+        device = stt_cfg.get("device", "auto")
+        if device == "auto":
+            try:
+                import torch
+                device = "cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu"
+            except Exception:
+                device = "cpu"
+
+        compute_type = stt_cfg.get("compute_type", "default")
+        if compute_type in ("default", "auto", None):
+            compute_type = "int8" if device == "cpu" else "float16"
 
         try:
             from faster_whisper import WhisperModel
@@ -277,6 +316,13 @@ class STT:
         with self._whisper_lock:
             if self._whisper_model is None:
                 self._whisper_model = self._load_whisper_model()
+
+    def wait_ready(self, timeout: int = 120):
+        if self.backend == "whisper":
+            if hasattr(self, "_whisper_thread") and self._whisper_thread and self._whisper_thread.is_alive():
+                self._whisper_thread.join(timeout=timeout)
+            return self._whisper_model is not None
+        return True
 
     @property
     def whisper_model(self):
@@ -359,9 +405,50 @@ class STT:
                 self._load_vad_model()
         return self._vad_model
 
+    def set_command_vocabulary(self, manager=None, words=None, triggers=None):
+        """
+        Dynamically updates the command vocabulary, hotwords, and initial prompt for Whisper.
+        Also configures the WhisperVoiceCorrector with active command tree vocabulary.
+        """
+        vocab_words = set(words or [])
+        phrases = []
+        if manager is not None:
+            if hasattr(manager, "get_all_vocabulary"):
+                vocab = manager.get_all_vocabulary()
+                vocab_words.update(vocab.get("words", []))
+                phrases.extend(vocab.get("phrases", []))
+            elif hasattr(manager, "_all_known_words"):
+                vocab_words.update(manager._all_known_words)
+
+        all_triggers = list(triggers or self.config.get("settings", {}).get("trigger", {}).get("triggers", ["stewart"]))
+        for standard in ("стюарт", "стюард", "stewart", "steward"):
+            if standard not in all_triggers:
+                all_triggers.append(standard)
+
+        self.corrector.set_vocabulary(vocab_words, triggers=all_triggers, phrases=phrases)
+
+        # Build hotwords string for faster-whisper decoder biasing
+        hotword_set = set(all_triggers)
+        hotword_set.update(vocab_words)
+        clean_hotwords = [w for w in hotword_set if w and len(w) >= 2]
+        self.hotwords_str = " ".join(sorted(clean_hotwords))
+
+        # Build dynamic initial prompt with triggers and sample commands
+        sample_phrases = phrases[:12] if phrases else []
+        if sample_phrases:
+            phrase_str = ", ".join(sample_phrases)
+            self.initial_prompt = f"{', '.join(all_triggers)}. {phrase_str}."
+        elif self.lang == "ru":
+            self.initial_prompt = f"{', '.join(all_triggers)}, закрой вкладку, открой страницу, пауза, включи музыку, сделай громче, выключи свет, поставь таймер, найди видео."
+        else:
+            self.initial_prompt = f"{', '.join(all_triggers)}, open tab, close tab, pause video, play music, volume up, volume down, next video, set timer, turn off lights, find video."
+
+        log.info(f"Updated Whisper vocabulary: {len(vocab_words)} words, {len(all_triggers)} triggers, prompt length {len(self.initial_prompt)}")
+
     def transcribe_whisper(self, pcm_bytes: bytes) -> str:
         """
         Transcribe raw 16kHz 16-bit mono PCM bytes using Whisper.
+        Applies audio conditioning, prompt & hotwords biasing, and acoustic voice correction.
         """
         if not pcm_bytes:
             return ""
@@ -369,24 +456,55 @@ class STT:
         audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
         audio_float32 = audio_int16.astype(np.float32) / 32768.0
 
-        engine_type, engine = self.whisper_model
+        # Voice isolation: bandpass filter (80Hz-7.5kHz), Silero VAD speech masking,
+        # non-speech gap attenuation, and peak/RMS AGC normalization
+        audio_float32 = isolate_voice(audio_float32, vad_model=self.vad_model, sr=16000)
+
+        model_entry = self.whisper_model
+        if not model_entry:
+            log.warning("Whisper model is not available or failed to load")
+            return ""
+        engine_type, engine = model_entry
         text = ""
+        words_with_prob = []
 
         try:
             if engine_type == "faster-whisper":
-                triggers = self.config.get("settings", {}).get("trigger", {}).get("triggers", ["stewart"])
-                initial_prompt = f"{', '.join(triggers)}, what time is it, turn volume up, open, play music."
-                segments, info = engine.transcribe(
+                transcribe_kwargs = {
+                    "language": self.lang,
+                    "initial_prompt": getattr(self, "initial_prompt", None),
+                    "beam_size": self.beam_size,
+                    "temperature": 0.0,
+                    "vad_filter": False,
+                    "condition_on_previous_text": False,
+                    "word_timestamps": True,
+                }
+                if getattr(self, "hotwords_str", None):
+                    transcribe_kwargs["hotwords"] = self.hotwords_str
+
+                segments, info = engine.transcribe(audio_float32, **transcribe_kwargs)
+                raw_parts = []
+                for seg in segments:
+                    raw_parts.append(seg.text)
+                    if hasattr(seg, "words") and seg.words:
+                        for w in seg.words:
+                            clean_w = re.sub(r"[^\w]", "", w.word).strip().lower()
+                            if clean_w:
+                                words_with_prob.append((clean_w, getattr(w, "probability", 1.0)))
+                text = " ".join(raw_parts).strip()
+
+            elif engine_type == "openai-whisper":
+                result = engine.transcribe(
                     audio_float32,
                     language=self.lang,
-                    initial_prompt=initial_prompt,
-                    beam_size=1,
-                    vad_filter=False,
+                    fp16=(self.config.get("audio", {}).get("stt", {}).get("device") == "cuda"),
+                    beam_size=self.beam_size,
+                    temperature=0.0,
+                    initial_prompt=getattr(self, "initial_prompt", None),
+                    condition_on_previous_text=False,
                 )
-                text = " ".join(seg.text for seg in segments).strip()
-            elif engine_type == "openai-whisper":
-                result = engine.transcribe(audio_float32, language=self.lang, fp16=False)
                 text = result.get("text", "").strip()
+
             elif engine_type == "whisper-cli":
                 import tempfile
                 import subprocess
@@ -396,6 +514,9 @@ class STT:
                     import soundfile as sf
                     sf.write(wav_path, audio_float32, 16000)
                     cmd = [engine, "-l", self.lang, "-nt", "-f", wav_path]
+                    prompt = getattr(self, "initial_prompt", None)
+                    if prompt:
+                        cmd.extend(["-p", prompt])
                     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
                     text = res.stdout.strip()
                 finally:
@@ -407,9 +528,16 @@ class STT:
 
         cleaned = re.sub(r"[^\w\s]", "", text).lower().strip()
         cleaned = re.sub(r"\s+", " ", cleaned)
-        if cleaned:
-            log.info(f"Text recognized (Whisper): '{cleaned}'")
-        return cleaned
+        if not cleaned:
+            return ""
+
+        # Post-transcription acoustic, phonetic & vocabulary alignment
+        corrected = self.corrector.correct(cleaned, words_with_prob)
+        if corrected != cleaned:
+            log.info(f"Whisper transcript aligned: '{cleaned}' -> '{corrected}'")
+        else:
+            log.info(f"Text recognized (Whisper): '{corrected}'")
+        return corrected
 
     def listen(self, data):
         """
@@ -423,6 +551,10 @@ class STT:
                 yield result
         elif self.backend == "whisper":
             has_voice = self.vad(data)
+            chunk_samples = len(data) // 2
+            chunk_duration = (chunk_samples / 16000.0) if chunk_samples > 0 else 0.064
+            silence_chunks_needed = max(4, int(self.pause_threshold / chunk_duration))
+
             if has_voice:
                 if not self.is_speaking:
                     self.is_speaking = True
@@ -436,13 +568,11 @@ class STT:
                 if self.is_speaking:
                     self.speech_buffer += data
                     self.silence_count += 1
-                    # 1024 samples per chunk at 16kHz = 0.064s per chunk.
-                    # 9 chunks = ~0.58s of silence indicates end of phrase
-                    if self.silence_count >= 9:
+                    if self.silence_count >= silence_chunks_needed:
                         self.is_speaking = False
                         self.silence_count = 0
-                        # Require at least 0.35s (11200 bytes) of audio
-                        if len(self.speech_buffer) >= 11200:
+                        min_bytes = int(self.min_speech_duration * 16000 * 2)
+                        if len(self.speech_buffer) >= min_bytes:
                             pcm = self.speech_buffer
                             self.speech_buffer = b""
                             text = self.transcribe_whisper(pcm)
@@ -451,8 +581,37 @@ class STT:
                         self.speech_buffer = b""
                 else:
                     self.pre_buffer.append(data)
-                    if len(self.pre_buffer) > 4:
+                    max_pre_chunks = max(6, int(0.35 / chunk_duration))
+                    if len(self.pre_buffer) > max_pre_chunks:
                         self.pre_buffer.pop(0)
+
+    def flush(self):
+        """
+        Drains all pending audio frames from the hardware microphone stream
+        and resets speech buffers, silence counters, and VAD model state.
+        Ensures recognition starts with clean, current audio.
+        """
+        if hasattr(self, "stream") and self.stream:
+            try:
+                available = self.stream.get_read_available()
+                if available > 0:
+                    self.stream.read(available, exception_on_overflow=False)
+            except Exception as e:
+                log.debug(f"Audio stream flush warning: {e}")
+
+        self.speech_buffer = b""
+        if hasattr(self, "pre_buffer") and isinstance(self.pre_buffer, list):
+            self.pre_buffer.clear()
+        self.silence_count = 0
+        self.is_speaking = False
+
+        if hasattr(self, "_vad_model") and self._vad_model is not None:
+            try:
+                self._vad_model.reset_states()
+            except Exception:
+                pass
+        log.debug("STT audio stream and internal buffers flushed.")
+
 
     def process(self, data):
         """
@@ -499,7 +658,7 @@ class STT:
         Silero VAD requires 512 samples at 16000Hz.
         Handles arbitrary input lengths by checking 512-sample windows.
         """
-        if not data or len(data) < 1024:
+        if not data or len(data) < 512:
             return False
         audio_int16 = np.frombuffer(data, np.int16)
         audio_float32 = int2float(audio_int16)
@@ -510,11 +669,12 @@ class STT:
             return False
 
         window_size = 512
+        threshold = getattr(self, "vad_threshold", 0.5)
         for i in range(0, len(audio_float32) - window_size + 1, window_size):
             chunk = audio_float32[i : i + window_size]
             with torch.no_grad():
                 confidence = self.vad_model(torch.from_numpy(chunk), 16000).item()
-            if confidence > 0.85:
+            if confidence > threshold:
                 return True
         return False
 
