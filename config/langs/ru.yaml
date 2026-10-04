@@ -16,8 +16,8 @@ specifications:
     name: Илья
   start-up:
     answers:
-      - \[get_part_of_day], сэр, чем могу помочь?
-      - \[get_weather_description]. Чем могу помочь?
+      - "[get_part_of_day], сэр, чем могу помочь?"
+      - "[get_weather_description]. Чем могу помочь?"
       - Процесс настройки завершён. Чем могу быть полезен?
       - Я полностью работоспособен и готов к работе, сэр. Что прикажете?
       - Запуск завершён успешно. Нужна помощь с чем-то конкретным, сэр?
@@ -239,43 +239,44 @@ commands:
         нажми:
           - кликни
           - зажми
-    - action: hotkey
+    - action: move_window_to_monitor
       command:
         - второй
         - экран
       parameters:
-        hotkey:
-          - super
-          - shift
-          - Right
-        xdotool: true
+        direction: next
       responses:
-        - Переместил, сэр
+        - Переместил окно на другой экран, сэр
         - Окно было передвинуто, сэр
         - Выполнил, сэр
         - Перенес окно, сэр
       equivalents:
+        - - следующий
+          - монитор
+        - - другой
+          - экран
       synonyms:
         экран:
           - монитор
           - стол
           - моник
           - кран
-    - action: hotkey
+    - action: move_window_to_monitor
       command:
         - первый
         - экран
       parameters:
-        hotkey:
-          - super
-          - shift
-          - Left
-        xdotool: true
+        direction: previous
       responses:
-        - Переместил, сэр
+        - Переместил окно, сэр
         - Окно было передвинуто, сэр
         - Выполнил, сэр
         - Перенес окно, сэр
+      equivalents:
+        - - прошлый
+          - экран
+        - - предыдущий
+          - монитор
       synonyms:
         экран:
           - монитор
@@ -312,15 +313,19 @@ commands:
         - Открыто, сэр
         - Готово
 
-    - action: key
+    - action: media_control
       command:
         - пауза
       parameters:
-        key: k
+        control: play-pause
       equivalents:
       - - поставь
         - на
         - паузу
+      - - пауза
+        - видео
+      - - возобнови
+        - видео
       synonyms:
         пауза:
           - продолжи
@@ -332,40 +337,47 @@ commands:
         - Видео на паузе, сэр
         - Видео приостановлено
 
-    - action: hotkey
+    - action: media_control
       command:
         - следующее
         - видео
       parameters:
-        hotkey:
-          - shift
-          - n
+        control: next
+      equivalents:
+        - - следующий
+          - трек
+        - - переключи
+          - трек
       synonyms:
         следующее:
           - далее
         видео:
           - ролик
+          - трек
       responses:
         - Да, сэр
         - Следующее видео, сэр
         - Переключил, сэр
         - Далее, сэр
 
-    - action: hotkey
+    - action: media_control
       command:
         - предыдущее
         - видео
       equivalents:
+        - - предыдущий
+          - трек
+        - - прошлый
+          - трек
       parameters:
-        hotkey:
-          - shift
-          - p
+        control: previous
       synonyms:
         предыдущее:
           - прошлое
           - прошлый
         видео:
           - ролик
+          - трек
       responses:
         - Да, сэр
         - Предыдущее видео, сэр
@@ -480,17 +492,35 @@ commands:
           - система
           - сессия
           - машина
-    - action: subprocess
+    - action: screenshot
       command:
         - скриншот
       parameters:
-        command:
-          - gnome-screenshot
-          - "-c"
+        mode: area
       equivalents:
         - - снимок
           - экрана
-    - action: subprocess
+        - - сделай
+          - скриншот
+      responses:
+        - Делаю скриншот, сэр
+        - Скриншот сделан, сэр
+    - action: screenshot
+      command:
+        - полный
+        - скриншот
+      parameters:
+        mode: full
+      equivalents:
+        - - снимок
+          - всего
+          - экрана
+        - - скриншот
+          - экрана
+      responses:
+        - Делаю полный снимок экрана, сэр
+        - Скриншот сделан, сэр
+    - action: lock_session
       command:
         - заблокируй
         - компьютер
@@ -498,10 +528,9 @@ commands:
         - - выйди
           - из
           - системы
-      parameters:
-        command:
-          - loginctl
-          - lock-session
+        - - заблокируй
+          - экран
+      parameters: {}
       responses:
         - Экран был заблокирован, сэр
         - Система была заблокирована, сэр
@@ -1298,16 +1327,18 @@ commands:
       parameters: null
       responses: null
       tts: true
-    - action: subprocess
+    - action: switch_workspace
       command:
         - закрой
         - все
       equivalents:
+        - - чистый
+          - стол
       parameters:
-        command:
-          - wmctrl
-          - "-k"
-          - "on"
+        workspace: "10"
+      responses:
+        - Переключился на пустой рабочий стол, сэр
+        - Свернул, сэр
       synonyms:
         закрой:
           - скрой
@@ -1391,6 +1422,215 @@ commands:
       synonyms:
         давай:
           - давайте
+    - action: close_window
+      command:
+        - закрой
+        - окно
+      equivalents:
+        - - убей
+          - окно
+        - - закрой
+          - активное
+          - окно
+      responses:
+        - Окно закрыто, сэр
+        - Закрыл окно, сэр
+        - Выполнил, сэр
+    - action: toggle_floating
+      command:
+        - плавающее
+        - окно
+      equivalents:
+        - - сделай
+          - плавающим
+        - - переключи
+          - плавающий
+          - режим
+      responses:
+        - Режим окна переключен, сэр
+        - Выполнил, сэр
+    - action: toggle_fullscreen
+      command:
+        - полный
+        - экран
+      equivalents:
+        - - на
+          - весь
+          - экран
+        - - разверни
+          - окно
+      responses:
+        - Полноэкранный режим переключен, сэр
+        - Выполнил, сэр
+    - action: switch_workspace
+      command:
+        - следующий
+        - воркспейс
+      equivalents:
+        - - следующий
+          - рабочий
+          - стол
+        - - следующий
+          - стол
+      parameters:
+        workspace: "+1"
+      responses:
+        - Переключил воркспейс, сэр
+        - Выполнил, сэр
+    - action: switch_workspace
+      command:
+        - предыдущий
+        - воркспейс
+      equivalents:
+        - - прошлый
+          - рабочий
+          - стол
+        - - предыдущий
+          - стол
+      parameters:
+        workspace: "-1"
+      responses:
+        - Переключил на предыдущий воркспейс, сэр
+        - Выполнил, сэр
+    - action: serp_widget
+      command:
+        - открой
+        - лаунчер
+      equivalents:
+        - - меню
+          - приложений
+        - - покажи
+          - приложения
+      parameters:
+        widget: launcher
+      responses:
+        - Открываю меню приложений, сэр
+        - Готово, сэр
+    - action: serp_widget
+      command:
+        - буфер
+        - обмена
+      equivalents:
+        - - покажи
+          - буфер
+        - - история
+          - буфера
+      parameters:
+        widget: clipboard
+      responses:
+        - Открываю буфер обмена, сэр
+        - Готово, сэр
+    - action: serp_widget
+      command:
+        - виджет
+        - музыки
+      equivalents:
+        - - панель
+          - музыки
+        - - открой
+          - плеер
+      parameters:
+        widget: music
+      responses:
+        - Панель музыки открыта, сэр
+        - Готово, сэр
+    - action: serp_widget
+      command:
+        - виджет
+        - календаря
+      equivalents:
+        - - панель
+          - календаря
+        - - открой
+          - календарь
+      parameters:
+        widget: calendar
+      responses:
+        - Панель календаря открыта, сэр
+        - Готово, сэр
+    - action: serp_widget
+      command:
+        - микшер
+        - громкости
+      equivalents:
+        - - панель
+          - звука
+        - - панель
+          - громкости
+      parameters:
+        widget: volume
+      responses:
+        - Микшер громкости открыт, сэр
+        - Готово, сэр
+    - action: serp_widget
+      command:
+        - виджет
+        - сети
+      equivalents:
+        - - панель
+          - сети
+        - - настройки
+          - вайфай
+      parameters:
+        widget: network
+      responses:
+        - Панель сети открыта, сэр
+        - Готово, сэр
+    - action: serp_widget
+      command:
+        - виджет
+        - системы
+      equivalents:
+        - - состояние
+          - системы
+        - - системный
+          - монитор
+      parameters:
+        widget: system
+      responses:
+        - Состояние системы открыто, сэр
+        - Готово, сэр
+    - action: serp_widget
+      command:
+        - смени
+        - обои
+      equivalents:
+        - - выбор
+          - обоев
+        - - панель
+          - обоев
+      parameters:
+        widget: wallpaper
+      responses:
+        - Выбор обоев открыт, сэр
+        - Готово, сэр
+    - action: serp_widget
+      command:
+        - горячие
+        - клавиши
+      equivalents:
+        - - открой
+          - подсказки
+        - - открой
+          - гайд
+      parameters:
+        widget: guide
+      responses:
+        - Подсказки по клавишам открыты, сэр
+        - Готово, сэр
+    - action: serp_reload
+      command:
+        - перезагрузи
+        - шелл
+      equivalents:
+        - - обнови
+          - шелл
+        - - обнови
+          - рабочий
+          - стол
+      responses:
+        - Перезагружаю шелл, сэр
+        - Готово, сэр
   repeat:
     - action: browser
       command:
@@ -1414,27 +1654,37 @@ commands:
         - открой
       links:
         браузер:
-          - xdg-open
-          - https://
+          - firefox
         календарь:
-          - gnome-calendar
+          - serpantinum
+          - msg
+          - toggle
+          - calendar
+        буфер:
+          - serpantinum
+          - msg
+          - toggle
+          - clipboard
+        лаунчер:
+          - serpantinum
+          - msg
+          - toggle
+          - launcher
         шахматы:
           - xdg-open
           - https://lichess.org
         редактор кода:
-          - bash
-          - /home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh
+          - kitty
+          - -e
+          - nvim
         среду разработки:
-          - bash
-          - /home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh
+          - kitty
+          - -e
+          - nvim
         дискорд:
-          - /usr/bin/flatpak
+          - flatpak
           - run
-          - --branch=stable
-          - --arch=x86_64
-          - --command=com.discordapp.Discord
           - com.discordapp.Discord
-          - /dev/null 2>&1
         документы:
           - xdg-open
           - /home/ilyamiro/Документы
@@ -1445,46 +1695,41 @@ commands:
           - libreoffice
           - --writer
         музыку:
-          - xdg-open
-          - /home/ilyamiro/Музыка
+          - serpantinum
+          - msg
+          - toggle
+          - music
         обсидиан:
-          - /usr/bin/flatpak
-          - run
-          - --branch=stable
-          - --arch=x86_64
-          - --command=obsidian.sh
-          - --file-forwarding
-          - md.obsidian.Obsidian
-          - '@@u'
-          - '%U'
-          - '@@'
-          - /dev/null 2>&1
+          - obsidian
         изображения:
           - xdg-open
           - /home/ilyamiro/Изображения
         запись экрана:
           - obs
         настройки:
-          - gnome-control-center
+          - serpantinum
+          - msg
+          - toggle
+          - system
         центр приложений:
-          - gnome-software
+          - serpantinum
+          - msg
+          - toggle
+          - launcher
         логи:
           - xdg-open
           - /home/ilyamiro/.cache/stewart/logs
         игры:
           - steam
         телеграм:
-          - "/usr/bin/flatpak"
-          - "run"
-          - "org.telegram.desktop"
+          - Telegram
         терминал:
           - kitty
         видео:
           - xdg-open
           - /home/ilyamiro/Видео
         блокнот:
-          - gnome-text-editor
-          - "-i"
+          - obsidian
       parameter: command
       synonyms:
         шахматы:
@@ -1512,43 +1757,30 @@ commands:
         - закрой
       links:
         блокнот:
-          - sudo
           - killall
-          - gnome-text-editor
+          - obsidian
         браузер:
-          - sudo
           - killall
           - firefox
         дискорд:
-          - sudo
           - killall
           - Discord
         файлы:
-          - sudo
           - killall
           - nautilus
         обсидиан:
-          - sudo
           - killall
           - obsidian
         запись экрана:
-          - sudo
           - killall
           - obs
-        центр приложений:
-          - sudo
-          - killall
-          - gnome-software
         игры:
-          - sudo
           - killall
           - steam
         телеграмм:
-          - sudo
           - killall
-          - telegram-desktop
+          - Telegram
         терминал:
-          - sudo
           - killall
           - kitty
       parameter: command

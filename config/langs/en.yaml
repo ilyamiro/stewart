@@ -18,7 +18,7 @@ specifications:
   start-up:
     answers:
       - Good [get_part_of_day], sir, how can i help you today?
-      - \[get_weather_description]. How can i help you?
+      - "[get_weather_description]. How can i help you?"
       - Core configuration process has been completed. How can I assist you today?
       - I am fully operational and ready for today, sir. What can I do for you?
       - Startup process ended successfully. Is there something specific you need help
@@ -175,61 +175,82 @@ commands:
     - A tab was closed, sir
     - Opened, sir
     - Done.
-  - action: key
+  - action: media_control
     command: 
     - pause
     - video
     parameters:
-      key: k
+      control: play-pause
+    equivalents:
+      - - pause
+        - music
+      - - pause
+        - playback
+      - - resume
+        - video
+      - - resume
+        - playback
     synonyms:
       pause:
         - resume
         - unpause
       video:
         - playback
+        - music
     responses:
     - Yes, sir
     - Paused it, sir
     - Stopped the video, sir
     - Paused the video, sir
     - The video was put on hold.
-  - action: hotkey
+  - action: media_control
     command: 
     - next
     - video
     parameters:
-      hotkey:
-        - shift
-        - n
+      control: next
+    equivalents:
+      - - next
+        - track
+      - - skip
+        - song
+      - - next
+        - song
     synonyms:
       next:
         - following       
       video:
         - one
+        - track
+        - song
     responses:
     - Yes, sir
     - Next video, sir
     - Switched it, sir
     - Next, sir
-  - action: hotkey
+  - action: media_control
     command:
       - previous
       - video
-    equivalents:
     parameters:
-      hotkey:
-        - shift
-        - n
+      control: previous
+    equivalents:
+      - - previous
+        - track
+      - - last
+        - song
     synonyms:
       previous:
         - last
       video:
         - one
+        - track
+        - song
     responses:
       - Yes, sir
       - Previous video, sir
       - Switched it, sir
-      - Turned on a previous video, sir, sir
+      - Turned on a previous video, sir
   - action: hotkey
     command:
       - open
@@ -326,7 +347,7 @@ commands:
       - computer
       - system
       - machine
-  - action: subprocess
+  - action: lock_session
     command:
     - lock
     - session
@@ -334,10 +355,11 @@ commands:
     - - log
       - out
       - session
-    parameters:
-      command:
-      - loginctl
-      - lock-session
+    - - lock
+      - screen
+    - - lock
+      - computer
+    parameters: {}
     responses:
     - The system was locked down, sir
     - The system is locked, sir
@@ -1165,6 +1187,264 @@ commands:
     synonyms:
       let's:
       - lets
+  - action: close_window
+    command:
+    - close
+    - window
+    equivalents:
+    - - kill
+      - window
+    - - close
+      - active
+      - window
+    responses:
+    - Closed the window, sir
+    - Window closed, sir
+    - Done, sir
+  - action: toggle_floating
+    command:
+    - toggle
+    - floating
+    equivalents:
+    - - float
+      - window
+    - - unfloat
+      - window
+    responses:
+    - Toggled floating mode, sir
+    - Done, sir
+  - action: toggle_fullscreen
+    command:
+    - toggle
+    - fullscreen
+    equivalents:
+    - - full
+      - screen
+    - - fullscreen
+      - window
+    responses:
+    - Fullscreen toggled, sir
+    - Done, sir
+  - action: move_window_to_monitor
+    command:
+    - next
+    - monitor
+    equivalents:
+    - - next
+      - screen
+    - - other
+      - monitor
+    - - second
+      - monitor
+    responses:
+    - Moved window to next monitor, sir
+    - Moved, sir
+    - Done, sir
+  - action: switch_workspace
+    command:
+    - next
+    - workspace
+    equivalents:
+    - - next
+      - desktop
+    parameters:
+      workspace: "+1"
+    responses:
+    - Switched workspace, sir
+    - Done, sir
+  - action: switch_workspace
+    command:
+    - previous
+    - workspace
+    equivalents:
+    - - previous
+      - desktop
+    - - last
+      - workspace
+    parameters:
+      workspace: "-1"
+    responses:
+    - Switched to previous workspace, sir
+    - Done, sir
+  - action: serp_widget
+    command:
+    - open
+    - launcher
+    equivalents:
+    - - toggle
+      - launcher
+    - - app
+      - launcher
+    - - show
+      - apps
+    parameters:
+      widget: launcher
+    responses:
+    - Opening launcher, sir
+    - Done, sir
+  - action: serp_widget
+    command:
+    - open
+    - clipboard
+    equivalents:
+    - - show
+      - clipboard
+    - - toggle
+      - clipboard
+    - - clipboard
+      - history
+    parameters:
+      widget: clipboard
+    responses:
+    - Opening clipboard history, sir
+    - Done, sir
+  - action: serp_widget
+    command:
+    - open
+    - music
+    - widget
+    equivalents:
+    - - music
+      - panel
+    - - toggle
+      - music
+      - widget
+    parameters:
+      widget: music
+    responses:
+    - Music widget toggled, sir
+    - Done, sir
+  - action: serp_widget
+    command:
+    - open
+    - calendar
+    - widget
+    equivalents:
+    - - calendar
+      - panel
+    - - toggle
+      - calendar
+      - widget
+    parameters:
+      widget: calendar
+    responses:
+    - Calendar widget toggled, sir
+    - Done, sir
+  - action: serp_widget
+    command:
+    - open
+    - volume
+    - mixer
+    equivalents:
+    - - volume
+      - panel
+    - - toggle
+      - volume
+      - widget
+    parameters:
+      widget: volume
+    responses:
+    - Volume panel toggled, sir
+    - Done, sir
+  - action: serp_widget
+    command:
+    - open
+    - network
+    - widget
+    equivalents:
+    - - network
+      - panel
+    - - wifi
+      - panel
+    parameters:
+      widget: network
+    responses:
+    - Network panel opened, sir
+    - Done, sir
+  - action: serp_widget
+    command:
+    - open
+    - system
+    - stats
+    equivalents:
+    - - system
+      - widget
+    - - system
+      - monitor
+    parameters:
+      widget: system
+    responses:
+    - System status opened, sir
+    - Done, sir
+  - action: serp_widget
+    command:
+    - change
+    - wallpaper
+    equivalents:
+    - - wallpaper
+      - selector
+    - - toggle
+      - wallpaper
+    parameters:
+      widget: wallpaper
+    responses:
+    - Wallpaper selector opened, sir
+    - Done, sir
+  - action: serp_widget
+    command:
+    - open
+    - guide
+    equivalents:
+    - - keybind
+      - guide
+    - - shortcuts
+      - guide
+    parameters:
+      widget: guide
+    responses:
+    - Opening shortcuts guide, sir
+    - Done, sir
+  - action: serp_reload
+    command:
+    - reload
+    - shell
+    equivalents:
+    - - reload
+      - desktop
+    - - restart
+      - shell
+    responses:
+    - Reloading desktop shell, sir
+    - Done, sir
+  - action: screenshot
+    command:
+    - take
+    - screenshot
+    equivalents:
+    - - capture
+      - screen
+    - - make
+      - screenshot
+    parameters:
+      mode: area
+    responses:
+    - Taking screenshot, sir
+    - Screenshot captured, sir
+  - action: screenshot
+    command:
+    - full
+    - screenshot
+    equivalents:
+    - - fullscreen
+      - screenshot
+    - - screenshot
+      - whole
+      - screen
+    parameters:
+      mode: full
+    responses:
+    - Captured full screen, sir
+    - Full screenshot taken, sir
   repeat:
   - action: browser
     command:
@@ -1186,73 +1466,70 @@ commands:
     - open
     links:
       browser:
-      - xdg-open
-      - https://
+      - firefox
       calendar:
-      - gnome-calendar
+      - serpantinum
+      - msg
+      - toggle
+      - calendar
       chess:
       - xdg-open
       - https://lichess.org
+      clipboard:
+      - serpantinum
+      - msg
+      - toggle
+      - clipboard
       code editor:
-      - bash
-      - /home/ilyamiro/Документы/pycharm-community-2023.2.3/bin/pycharm.sh
+      - kitty
+      - -e
+      - nvim
       discord:
-      - /usr/bin/flatpak
+      - flatpak
       - run
-      - --branch=stable
-      - --arch=x86_64
-      - --command=com.discordapp.Discord
       - com.discordapp.Discord
-      - /dev/null 2>&1
       documents:
       - xdg-open
       - /home/ilyamiro/Документы
       downloads:
       - xdg-open
       - /home/ilyamiro/Загрузки
+      launcher:
+      - serpantinum
+      - msg
+      - toggle
+      - launcher
       libra office:
       - libreoffice
       - --writer
       music:
-      - xdg-open
-      - /home/ilyamiro/Музыка
+      - serpantinum
+      - msg
+      - toggle
+      - music
       notes:
-      - gedit
+      - obsidian
       obsidian:
-      - /usr/bin/flatpak
-      - run
-      - --branch=stable
-      - --arch=x86_64
-      - --command=obsidian.sh
-      - --file-forwarding
-      - md.obsidian.Obsidian
-      - '@@u'
-      - '%U'
-      - '@@'
-      - /dev/null 2>&1
+      - obsidian
       pictures:
       - xdg-open
       - /home/ilyamiro/Изображения
       screen recorder:
       - obs
       settings:
-      - gnome-control-center
+      - serpantinum
+      - msg
+      - toggle
+      - system
       software center:
-      - gnome-software
+      - serpantinum
+      - msg
+      - toggle
+      - launcher
       steam:
       - steam
       telegram:
-      - /usr/bin/flatpak
-      - run
-      - --branch=stable
-      - --arch=x86_64
-      - --command=telegram-desktop
-      - --file-forwarding
-      - org.telegram.desktop
-      - '@@u'
-      - '%u'
-      - '@@'
-      - /dev/null 2>&1
+      - Telegram
       terminal:
       - kitty
       video:
@@ -1275,43 +1552,33 @@ commands:
     - close
     links:
       browser:
-      - sudo
       - killall
       - firefox
       discord:
-      - sudo
       - killall
       - Discord
       files:
-      - sudo
       - killall
       - nautilus
+      notes:
+      - killall
+      - obsidian
       obsidian:
-      - sudo
       - killall
       - obsidian
       proxy:
-      - sudo
       - killall
       - openvpn
       screen recorder:
-      - sudo
       - killall
       - obs
-      software center:
-      - sudo
-      - killall
-      - gnome-software
       steam:
-      - sudo
       - killall
       - steam
       telegram:
-      - sudo
       - killall
-      - telegram-desktop
+      - Telegram
       terminal:
-      - sudo
       - killall
       - kitty
     parameter: command

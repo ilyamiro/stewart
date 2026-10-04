@@ -88,25 +88,40 @@ class TTS:
         self.config = config
         tts_cfg = config.get("audio", {}).get("tts", {})
         self.enabled = tts_cfg.get("enable", True)
+        self.engine = tts_cfg.get("engine", "kokoro").lower()
+
+        # Kokoro does not support Russian; automatically use Silero for Russian
+        if self.lang == "ru" and self.engine in ("kokoro", "auto"):
+            self.engine = "silero"
 
         lang_cfg = tts_cfg.get(lang, {})
         sex = lang_cfg.get("sex", "m")
-        self.default_voice = (
-            lang_cfg.get("voice")
-            or lang_cfg.get(sex)
-            or ("af_heart" if sex == "f" else "am_adam")
-        )
-        self.lang_code = lang_cfg.get("lang_code") or LANGUAGE_CODES.get(lang.lower(), "a")
-        self.speed = float(tts_cfg.get("speed", 1.0))
+        if self.engine == "silero":
+            from audio.tts.silero import SileroTTS
+            self.silero = SileroTTS(config, lang)
+            self.default_voice = self.silero.default_voice
+            self.lang_code = "ru"
+            self.speed = float(tts_cfg.get("speed", 1.0))
+            self._pipeline = None
+            self._init_thread = None
+        else:
+            self.silero = None
+            self.default_voice = (
+                lang_cfg.get("voice")
+                or lang_cfg.get(sex)
+                or ("af_heart" if sex == "f" else "am_adam")
+            )
+            self.lang_code = lang_cfg.get("lang_code") or LANGUAGE_CODES.get(lang.lower(), "a")
+            self.speed = float(tts_cfg.get("speed", 1.0))
 
-        self._pipeline_lock = threading.Lock()
-        self._pipeline: Optional[object] = None
-        self._init_thread = None
+            self._pipeline_lock = threading.Lock()
+            self._pipeline: Optional[object] = None
+            self._init_thread = None
 
-        if self.enabled:
-            # Pre-warm Kokoro pipeline in background thread so application startup is instantaneous
-            self._init_thread = threading.Thread(target=self._init_pipeline, daemon=True, name="Kokoro-Init")
-            self._init_thread.start()
+            if self.enabled:
+                # Pre-warm Kokoro pipeline in background thread so application startup is instantaneous
+                self._init_thread = threading.Thread(target=self._init_pipeline, daemon=True, name="Kokoro-Init")
+                self._init_thread.start()
 
     @property
     def active(self) -> bool:
@@ -117,6 +132,8 @@ class TTS:
         return self.get_pipeline()
 
     def get_pipeline(self):
+        if self.engine == "silero":
+            return self.silero.get_model() if self.silero else None
         if self._pipeline is None:
             if self._init_thread and self._init_thread.is_alive():
                 self._init_thread.join()
@@ -144,7 +161,10 @@ class TTS:
                 self._pipeline = None
 
     def synthesize(self, text: str, path: str, voice: Optional[str] = None, speed: float = 1.0) -> str:
-        """Synthesize text to audio file using Kokoro-82M."""
+        """Synthesize text to audio file using configured engine (Kokoro or Silero)."""
+        if self.engine == "silero" and self.silero:
+            return self.silero.synthesize(text, path, voice=voice, speed=speed)
+
         pipeline = self.get_pipeline()
         if not pipeline:
             raise RuntimeError("Kokoro pipeline is not initialized.")
@@ -215,13 +235,19 @@ class TTS:
             if not no_audio:
                 play_audio(path)
         except Exception as e:
-            log.error(f"Error during Kokoro speech synthesis: {e}")
+            log.error(f"Error during {self.engine} speech synthesis: {e}")
 
         called_from()
         log.debug(text)
 
     def parse_config_answers(self, string: str, module=None) -> str:
         """Parse dynamic answer templates with brackets, e.g. [get_part_of_day]."""
+        if not string or not isinstance(string, str):
+            return string or ""
+
+        # Normalize accidental YAML backslash escaping e.g. \[get_weather_description]
+        string = string.replace("\\[", "[")
+
         if not module:
             try:
                 module = import_module(f"utils.lang.{self.lang}")
@@ -235,6 +261,13 @@ class TTS:
             if hasattr(module, match):
                 func = getattr(module, match)
                 if callable(func):
-                    string = string.replace(f"[{match}]", str(func()))
+                    res = str(func()).strip()
+                    string = string.replace(f"[{match}]", res)
+
+        # Normalize double periods e.g. "..., сэр.. Чем..." -> "..., сэр. Чем..."
+        string = re.sub(r"\.{2,}", ".", string)
+        string = re.sub(r"\s+", " ", string).strip()
 
         return string
+
+
