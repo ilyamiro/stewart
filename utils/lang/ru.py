@@ -1,4 +1,5 @@
 import re
+import random
 from utils import num2words
 from utils.system import fetch_weather
 from datetime import datetime

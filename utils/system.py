@@ -95,18 +95,47 @@ def load_json(path: str):
             return json.load(file)
 
 
+LANGUAGE_ALIASES = {
+    "ru": "ru",
+    "rus": "ru",
+    "russian": "ru",
+    "русский": "ru",
+    "en": "en",
+    "eng": "en",
+    "english": "en",
+    "en_us": "en",
+    "en_gb": "en",
+    "es": "es",
+    "spanish": "es",
+    "fr": "fr",
+    "french": "fr",
+    "de": "de",
+    "german": "de",
+    "it": "it",
+    "italian": "it",
+}
+
+
+def normalize_lang(lang: str) -> str:
+    """Normalizes language name or code to a standardized 2-letter code (e.g. 'russian' -> 'ru')."""
+    if not lang:
+        return "en"
+    clean = lang.strip().lower()
+    return LANGUAGE_ALIASES.get(clean, clean)
+
+
 def load_lang() -> str:
     # 1. Environment variable override
     env_lang = os.environ.get("STEWART_LANG")
     if env_lang:
-        return env_lang.strip().lower()
+        return normalize_lang(env_lang)
 
     # 2. Command line flag override (--lang, -l)
     for idx, arg in enumerate(sys.argv):
         if arg in ("--lang", "-l") and idx + 1 < len(sys.argv):
-            return sys.argv[idx + 1].strip().lower()
+            return normalize_lang(sys.argv[idx + 1])
         if arg.startswith("--lang="):
-            return arg.split("=", 1)[1].strip().lower()
+            return normalize_lang(arg.split("=", 1)[1])
 
     # 3. Read from lang file
     from data.constants import get_lang_file
@@ -114,9 +143,21 @@ def load_lang() -> str:
     if lang_file and os.path.exists(lang_file):
         try:
             with open(lang_file, "r", encoding="utf-8") as file:
-                val = file.read().strip().lower()
+                val = file.read().strip()
                 if val:
-                    return val
+                    return normalize_lang(val)
+        except Exception:
+            pass
+
+    # 4. Read from config.yaml if available
+    from data.constants import CONFIG_FILE
+    if CONFIG_FILE and os.path.exists(CONFIG_FILE):
+        try:
+            import yaml
+            with open(CONFIG_FILE, "r", encoding="utf-8") as file:
+                cfg = yaml.safe_load(file)
+                if cfg and "lang" in cfg and "prefix" in cfg["lang"]:
+                    return normalize_lang(cfg["lang"]["prefix"])
         except Exception:
             pass
 
@@ -126,11 +167,11 @@ def load_lang() -> str:
 def set_lang(lang: str) -> str:
     """Permanently sets the active language in USER_CONFIG_DIR / 'lang.txt'."""
     from data.constants import USER_CONFIG_DIR
-    lang = lang.strip().lower()
+    normalized = normalize_lang(lang)
     os.makedirs(USER_CONFIG_DIR, exist_ok=True)
     target = USER_CONFIG_DIR / "lang.txt"
     with open(target, "w", encoding="utf-8") as file:
-        file.write(f"{lang}\n")
+        file.write(f"{normalized}\n")
     return str(target)
 
 
@@ -406,6 +447,92 @@ def find_link(search):
 
 
 def fetch_weather():
+    import json
+    import os
+    import shutil
+    import subprocess
+    import time
+    from pathlib import Path
+
+    # 1. Try reading serpantinum cached weather directly (<1ms)
+    serpantinum_cache = Path.home() / ".cache/serpantinum/weather/weather.json"
+    data = None
+    if serpantinum_cache.exists():
+        try:
+            mtime = os.path.getmtime(serpantinum_cache)
+            # Accept cache up to 2 hours old
+            if time.time() - mtime < 7200:
+                with open(serpantinum_cache, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+        except Exception:
+            data = None
+
+    # 2. Try serpantinum CLI if cache is missing/stale
+    if not data and shutil.which("serpantinum"):
+        try:
+            res = subprocess.run(
+                ["serpantinum", "weather", "--json"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=5
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                data = json.loads(res.stdout)
+        except Exception:
+            data = None
+
+    # Parse serpantinum data into standard OpenWeatherMap format
+    if data and "current_temp" in data:
+        try:
+            temp = float(data.get("current_temp", 0.0))
+            forecast0 = (data.get("forecast") or [{}])[0]
+            feels_like = float(forecast0.get("feels_like", temp))
+            wind = float(forecast0.get("wind", 0.0))
+            humidity = float(forecast0.get("humidity", 50.0))
+            temp_min = float(forecast0.get("min", temp))
+            temp_max = float(forecast0.get("max", temp))
+            raw_desc = str(forecast0.get("desc", "Clear")).strip()
+            desc_lower = raw_desc.lower()
+
+            # Normalize description to standard keys: 'clear sky', 'rain', 'clouds', 'snow', 'thunderstorm', 'fog'
+            if any(w in desc_lower for w in ("cloud", "облач", "пасмур")):
+                weather_desc = "clouds"
+            elif any(w in desc_lower for w in ("rain", "дожд")):
+                weather_desc = "rain"
+            elif any(w in desc_lower for w in ("snow", "снег")):
+                weather_desc = "snow"
+            elif any(w in desc_lower for w in ("storm", "гроза")):
+                weather_desc = "thunderstorm"
+            elif any(w in desc_lower for w in ("mist", "fog", "туман")):
+                weather_desc = "fog"
+            elif any(w in desc_lower for w in ("sun", "clear", "солн", "ясн")):
+                weather_desc = "clear sky"
+            else:
+                weather_desc = raw_desc.lower()
+
+            return {
+                "main": {
+                    "temp": temp,
+                    "feels_like": feels_like,
+                    "temp_min": temp_min,
+                    "temp_max": temp_max,
+                    "humidity": humidity,
+                },
+                "weather": [
+                    {
+                        "description": weather_desc,
+                        "main": raw_desc,
+                    }
+                ],
+                "wind": {
+                    "speed": wind,
+                }
+            }
+        except Exception:
+            pass
+
+    # 3. Fallback to OpenWeatherMap API
     import requests
     params = {
         "lat": MY_CITY_LAT,
@@ -416,8 +543,9 @@ def fetch_weather():
     }
 
     try:
-        response = requests.get(OPENWEATHER_API, params=params)
+        response = requests.get(OPENWEATHER_API, params=params, timeout=5)
         response.raise_for_status()
         return response.json()
     except Exception:
         return None
+
