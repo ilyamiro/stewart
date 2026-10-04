@@ -9,14 +9,18 @@ class Trigger:
     Can and should be used together with commands.
     """
     def __init__(self,
-                 keywords: List[str],
+                 keywords: Optional[List[str]] = None,
                  callback: Optional[Callable] = None,
                  synonyms: Dict[str, List[str]] = None,
-                 equivalents: List[List[str]] = None):
-        self.keywords = [k.lower().strip() for k in keywords]
+                 equivalents: List[List[str]] = None,
+                 intent: Optional[str] = None,
+                 tool: Optional[str] = None):
+        self.keywords = [k.lower().strip() for k in (keywords or [])]
         self.synonyms = {k.lower().strip(): [s.lower().strip() for s in v] for k, v in (synonyms or {}).items()}
         self.equivalents = [[k.lower().strip() for k in eq] for eq in (equivalents or [])]
         self.callback = self.blank if callback is None else callback
+        self.intent = intent.lower().strip() if intent else None
+        self.tool = tool.lower().strip() if tool else None
 
         # Build requirement clusters for fast set-based matching without regex combinatorial explosion
         self._patterns: List[List[frozenset]] = []
@@ -73,11 +77,19 @@ class Trigger:
             self._cached_keyword_combinations = self._generate_keyword_combinations()
         return self._cached_keyword_combinations
 
-    def match(self, request: str) -> bool:
+    def match(self, request: str, intent: Optional[str] = None) -> bool:
         """
-        Checks whether the trigger keywords match the user request.
+        Checks whether the trigger keywords or intent match the user request.
         Handles duplicate words, punctuation, and flexible word order reliably.
         """
+        if intent:
+            clean_intent = intent.lower().strip()
+            if (self.intent and self.intent == clean_intent) or (self.tool and self.tool == clean_intent):
+                return True
+
+        if not self.keywords and (self.intent or self.tool):
+            return False
+
         tokens = [t.lower() for t in re.findall(r"[^\s,!?;:()[\]{}\"'`~*.]+", request)]
         if not tokens:
             return False
@@ -204,7 +216,7 @@ class Scenario:
         else:
             callback(request)
 
-    def check_scenario(self, request: str, request_history) -> bool:
+    def check_scenario(self, request: str, request_history, intent: Optional[str] = None) -> bool:
         """
         Checks whether the user request activates the scenario or advances it.
         """
@@ -218,12 +230,12 @@ class Scenario:
         # Check if any trigger in the current step matches
         matched_trigger = None
         for trigger in current_triggers:
-            if isinstance(trigger, Trigger) and trigger.match(request):
+            if isinstance(trigger, Trigger) and trigger.match(request, intent=intent):
                 matched_trigger = trigger
                 break
             elif isinstance(trigger, Timeline):
                 sub_scenario = Scenario("sub", trigger, self.max_gap)
-                if sub_scenario.check_scenario(request, request_history):
+                if sub_scenario.check_scenario(request, request_history, intent=intent):
                     matched_trigger = trigger
                     break
 

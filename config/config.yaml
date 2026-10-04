@@ -1,7 +1,12 @@
 audio:
   stt:
     backend: vosk # Options: 'vosk', 'whisper'
-    model: tiny # Model size ('tiny', 'base', 'small' for whisper; 'small' for vosk)
+    model: small # Model size ('tiny', 'base', 'small', 'medium', 'large-v3', 'turbo' for whisper; 'small' for vosk)
+    strength: high # Recognition strength/precision: 'low' (tiny), 'medium' (base), 'high' (small), 'ultra' (large-v3)
+    beam_size: 5 # Beam search width (1 = fast greedy, 5 = high precision standard)
+    pause_threshold: 0.8 # Seconds of silence before ending speech buffer (prevents cutting off between words)
+    vad_threshold: 0.5 # VAD sensitivity threshold (0.0 to 1.0, default 0.5)
+    min_speech_duration: 0.25 # Minimum speech duration to transcribe (in seconds)
     speaker-recognition: false
     speech-mode-restricted: false
   tts:
@@ -15,10 +20,10 @@ audio:
       sex: m
       lang_code: a
     ru:
-      f: af_heart
-      m: am_adam
+      f: baya
+      m: aidar
       sex: m
-      lang_code: a
+      sample_rate: 24000
 lang:
   name: english
   prefix: en
@@ -43,3 +48,17 @@ start-up:
   sound-enable: true
   sound-path: data/sounds/startup.wav
   voice-enable: true
+
+router:
+  mode: hybrid # Fast algorithmic tree matching first, intelligent model fallback
+  confidence_threshold: 0.55 # Minimum confidence score for model prediction
+  model:
+    provider: spacy # 'spacy' (ultra-fast <2ms CPU classifier & slot-filler)
+    model_path: data/models/action_classifier
+    auto_train: true # Automatically trains on start if not already trained
+    fallback_to_algorithmic: true # Fallback to algorithmic matching
+  ollama:
+    endpoint: http://localhost:11434
+    model: llama3.2:1b
+    timeout: 3.0
+

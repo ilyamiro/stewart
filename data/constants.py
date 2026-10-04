@@ -48,9 +48,17 @@ def get_lang_file() -> Path:
         return local_file
     return DEFAULT_CONFIG_DIR / "lang.txt"
 
+def get_config_file() -> Path:
+    dot_stewart = Path.home() / ".stewart" / "config.yaml"
+    if dot_stewart.exists():
+        return dot_stewart
+    if (USER_CONFIG_DIR / "config.yaml").exists():
+        return USER_CONFIG_DIR / "config.yaml"
+    return DEFAULT_CONFIG_DIR / "config.yaml"
+
 # Effective configuration paths
-CONFIG_DIR = USER_CONFIG_DIR if (USER_CONFIG_DIR / "config.yaml").exists() else DEFAULT_CONFIG_DIR
-CONFIG_FILE = USER_CONFIG_DIR / "config.yaml" if (USER_CONFIG_DIR / "config.yaml").exists() else DEFAULT_CONFIG_DIR / "config.yaml"
+CONFIG_FILE = get_config_file()
+CONFIG_DIR = CONFIG_FILE.parent
 LANG_FILE = get_lang_file()
 
 # Plugins

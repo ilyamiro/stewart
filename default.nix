@@ -36,6 +36,7 @@ let
     android-tools
     espeak-ng
     whisper-cpp
+    playerctl
   ];
 
 in
@@ -86,8 +87,10 @@ pypkgs.buildPythonApplication rec {
     soundfile
     kokoro
     torch
+    scipy
     vosk
     faster-whisper
+    spacy
     spacy-models.en_core_web_sm
   ];
 

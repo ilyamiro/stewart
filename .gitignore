@@ -32,6 +32,8 @@ plugins/custom/actions/doom.mp3
 
 # Data Files
 #data/grammar/
+data/models/
+
 
 # Development Files
 dev/voice_activity.py

@@ -48,11 +48,27 @@ def logging_clear_files():
             os.remove(log_file)
 
 
+class HuggingFaceWarningFilter(logging.Filter):
+    def filter(self, record):
+        msg = record.getMessage()
+        if "unauthenticated requests" in msg or "HF_TOKEN" in msg:
+            return False
+        return True
+
+
 def logging_imports_disable():
     if SetLogLevel is not None:
         SetLogLevel(-1)
+    hf_filter = HuggingFaceWarningFilter()
     for name in NOISY_LOGGERS:
-        logging.getLogger(name).setLevel(logging.WARNING)
+        log_obj = logging.getLogger(name)
+        log_obj.addFilter(hf_filter)
+        if "huggingface" in name:
+            log_obj.setLevel(logging.ERROR)
+        else:
+            log_obj.setLevel(logging.WARNING)
+    logging.getLogger("huggingface_hub.utils._http").setLevel(logging.ERROR)
+    logging.getLogger("huggingface_hub.utils._http").addFilter(hf_filter)
 
 
 def logging_setup():

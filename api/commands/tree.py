@@ -13,6 +13,33 @@ _PUNCT_TABLE = str.maketrans(
 )
 
 
+def _fast_levenshtein(s1: str, s2: str, max_dist: int = 2) -> int:
+    if s1 == s2:
+        return 0
+    l1, l2 = len(s1), len(s2)
+    if abs(l1 - l2) > max_dist:
+        return max_dist + 1
+    if l1 > l2:
+        s1, s2 = s2, s1
+        l1, l2 = l2, l1
+    prev = list(range(l1 + 1))
+    curr = [0] * (l1 + 1)
+    for j in range(1, l2 + 1):
+        curr[0] = j
+        ch2 = s2[j - 1]
+        min_in_row = curr[0]
+        for i in range(1, l1 + 1):
+            cost = 0 if s1[i - 1] == ch2 else 1
+            val = min(prev[i] + 1, curr[i - 1] + 1, prev[i - 1] + cost)
+            curr[i] = val
+            if val < min_in_row:
+                min_in_row = val
+        if min_in_row > max_dist:
+            return max_dist + 1
+        prev, curr = curr, prev
+    return prev[l1]
+
+
 class Command:
     def __init__(self, keywords: List[str], action: str, synonyms: Dict[str, List[str]] = None, responses: List = None,
                  parameters: Dict = None, continues: bool = False, equivalents: List = None, tts: bool = False):
@@ -67,19 +94,22 @@ class Token:
 
 
 class CandidateMatch:
-    __slots__ = ('command', 'start', 'end', 'matched_indices', 'in_order', 'k_len', 'span', 'score')
+    __slots__ = ('command', 'start', 'end', 'matched_indices', 'in_order', 'k_len', 'span', 'score', 'exact_count')
 
-    def __init__(self, command: Command, start: int, end: int, matched_indices: Tuple[int, ...], in_order: bool, k_len: int):
+    def __init__(self, command: Command, start: int, end: int, matched_indices: Tuple[int, ...], in_order: bool, k_len: int, exact_count: int = -1):
         self.command = command
         self.start = start
         self.end = end
         self.matched_indices = matched_indices
         self.in_order = in_order
         self.k_len = k_len
+        self.exact_count = k_len if exact_count < 0 else exact_count
         self.span = end - start + 1
         # Specificity score: keyword count dominates (1000 per keyword),
-        # penalize span (-10 per word), bonus for canonical order (+50)
-        self.score = (k_len * 1000) - (self.span * 10) + (50 if in_order else 0)
+        # penalize span (-10 per word), bonus for canonical order (+50),
+        # slight penalty for fuzzy/approximated words (-150 per fuzzy word)
+        fuzzy_penalty = (k_len - self.exact_count) * 150
+        self.score = (k_len * 1000) - (self.span * 10) + (50 if in_order else 0) - fuzzy_penalty
 
 
 class Manager:
@@ -92,6 +122,17 @@ class Manager:
         self._all_known_words: Set[str] = set()
         self._word_to_cmd_indices: Dict[str, List[int]] = {}
         self._query_cache: Dict[str, List] = {}
+        self.router = None
+
+    def set_router(self, router):
+        """Sets the active CommandRouter (algorithmic, model, or hybrid)."""
+        self.router = router
+
+    def find(self, request: str):
+        """Dispatches command finding through router if configured, else algorithmic."""
+        if self.router is not None:
+            return self.router.route(request)
+        return self.find_algorithmic(request)
 
     def _rebuild_index(self):
         self._first_keywords = {}
@@ -99,6 +140,8 @@ class Manager:
         self._all_first_words = set()
         self._all_known_words = set()
         self._word_to_cmd_indices = {}
+        self._fuzzy_word_cache = {}
+        self._words_by_len = {}
         self._query_cache.clear()
 
         for idx, command in enumerate(self.commands):
@@ -115,6 +158,32 @@ class Manager:
             for word in command._all_req_words:
                 self._all_known_words.add(word)
                 self._word_to_cmd_indices.setdefault(word, []).append(idx)
+
+        for word in self._all_known_words:
+            self._words_by_len.setdefault(len(word), []).append(word)
+
+    def _closest_known_word(self, word: str) -> Optional[str]:
+        if word in self._all_known_words:
+            return word
+        if word in self._fuzzy_word_cache:
+            return self._fuzzy_word_cache[word]
+        w_len = len(word)
+        if w_len < 4:
+            self._fuzzy_word_cache[word] = None
+            return None
+        max_dist = 1 if w_len <= 5 else 2
+        best_word = None
+        best_sim = 0.0
+        for l in range(max(1, w_len - max_dist), w_len + max_dist + 1):
+            for cand in self._words_by_len.get(l, []):
+                dist = _fast_levenshtein(word, cand, max_dist=max_dist)
+                if dist <= max_dist:
+                    sim = 1.0 - (dist / max(w_len, l))
+                    if sim >= 0.75 and sim > best_sim:
+                        best_sim = sim
+                        best_word = cand
+        self._fuzzy_word_cache[word] = best_word
+        return best_word
 
     def add(self, *commands: Command):
         """
@@ -136,12 +205,18 @@ class Manager:
             self._rebuild_index()
 
     def construct_recognizer_string(self):
-        words = []
+        words = set(self._all_known_words)
         for command in self.commands:
-            words.extend(command.keywords)
+            words.update(command.keywords)
             for synonyms in command.synonyms.values():
-                words.extend(synonyms)
-        return " ".join(set(words))
+                words.update(synonyms)
+        return " ".join(sorted(words))
+
+    def get_all_vocabulary(self) -> Dict[str, Any]:
+        return {
+            "words": set(self._all_known_words),
+            "phrases": [" ".join(cmd.keywords) for cmd in self.commands],
+        }
 
     @staticmethod
     def _tokenize(request: str) -> List[Token]:
@@ -153,7 +228,7 @@ class Manager:
             tokens.append(Token(text, clean, m.start(), m.end(), len(tokens)))
         return tokens
 
-    def find(self, request: str):
+    def find_algorithmic(self, request: str):
         cached = self._query_cache.get(request)
         if cached is not None:
             return [[c[0], c[1]] for c in cached]
@@ -166,14 +241,22 @@ class Manager:
             return []
 
         query_words = set(t.clean for t in tokens)
-        if query_words.isdisjoint(self._all_known_words):
+        fuzzy_word_map = {}
+        for t in tokens:
+            if t.clean not in self._all_known_words:
+                closest = self._closest_known_word(t.clean)
+                if closest:
+                    fuzzy_word_map[t.clean] = closest
+
+        all_query_words = query_words.union(fuzzy_word_map.values())
+        if all_query_words.isdisjoint(self._all_known_words):
             if len(self._query_cache) < 1000:
                 self._query_cache[request] = []
             return []
 
-        # Find candidate commands whose requirement groups are all present in query_words
+        # Find candidate commands whose requirement groups are all present in query_words or fuzzy matches
         candidate_cmd_indices = set()
-        for w in query_words:
+        for w in all_query_words:
             if w in self._word_to_cmd_indices:
                 candidate_cmd_indices.update(self._word_to_cmd_indices[w])
 
@@ -189,7 +272,12 @@ class Manager:
             pos_lists = []
             possible = True
             for group in req_groups:
-                positions = [t.index for t in tokens if t.clean in group]
+                positions = []
+                for t in tokens:
+                    if t.clean in group:
+                        positions.append((t.index, 1))
+                    elif t.clean in fuzzy_word_map and fuzzy_word_map[t.clean] in group:
+                        positions.append((t.index, 0))
                 if not positions:
                     possible = False
                     break
@@ -199,12 +287,12 @@ class Manager:
                 continue
 
             if k_len == 1:
-                for p in pos_lists[0]:
-                    candidates.append(CandidateMatch(cmd, p, p, (p,), True, 1))
+                for p, is_exact in pos_lists[0]:
+                    candidates.append(CandidateMatch(cmd, p, p, (p,), True, 1, is_exact))
 
             elif k_len == 2:
-                for p0 in pos_lists[0]:
-                    for p1 in pos_lists[1]:
+                for p0, e0 in pos_lists[0]:
+                    for p1, e1 in pos_lists[1]:
                         if p0 == p1:
                             continue
                         gap = abs(p0 - p1) - 1
@@ -213,14 +301,14 @@ class Manager:
                         start = min(p0, p1)
                         end = max(p0, p1)
                         in_order = (p0 < p1)
-                        candidates.append(CandidateMatch(cmd, start, end, (p0, p1), in_order, 2))
+                        candidates.append(CandidateMatch(cmd, start, end, (p0, p1), in_order, 2, e0 + e1))
 
             elif k_len == 3:
-                for p0 in pos_lists[0]:
-                    for p1 in pos_lists[1]:
+                for p0, e0 in pos_lists[0]:
+                    for p1, e1 in pos_lists[1]:
                         if p0 == p1:
                             continue
-                        for p2 in pos_lists[2]:
+                        for p2, e2 in pos_lists[2]:
                             if p2 == p0 or p2 == p1:
                                 continue
                             indices = (p0, p1, p2)
@@ -230,21 +318,23 @@ class Manager:
                             if span - 3 > max_gap * 2:
                                 continue
                             in_order = (p0 < p1 < p2)
-                            candidates.append(CandidateMatch(cmd, start, end, indices, in_order, 3))
+                            candidates.append(CandidateMatch(cmd, start, end, indices, in_order, 3, e0 + e1 + e2))
 
             else:
-                def search_comb(group_idx, current_indices):
+                def search_comb(group_idx, current_items):
                     if group_idx == k_len:
+                        current_indices = [item[0] for item in current_items]
                         start = min(current_indices)
                         end = max(current_indices)
                         span = end - start + 1
                         if span - k_len <= max_gap * (k_len - 1):
                             in_order = all(current_indices[i] < current_indices[i + 1] for i in range(k_len - 1))
-                            candidates.append(CandidateMatch(cmd, start, end, tuple(current_indices), in_order, k_len))
+                            exact_count = sum(item[1] for item in current_items)
+                            candidates.append(CandidateMatch(cmd, start, end, tuple(current_indices), in_order, k_len, exact_count))
                         return
-                    for p in pos_lists[group_idx]:
-                        if p not in current_indices:
-                            search_comb(group_idx + 1, current_indices + [p])
+                    for p_item in pos_lists[group_idx]:
+                        if p_item[0] not in [it[0] for it in current_items]:
+                            search_comb(group_idx + 1, current_items + [p_item])
 
                 search_comb(0, [])
 

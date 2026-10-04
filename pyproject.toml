@@ -28,9 +28,8 @@ dependencies = [
 
 [project.optional-dependencies]
 stt = ["vosk", "pyaudio", "faster-whisper"]
-tts = ["kokoro>=0.9.4", "soundfile"]
-vision = ["opencv-python", "mediapipe"]
-all = ["stewart[stt,tts,vision]"]
+tts = ["kokoro>=0.9.4", "soundfile", "scipy"]
+all = ["stewart[stt,tts]"]
 
 [project.scripts]
 stewart = "main:main"

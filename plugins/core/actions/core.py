@@ -49,9 +49,26 @@ def typing(**kwargs) -> None:
     """
     Types a specified text from the context
     """
+    text = kwargs.get("context", "")
+    if not text:
+        return
     system_layout = _get_system_layout()
     _set_xwayland_layout(system_layout)
-    app.keyboard.type(kwargs["context"])
+    if app.keyboard:
+        try:
+            app.keyboard.type(text)
+            return
+        except Exception as e:
+            log.debug(f"pynput typing failed: {e}")
+    if shutil.which("wtype"):
+        sp.run(["wtype", text], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        return
+    if shutil.which("ydotool"):
+        sp.run(["ydotool", "type", text], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        return
+    if shutil.which("wl-copy"):
+        sp.run(["wl-copy", text], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        app.say("Copied text to clipboard, sir" if app.lang == "en" else "Скопировал текст в буфер обмена, сэр")
 
 
 def subprocess(**kwargs) -> None:
@@ -66,46 +83,84 @@ def subprocess(**kwargs) -> None:
 
 
 def click(**kwargs) -> None:
-    app.mouse.click(app.MouseButton.left)
+    if app.mouse and app.MouseButton:
+        try:
+            app.mouse.click(app.MouseButton.left)
+        except Exception as e:
+            log.debug(f"pynput click failed: {e}")
 
 
 def hotkey(**kwargs) -> None:
     """
-    Executes a hotkey using xdotool or pynput backend
+    Executes a hotkey using compositor, xdotool, or pynput backend
     """
     key_list = kwargs["command"].parameters["hotkey"]
-    if kwargs["command"].parameters.get("xdotool"):
-        sp.run(["xdotool", "key", "--delay", "0", "+".join(key_list)])
-    else:
-        key_objects = []
-        for k in key_list:
-            try:
-                key_obj = getattr(app.Key, k)
-            except AttributeError:
-                key_obj = k
-            key_objects.append(key_obj)
+    # Check media keys
+    if key_list == ["shift", "n"] and shutil.which("playerctl"):
+        sp.run(["playerctl", "next"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        return
 
-        for name in key_objects:
-            app.keyboard.press(name)
+    if kwargs["command"].parameters.get("xdotool") and shutil.which("xdotool"):
+        sp.run(["xdotool", "key", "--delay", "0", "+".join(key_list)], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        return
 
-        for name in reversed(key_objects):
-            app.keyboard.release(name)
+    if app.keyboard and app.Key:
+        try:
+            key_objects = []
+            for k in key_list:
+                try:
+                    key_obj = getattr(app.Key, k)
+                except AttributeError:
+                    key_obj = k
+                key_objects.append(key_obj)
+
+            for name in key_objects:
+                app.keyboard.press(name)
+
+            for name in reversed(key_objects):
+                app.keyboard.release(name)
+            return
+        except Exception as e:
+            log.debug(f"pynput hotkey failed: {e}")
+
+    if shutil.which("xdotool"):
+        sp.run(["xdotool", "key", "--delay", "0", "+".join(key_list)], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
 
 
 def key(**kwargs) -> None:
     """
     Presses a key on the keyboard
     """
-    name = kwargs["command"].parameters["key"]
-    sp.run(["xdotool", "key"], name)
+    name = kwargs["command"].parameters.get("key", "")
+    if not name:
+        return
+    if name in ["k", "space"] and shutil.which("playerctl"):
+        sp.run(["playerctl", "play-pause"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        return
+    if shutil.which("xdotool"):
+        sp.run(["xdotool", "key", name], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+    elif app.keyboard:
+        try:
+            app.keyboard.tap(name)
+        except Exception as e:
+            log.debug(f"pynput key tap failed: {e}")
 
 
 def scroll(**kwargs) -> None:
+    if not app.mouse:
+        return
     match kwargs["command"].parameters["way"]:
         case "up":
-            app.mouse.scroll(dy=10, dx=0)
+            try:
+                app.mouse.scroll(dy=10, dx=0)
+            except Exception:
+                pass
         case "down":
-            app.mouse.scroll(dy=-10, dx=0)
+            try:
+                app.mouse.scroll(dy=-10, dx=0)
+            except Exception:
+                pass
+
 
 
 def browser(**kwargs) -> None:
