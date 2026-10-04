@@ -1,12 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "8d680c952b6dbad2d353dc37af4176b3e17daa9a",
-    "indexed_at": "2026-10-03T20:33:25Z",
+    "commit": "bc40f9d443d9a8407e8db7303d73b8a45a0e3c49",
+    "indexed_at": "2026-10-04T10:10:48Z",
     "project": "home-ilyamiro-Projects-stewart",
-    "nodes": 2736,
-    "edges": 10055,
-    "original_size": 14024704,
-    "compressed_size": 2752704,
-    "compression_level": 3,
-    "reconcile_basis": "git-clean-head"
+    "nodes": 2879,
+    "edges": 10702,
+    "original_size": 14745600,
+    "compressed_size": 2922510,
+    "compression_level": 3
 }

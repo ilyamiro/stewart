@@ -26,6 +26,9 @@ The codebase memory knowledge graph contains:
 # Architecture summary
 .agents/bin/cbm get_architecture
 
+# Architecture Decision Record (ADR) & System Manifest
+.agents/bin/cbm get_adr
+
 # Search symbols
 .agents/bin/cbm search_graph --name-pattern ".*"
 
@@ -38,6 +41,23 @@ The codebase memory knowledge graph contains:
 # Run Cypher queries
 .agents/bin/cbm query_graph --query "MATCH (n:Function) RETURN n.name LIMIT 10"
 
-# Re-index
+# Re-index after modifying code
 .agents/bin/cbm reindex
 ```
+
+---
+
+## 3. Architecture Manifest & Rebuilding Stewart
+
+- **File Manifest**: See [`ARCHITECTURE.md`](file:///home/ilyamiro/Projects/stewart/ARCHITECTURE.md) for full subsystem blueprints, timing configs, and package structures.
+- **MCP ADR Record**: Stored in the knowledge graph under project `home-ilyamiro-Projects-stewart` via `manage_adr`. Future agents can inspect it with `manage_adr(mode='get')` or update it with `manage_adr(mode='update')`.
+- **Rebuilding Binary**:
+  ```bash
+  nix-build default.nix
+  # Output binary: ./result/bin/stewart
+  ```
+- **Development Shell**:
+  ```bash
+  nix-shell default.nix --run "python3 main.py --text-mode"
+  ```
+
