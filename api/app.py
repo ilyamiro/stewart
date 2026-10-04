@@ -262,6 +262,7 @@ class AppAPI:
 
         self.tts = TTS(self.config, self.lang)
         self.is_speaking = False
+        self._tts_lock = threading.Lock()
 
         self.__pre_init_callbacks__: list = []
         self.__post_init_callbacks__: list = []
@@ -369,11 +370,12 @@ class AppAPI:
         text = self.tts.parse_config_answers(text)
 
         def call_tts_in_thread(**kwargs):
-            self.is_speaking = True
-            try:
-                self.tts.say(**kwargs)
-            finally:
-                self.is_speaking = False
+            with self._tts_lock:
+                self.is_speaking = True
+                try:
+                    self.tts.say(**kwargs)
+                finally:
+                    self.is_speaking = False
 
         if self.config["audio"]["tts"]["enable-caching"]:
             tts_cache: Path = self.runtime.mkdir_cache("tts")
@@ -391,12 +393,13 @@ class AppAPI:
                     log.debug(f"Using cached tts file {cached_file} for text: {text}")
                     self.runtime.write(f"tts:{hash_input}", cached_hash)  # Reinforce mapping
                     def play_cached():
-                        self.is_speaking = True
-                        try:
-                            from audio.tts.synthesis import play_audio
-                            play_audio(str(cached_file))
-                        finally:
-                            self.is_speaking = False
+                        with self._tts_lock:
+                            self.is_speaking = True
+                            try:
+                                from audio.tts.synthesis import play_audio
+                                play_audio(str(cached_file))
+                            finally:
+                                self.is_speaking = False
                     threading.Thread(target=play_cached, daemon=True, name="TTS-Cached").start()
                     return
 

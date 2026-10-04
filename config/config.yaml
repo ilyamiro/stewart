@@ -50,15 +50,23 @@ start-up:
   voice-enable: true
 
 router:
-  mode: hybrid # Fast algorithmic tree matching first, intelligent model fallback
+  mode: hybrid # Options: 'hybrid' (algorithmic tree first, then neural model), 'algorithmic', 'model', 'qwen', 'ollama'
   confidence_threshold: 0.55 # Minimum confidence score for model prediction
   model:
-    provider: spacy # 'spacy' (ultra-fast <2ms CPU classifier & slot-filler)
+    provider: spacy # 'spacy' (ultra-fast <2ms CPU classifier), 'qwen' (local fine-tuned Qwen2.5-0.5B), 'ollama'
     model_path: data/models/action_classifier
     auto_train: true # Automatically trains on start if not already trained
     fallback_to_algorithmic: true # Fallback to algorithmic matching
+  qwen:
+    model_path: data/models/qwen2.5-0.5b-stewart # Path to fine-tuned Qwen2.5 model or checkpoint
+    max_new_tokens: 128
   ollama:
     endpoint: http://localhost:11434
     model: llama3.2:1b
     timeout: 3.0
+  persona:
+    enabled: true # Dynamic British butler voice responses via fine-tuned Qwen2.5 Persona LoRA
+    model_path: data/models/qwen2.5-0.5b-persona-lora
+    max_new_tokens: 64
+    temperature: 0.6
 

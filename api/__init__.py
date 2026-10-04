@@ -1,2 +1,5 @@
-from .app import app
-# from .app import runtime
+try:
+    from .app import app
+except ImportError:
+    app = None
+

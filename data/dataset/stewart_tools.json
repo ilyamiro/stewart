@@ -1,0 +1,278 @@
+[
+  {
+    "name": "media_control",
+    "description": "Control music and media playback (pause, resume, skip track, previous song, mute).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "control": {
+          "type": "string",
+          "enum": [
+            "play-pause",
+            "next",
+            "previous",
+            "stop",
+            "mute",
+            "unmute"
+          ],
+          "description": "Playback action to perform"
+        },
+        "context": {
+          "type": "string",
+          "description": "Optional media details or search query"
+        }
+      },
+      "required": [
+        "control"
+      ]
+    }
+  },
+  {
+    "name": "volume",
+    "description": "Adjust or set master system volume level.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "enum": [
+            "up",
+            "down",
+            "set",
+            "mute",
+            "unmute"
+          ],
+          "description": "Volume direction or action"
+        },
+        "context": {
+          "type": "string",
+          "description": "Amount, percentage or specific volume level (e.g. '50%', '10', 'maximum')"
+        }
+      },
+      "required": [
+        "command"
+      ]
+    }
+  },
+  {
+    "name": "brightness",
+    "description": "Adjust or set screen display brightness.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "enum": [
+            "up",
+            "down",
+            "set"
+          ],
+          "description": "Brightness direction or action"
+        },
+        "context": {
+          "type": "string",
+          "description": "Percentage or level (e.g. '80%', 'max', 'minimum')"
+        }
+      },
+      "required": [
+        "command"
+      ]
+    }
+  },
+  {
+    "name": "tell_time",
+    "description": "Announce the current system time or date.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Optional format request (e.g. 'date', 'time', 'exact')"
+        }
+      }
+    }
+  },
+  {
+    "name": "say_weather",
+    "description": "Fetch and announce the current weather forecast.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Optional city name or location"
+        }
+      }
+    }
+  },
+  {
+    "name": "timer",
+    "description": "Set, start or cancel a countdown timer.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Timer duration (e.g. '5 minutes', '30 seconds', '1 hour', '10 мин')"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "set",
+            "cancel",
+            "status"
+          ],
+          "default": "set"
+        }
+      },
+      "required": [
+        "context"
+      ]
+    }
+  },
+  {
+    "name": "stopwatch",
+    "description": "Control stopwatch (start, stop, reset, lap).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "way": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "reset",
+            "lap"
+          ],
+          "description": "Stopwatch operation"
+        }
+      },
+      "required": [
+        "way"
+      ]
+    }
+  },
+  {
+    "name": "hotkey",
+    "description": "Simulate keyboard shortcut or window management hotkey.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "hotkey": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Key combination list, e.g. ['ctrl', 'w'] to close tab, ['ctrl', 't'] for new tab, ['alt', 'f4'] to close window"
+        },
+        "context": {
+          "type": "string",
+          "description": "Target description"
+        }
+      },
+      "required": [
+        "hotkey"
+      ]
+    }
+  },
+  {
+    "name": "subprocess",
+    "description": "Launch or open a desktop application (file manager, terminal, browser, text editor).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "subprocess": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Application command to execute, e.g. ['xdg-open', '.'] or ['nautilus'] or ['google-chrome']"
+        },
+        "context": {
+          "type": "string",
+          "description": "File or folder name or app name"
+        }
+      },
+      "required": [
+        "subprocess"
+      ]
+    }
+  },
+  {
+    "name": "screenshot",
+    "description": "Capture a screenshot of the entire screen or active window.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Optional area specification ('full', 'window', 'selection')"
+        }
+      }
+    }
+  },
+  {
+    "name": "lock_session",
+    "description": "Lock the user session or screen immediately.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "battery_health",
+    "description": "Report current battery state, percentage, and health status.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "play_song",
+    "description": "Search and play a specific song, artist, or music track on YouTube/YouTube Music.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Song title or artist query"
+        }
+      },
+      "required": [
+        "context"
+      ]
+    }
+  },
+  {
+    "name": "find_video",
+    "description": "Search and open a video on YouTube.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Search phrase or topic for the video"
+        }
+      },
+      "required": [
+        "context"
+      ]
+    }
+  },
+  {
+    "name": "typing",
+    "description": "Type text directly into the focused window via keyboard emulation.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Text to type out"
+        }
+      },
+      "required": [
+        "context"
+      ]
+    }
+  }
+]
