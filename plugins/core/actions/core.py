@@ -21,150 +21,154 @@ log = logging.getLogger("module: " + __file__)
 stopwatch_start_time = None
 
 
-def _get_system_layout():
-    try:
-        result = sp.run(
-            ["localectl", "status"], stdout=sp.PIPE, text=True, check=True
-        )
+from typing import Union, List, Optional
+from api.commands.actions import BaseAction, ActionParameters, ActionResult, ExecutionContext, Field
 
-        # Parse the output to find X11 Layout
-        for line in result.stdout.splitlines():
-            if "X11 Layout:" in line:
-                return line.split(":", 1)[1].strip()
+# =====================================================================
+# Input & Desktop Actions
+# =====================================================================
 
-        return "us"  # Default to US if not found
-    except Exception:
-        return "us"  # Default to US on error
+class TypingParams(ActionParameters):
+    context: str = Field(default="", description="Text to type into active application")
 
 
-def _set_xwayland_layout(layout: str) -> None:
-    if shutil.which("setxkbmap") and os.environ.get("DISPLAY"):
-        try:
-            sp.run(["setxkbmap", layout], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-        except Exception:
-            pass
+class TypingAction(BaseAction):
+    name = "typing"
+    description = "Types specified text from context into the currently focused application."
+    parameters_schema = TypingParams
+    category = "input"
+    sample_phrases = ["type hello world", "enter text"]
+    requires_context = True
+
+    def execute(self, params: TypingParams, ctx: ExecutionContext) -> ActionResult:
+        text = params.context or ctx.context
+        if not text:
+            return ActionResult(success=False, error="No text provided to type")
+        ok = ctx.desktop.type_text(text)
+        return ActionResult(success=ok)
 
 
-def typing(**kwargs) -> None:
-    """
-    Types a specified text from the context
-    """
-    text = kwargs.get("context", "")
-    if not text:
-        return
-    system_layout = _get_system_layout()
-    _set_xwayland_layout(system_layout)
-    if app.keyboard:
-        try:
-            app.keyboard.type(text)
-            return
-        except Exception as e:
-            log.debug(f"pynput typing failed: {e}")
-    if shutil.which("wtype"):
-        sp.run(["wtype", text], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-        return
-    if shutil.which("ydotool"):
-        sp.run(["ydotool", "type", text], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-        return
-    if shutil.which("wl-copy"):
-        sp.run(["wl-copy", text], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-        app.say("Copied text to clipboard, sir" if app.lang == "en" else "Скопировал текст в буфер обмена, сэр")
+class SubprocessParams(ActionParameters):
+    command: Union[List[str], str] = Field(default="", description="Command or arguments list to execute, e.g. ['nautilus'] or ['kitty']")
+    context: str = Field(default="", description="Optional context or target name")
 
 
-def subprocess(**kwargs) -> None:
-    """
-    Runs a command using python subprocess module
-    """
-    sp.run(
-        kwargs["command"].parameters["command"],
-        stdout=sp.DEVNULL,
-        stderr=sp.STDOUT,
-    )
+class SubprocessAction(BaseAction):
+    name = "subprocess"
+    description = "Launches an application or runs an external desktop command."
+    parameters_schema = SubprocessParams
+    category = "system"
+    sample_phrases = ["open terminal", "launch file manager", "open browser"]
+
+    def execute(self, params: SubprocessParams, ctx: ExecutionContext) -> ActionResult:
+        cmd = params.command
+        if not cmd and hasattr(params, "subprocess"):
+            cmd = getattr(params, "subprocess")
+        if not cmd:
+            return ActionResult(success=False, error="No command specified")
+        ok = ctx.desktop.launch_app(cmd)
+        return ActionResult(success=ok)
 
 
-def click(**kwargs) -> None:
-    if app.mouse and app.MouseButton:
-        try:
-            app.mouse.click(app.MouseButton.left)
-        except Exception as e:
-            log.debug(f"pynput click failed: {e}")
+class ClickParams(ActionParameters):
+    button: str = Field(default="left", description="Mouse button to click ('left' or 'right')")
 
 
-def hotkey(**kwargs) -> None:
-    """
-    Executes a hotkey using compositor, xdotool, or pynput backend
-    """
-    key_list = kwargs["command"].parameters["hotkey"]
-    # Check media keys
-    if key_list == ["shift", "n"] and shutil.which("playerctl"):
-        sp.run(["playerctl", "next"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-        return
+class ClickAction(BaseAction):
+    name = "click"
+    description = "Performs a mouse click with the specified button."
+    parameters_schema = ClickParams
+    category = "input"
+    sample_phrases = ["mouse click", "click left", "right click"]
 
-    if kwargs["command"].parameters.get("xdotool") and shutil.which("xdotool"):
-        sp.run(["xdotool", "key", "--delay", "0", "+".join(key_list)], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-        return
-
-    if app.keyboard and app.Key:
-        try:
-            key_objects = []
-            for k in key_list:
-                try:
-                    key_obj = getattr(app.Key, k)
-                except AttributeError:
-                    key_obj = k
-                key_objects.append(key_obj)
-
-            for name in key_objects:
-                app.keyboard.press(name)
-
-            for name in reversed(key_objects):
-                app.keyboard.release(name)
-            return
-        except Exception as e:
-            log.debug(f"pynput hotkey failed: {e}")
-
-    if shutil.which("xdotool"):
-        sp.run(["xdotool", "key", "--delay", "0", "+".join(key_list)], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+    def execute(self, params: ClickParams, ctx: ExecutionContext) -> ActionResult:
+        ok = ctx.desktop.mouse_click(params.button)
+        return ActionResult(success=ok)
 
 
-def key(**kwargs) -> None:
-    """
-    Presses a key on the keyboard
-    """
-    name = kwargs["command"].parameters.get("key", "")
-    if not name:
-        return
-    if name in ["k", "space"] and shutil.which("playerctl"):
-        sp.run(["playerctl", "play-pause"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-        return
-    if shutil.which("xdotool"):
-        sp.run(["xdotool", "key", name], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-    elif app.keyboard:
-        try:
-            app.keyboard.tap(name)
-        except Exception as e:
-            log.debug(f"pynput key tap failed: {e}")
+class HotkeyParams(ActionParameters):
+    hotkey: List[str] = Field(default_factory=list, description="Keys to press simultaneously, e.g. ['ctrl', 'w']")
+    xdotool: bool = Field(default=False, description="Whether to force using xdotool delay")
 
 
-def scroll(**kwargs) -> None:
-    if not app.mouse:
-        return
-    match kwargs["command"].parameters["way"]:
-        case "up":
-            try:
-                app.mouse.scroll(dy=10, dx=0)
-            except Exception:
-                pass
-        case "down":
-            try:
-                app.mouse.scroll(dy=-10, dx=0)
-            except Exception:
-                pass
+class HotkeyAction(BaseAction):
+    name = "hotkey"
+    description = "Executes a keyboard hotkey combination."
+    parameters_schema = HotkeyParams
+    category = "input"
+    sample_phrases = ["close tab", "copy text", "paste clipboard"]
+
+    def execute(self, params: HotkeyParams, ctx: ExecutionContext) -> ActionResult:
+        keys = params.hotkey
+        if not keys and hasattr(params, "keys"):
+            keys = getattr(params, "keys")
+        if not keys:
+            return ActionResult(success=False, error="No hotkey keys specified")
+        ok = ctx.desktop.send_hotkey(keys, use_xdotool_delay=params.xdotool)
+        return ActionResult(success=ok)
 
 
+class KeyParams(ActionParameters):
+    key: str = Field(default="", description="Single keyboard key to tap, e.g. 'space', 'k', 'enter'")
 
-def browser(**kwargs) -> None:
-    webbrowser.open(kwargs["command"].parameters["url"])
+
+class KeyAction(BaseAction):
+    name = "key"
+    description = "Presses a single key on the keyboard."
+    parameters_schema = KeyParams
+    category = "input"
+    sample_phrases = ["press enter", "tap space"]
+
+    def execute(self, params: KeyParams, ctx: ExecutionContext) -> ActionResult:
+        if not params.key:
+            return ActionResult(success=False, error="No key specified")
+        ok = ctx.desktop.tap_key(params.key)
+        return ActionResult(success=ok)
+
+
+class ScrollParams(ActionParameters):
+    way: str = Field(default="up", description="Direction to scroll: 'up' or 'down'")
+    amount: int = Field(default=10, description="Scroll amount")
+
+
+class ScrollAction(BaseAction):
+    name = "scroll"
+    description = "Scrolls the mouse wheel up or down."
+    parameters_schema = ScrollParams
+    category = "input"
+    sample_phrases = ["scroll up", "scroll down"]
+
+    def execute(self, params: ScrollParams, ctx: ExecutionContext) -> ActionResult:
+        ok = ctx.desktop.mouse_scroll(direction=params.way, amount=params.amount)
+        return ActionResult(success=ok)
+
+
+class BrowserParams(ActionParameters):
+    url: str = Field(default="", description="URL to open in the default web browser")
+
+
+class BrowserAction(BaseAction):
+    name = "browser"
+    description = "Opens a URL in the user's default web browser."
+    parameters_schema = BrowserParams
+    category = "web"
+    sample_phrases = ["open website", "browse to google"]
+
+    def execute(self, params: BrowserParams, ctx: ExecutionContext) -> ActionResult:
+        if not params.url:
+            return ActionResult(success=False, error="No URL specified")
+        ok = ctx.desktop.open_url(params.url)
+        return ActionResult(success=ok)
+
+
+# Callable module-level instances for backward compatibility
+typing = TypingAction()
+subprocess = SubprocessAction()
+click = ClickAction()
+hotkey = HotkeyAction()
+key = KeyAction()
+scroll = ScrollAction()
+browser = BrowserAction()
 
 
 def get_connected_usb_devices() -> list:

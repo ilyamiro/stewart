@@ -1,0 +1,24 @@
+{
+  "tools": [
+    {
+      "name": "change_file_name",
+      "description": "Rename or move a file",
+      "command_template": "mv {src} {dst}",
+      "parameters_schema": {
+        "src": {
+          "type": "string",
+          "description": "Source path"
+        },
+        "dst": {
+          "type": "string",
+          "description": "Target path"
+        }
+      },
+      "sample_phrases": [
+        "change file name",
+        "rename file"
+      ],
+      "created_at": "2026-10-05T11:16:19.923678"
+    }
+  ]
+}

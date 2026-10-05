@@ -121,6 +121,8 @@ class Manager:
         self._all_first_words = set()
         self._all_known_words: Set[str] = set()
         self._word_to_cmd_indices: Dict[str, List[int]] = {}
+        self._fuzzy_word_cache: Dict[str, Optional[str]] = {}
+        self._words_by_len: Dict[int, List[str]] = {}
         self._query_cache: Dict[str, List] = {}
         self.router = None
 

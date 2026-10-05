@@ -51,9 +51,11 @@ pypkgs.buildPythonApplication rec {
       let base = baseNameOf path; in
       !(base == ".git"
         || base == ".venv"
+        || base == ".venv_qwen"
         || base == ".idea"
         || base == "__pycache__"
         || base == "docs"
+        || base == "models"
         || base == "result");
   };
 

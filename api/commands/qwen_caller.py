@@ -37,20 +37,26 @@ class QwenToolCaller:
     """
     def __init__(self,
                  model_path: Optional[str] = None,
+                 model_size: Optional[str] = None,
                  device: Optional[str] = None,
                  max_new_tokens: int = 128,
                  n_ctx: int = 4096,
                  backend: Optional[str] = None):
         base_dir = Path(__file__).resolve().parent.parent.parent
+        
+        env_size = os.getenv("QWEN_MODEL_SIZE", "").lower()
+        self.model_size = (model_size or env_size or "0.5b").lower()
+
         gguf_candidates = [
-            base_dir / "data/models/gguf/qwen2.5-0.5b-tool-caller-q8_0.gguf",
-            base_dir / "data/models/gguf/qwen2.5-0.5b-stewart-q8_0.gguf",
-            base_dir / "data/models/gguf/qwen2.5-0.5b-tool-caller-f16.gguf",
-            base_dir / "data/models/gguf/qwen2.5-0.5b-stewart-f16.gguf",
-            base_dir / "data/models/gguf/qwen2.5-0.5b-tool-caller.gguf"
+            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-tool-caller-q8_0.gguf",
+            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-stewart-q8_0.gguf",
+            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-tool-caller-f16.gguf",
+            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-stewart-f16.gguf",
+            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-tool-caller.gguf",
         ]
-        default_hf_dir = base_dir / "data/models/qwen2.5-0.5b-stewart"
-        lora_hf_dir = base_dir / "data/models/qwen2.5-0.5b-stewart-lora"
+        
+        default_hf_dir = base_dir / f"data/models/qwen2.5-{self.model_size}-stewart"
+        lora_hf_dir = base_dir / f"data/models/qwen2.5-{self.model_size}-stewart-lora"
 
         self.custom_path = Path(model_path) if model_path else None
         self.gguf_path: Optional[Path] = None
@@ -90,6 +96,7 @@ class QwenToolCaller:
         self.llm: Optional[Any] = None
         self.tokenizer: Optional[Any] = None
         self.model: Optional[Any] = None
+        self._grammar: Optional[Any] = None
         self._is_loaded = False
 
     def is_loaded(self) -> bool:
@@ -137,21 +144,43 @@ class QwenToolCaller:
         try:
             log.info(f"Loading local PyTorch Qwen2.5 model from {self.hf_path} on {self.device}...")
             is_lora = (self.hf_path / "adapter_config.json").exists()
-            base_model_id = "Qwen/Qwen2.5-0.5B-Instruct" if is_lora else str(self.hf_path)
+            base_model_id = None
+            if is_lora:
+                try:
+                    with open(self.hf_path / "adapter_config.json", "r", encoding="utf-8") as f:
+                        cfg = json.load(f)
+                        base_model_id = cfg.get("base_model_name_or_path")
+                except Exception:
+                    pass
+            if not base_model_id:
+                base_model_id = f"Qwen/Qwen2.5-{self.model_size}-Instruct" if is_lora else str(self.hf_path)
 
             self.tokenizer = AutoTokenizer.from_pretrained(base_model_id, trust_remote_code=True)
-            torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
+            bnb_config = None
+            if self.device == "cuda" and self.model_size == "1.5b":
+                try:
+                    from transformers import BitsAndBytesConfig
+                    bnb_config = BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_quant_type="nf4",
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_compute_dtype=torch.float16
+                    )
+                except Exception:
+                    bnb_config = None
 
+            torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
             base_model = AutoModelForCausalLM.from_pretrained(
                 base_model_id,
                 torch_dtype=torch_dtype,
+                quantization_config=bnb_config,
                 device_map=self.device if self.device == "cuda" else None,
                 trust_remote_code=True
             )
 
             if is_lora:
                 from peft import PeftModel
-                self.model = PeftModel.from_pretrained(base_model, str(self.hf_path))
+                self.model = PeftModel.from_pretrained(base_model, str(self.hf_path), adapter_name="tool_caller")
             else:
                 self.model = base_model
 
@@ -182,24 +211,52 @@ class QwenToolCaller:
             return False
 
     def _format_system_prompt(self, tool_schemas: List[Dict[str, Any]]) -> str:
-        tool_descs = []
+        tool_lines = []
         for t in tool_schemas:
             fn = t.get("function", t)
-            schema_json = json.dumps(fn, indent=2, ensure_ascii=False)
             name = fn.get("name", "unknown")
-            tool_descs.append(f"## {name}\n\n```json\n{schema_json}\n```")
-
-        tools_block = "\n\n".join(tool_descs)
+            desc = fn.get("description", "")
+            params = fn.get("parameters", {}).get("properties", {})
+            param_strs = []
+            for pname, pinfo in params.items():
+                ptype = pinfo.get("type", "any")
+                if "enum" in pinfo:
+                    ptype = "|".join(f'"{e}"' for e in pinfo["enum"])
+                param_strs.append(f"{pname}: {ptype}")
+            params_repr = ", ".join(param_strs)
+            tool_lines.append(f"- {name}({params_repr}) - {desc}")
+        tools_block = "\n".join(tool_lines)
         return (
-            "You are Stewart, an intelligent AI voice assistant running on Linux. "
-            "You have access to the following tools to execute user commands:\n\n"
-            f"# Tools\n\n{tools_block}\n\n"
-            "When the user's request corresponds to an available tool, call the single best tool using:\n"
-            "<tool_call>\n"
-            "{\"name\": \"tool_name\", \"arguments\": {\"param\": \"value\"}}\n"
-            "</tool_call>\n\n"
-            "If the user is asking a general question, greeting, or chatting and no tool applies, answer directly without tool calls."
+            "You are Stewart, an intelligent Linux AI voice assistant.\n"
+            "Available tools:\n"
+            f"{tools_block}\n"
+            "Call single tool using: <tool_call>{\"name\": \"...\", \"arguments\": {...}}</tool_call>.\n"
+            "If no tool applies, answer directly."
         )
+
+    def _get_tool_grammar(self) -> Optional[Any]:
+        if self._grammar is not None:
+            return self._grammar
+        if not LLAMA_CPP_AVAILABLE:
+            return None
+        try:
+            grammar_text = r"""
+root ::= (tool-call | text-response)
+tool-call ::= "<tool_call>\n" json-object "\n</tool_call>"
+text-response ::= [^<]+
+json-object ::= "{" ws (member ("," ws member)*)? ws "}"
+member ::= string ws ":" ws value
+value ::= json-object | array | string | number | "true" | "false" | "null"
+array ::= "[" ws (value ("," ws value)*)? ws "]"
+string ::= "\"" [^"\\]* "\""
+number ::= "-"? [0-9]+ ("." [0-9]+)?
+ws ::= [ \t\n\r]*
+"""
+            self._grammar = llama_cpp.LlamaGrammar.from_string(grammar_text)
+            return self._grammar
+        except Exception as e:
+            log.warning(f"Failed to compile GBNF tool grammar: {e}")
+            return None
 
     def call_tool(self, request: str, tool_schemas: List[Dict[str, Any]]) -> Optional[Tuple[str, Dict[str, Any], str]]:
         """
@@ -218,14 +275,19 @@ class QwenToolCaller:
 
         response_text = ""
 
-        # GGUF Execution (~10-40ms)
+        # GGUF Execution (~10-40ms) with GBNF Constrained Decoding
         if self.backend == "gguf" and self.llm is not None:
             try:
-                res = self.llm.create_chat_completion(
-                    messages=messages,
-                    max_tokens=self.max_new_tokens,
-                    temperature=0.0
-                )
+                grammar = self._get_tool_grammar()
+                kwargs = {
+                    "messages": messages,
+                    "max_tokens": self.max_new_tokens,
+                    "temperature": 0.0
+                }
+                if grammar is not None:
+                    kwargs["grammar"] = grammar
+
+                res = self.llm.create_chat_completion(**kwargs)
                 response_text = res["choices"][0]["message"].get("content", "").strip()
             except Exception as e:
                 log.warning(f"Error during GGUF tool call completion: {e}", exc_info=True)
@@ -233,6 +295,16 @@ class QwenToolCaller:
 
         # PyTorch Execution Fallback
         elif self.backend == "pytorch" and self.model is not None and self.tokenizer is not None:
+            try:
+                from peft import PeftModel
+                if isinstance(self.model, PeftModel):
+                    if "tool_caller" in self.model.peft_config:
+                        self.model.set_adapter("tool_caller")
+                    elif "default" in self.model.peft_config:
+                        self.model.set_adapter("default")
+            except Exception:
+                pass
+
             try:
                 full_prompt = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
                 inputs = self.tokenizer(full_prompt, return_tensors="pt").to(self.device)

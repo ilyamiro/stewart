@@ -40,7 +40,7 @@ settings:
   inactivity-threshold: 300
   max-history-length: 100
   react-no-command: false
-  text-mode: false
+  text-mode: true
   trigger:
     trigger-mode: enabled
     trigger-time: 30
@@ -50,23 +50,45 @@ start-up:
   voice-enable: true
 
 router:
-  mode: hybrid # Options: 'hybrid' (algorithmic tree first, then neural model), 'algorithmic', 'model', 'qwen', 'ollama'
+  mode: hybrid # Options: 'hybrid' (algorithmic tree first, then neural model), 'algorithmic', 'model', 'qwen', 'ollama', 'agy'
   confidence_threshold: 0.55 # Minimum confidence score for model prediction
   model:
-    provider: spacy # 'spacy' (ultra-fast <2ms CPU classifier), 'qwen' (local fine-tuned Qwen2.5-0.5B), 'ollama'
+    provider: spacy # 'spacy' (ultra-fast <2ms CPU classifier), 'qwen' (local fine-tuned Qwen2.5-0.5B), 'ollama', 'agy'
     model_path: data/models/action_classifier
     auto_train: true # Automatically trains on start if not already trained
     fallback_to_algorithmic: true # Fallback to algorithmic matching
   qwen:
-    model_path: data/models/qwen2.5-0.5b-stewart # Path to fine-tuned Qwen2.5 model or checkpoint
+    model_size: "1.5b" # Options: '0.5b' (ultra-fast ~130ms), '1.5b' (maximum 100% precision)
+    model_path: data/models/gguf/qwen2.5-1.5b-tool-caller-q8_0.gguf
     max_new_tokens: 128
   ollama:
     endpoint: http://localhost:11434
     model: llama3.2:1b
     timeout: 3.0
+  agy:
+    command: agy
+    model: gemini-3.8-flash-low # 3.8 flash light (low thinking)
+    effort: low
+    skill_name: stewart-voice
+    timeout: 60.0
+    dangerously_skip_permissions: false
+
+
   persona:
-    enabled: true # Dynamic British butler voice responses via fine-tuned Qwen2.5 Persona LoRA
-    model_path: data/models/qwen2.5-0.5b-persona-lora
+    enabled: true # Dynamic British butler voice responses via fine-tuned Qwen2.5 Persona GGUF
+    model_size: "1.5b"
+    model_path: data/models/gguf/qwen2.5-1.5b-persona-q8_0.gguf
     max_new_tokens: 64
     temperature: 0.6
+
+mcp:
+  enabled: true
+  servers:
+    studieplus:
+      command: /home/ilyamiro/Projects/life/bin/studieplus-mcp
+      args: []
+    gmail:
+      command: /home/ilyamiro/Projects/life/bin/gmail-mcp
+      args: []
+
 

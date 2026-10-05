@@ -43,6 +43,8 @@ from .commands.scenarios import Trigger, Timeline, Scenario
 from .commands.tools import ToolRegistry, ActionTool
 from .commands.router import CommandRouter
 from .commands.classifier import SpacyActionClassifier
+from .commands.actions import BaseAction, ActionParameters, ActionResult, ExecutionContext, Field
+from .services.desktop import DesktopService, get_desktop_service
 from .commands.ollama import OllamaToolCaller
 from .events.events import Event, EventLogger
 from .locales.service import Locale, LocalePluginService
@@ -237,6 +239,12 @@ class AppAPI:
         self.router = CommandRouter(self.manager, self.tool_registry, self.config)
         self.manager.set_router(self.router)
         self.ActionTool = ActionTool
+        self.BaseAction = BaseAction
+        self.ActionParameters = ActionParameters
+        self.ActionResult = ActionResult
+        self.ExecutionContext = ExecutionContext
+        self.Field = Field
+        self.desktop = get_desktop_service(api=self)
 
         self.eventLogger = EventLogger()
 
@@ -442,6 +450,18 @@ class AppAPI:
         for func in args:
             self.__actions__.update({func.__name__: func})
 
+    def register_action(self, action: BaseAction):
+        """Registers a BaseAction instance directly into the action registry."""
+        if isinstance(action, BaseAction):
+            if action.api is None:
+                action.api = self
+            if action.desktop is None:
+                action.desktop = self.desktop
+            self.__actions__[action.name] = action
+            log.info(f"Registered action '{action.name}'")
+        else:
+            log.warning(f"Expected BaseAction instance, got {type(action)}")
+
     def add_module_for_search(self, path: str = None, module=None, include_private: bool = False):
         """
         :param path: a project relative path for a module that would be added to search in when looking for execution module
@@ -463,18 +483,30 @@ class AppAPI:
                 return
         if isinstance(module, types.ModuleType):
             members = inspect.getmembers(module)
-            functions = {
-                member[0]: member[1]
-                for member in members
-                if inspect.isfunction(member[1]) and member[1].__module__ == module.__name__
-            }
-            if not include_private:
-                filtered_dict = {k: v for k, v in functions.items() if not k.startswith('__')}
-                self.__actions__.update(filtered_dict)
-                log.info(f"Added functions to actions: {list(filtered_dict.keys())}")
-            else:
-                self.__actions__.update(functions)
-                log.info(f"Added functions to actions: {list(functions.keys())}")
+            discovered = {}
+            for member_name, member_obj in members:
+                if not include_private and member_name.startswith('__'):
+                    continue
+                # 1. BaseAction instance
+                if isinstance(member_obj, BaseAction):
+                    if member_obj.api is None:
+                        member_obj.api = self
+                    if member_obj.desktop is None:
+                        member_obj.desktop = self.desktop
+                    discovered[member_obj.name or member_name] = member_obj
+                # 2. BaseAction class definition
+                elif inspect.isclass(member_obj) and issubclass(member_obj, BaseAction) and member_obj is not BaseAction:
+                    try:
+                        instance = member_obj(api=self, desktop=self.desktop)
+                        discovered[instance.name or member_name] = instance
+                    except Exception as e:
+                        log.debug(f"Could not auto-instantiate action class {member_name}: {e}")
+                # 3. Standard function
+                elif inspect.isfunction(member_obj) and getattr(member_obj, "__module__", None) == module.__name__:
+                    discovered[member_name] = member_obj
+
+            self.__actions__.update(discovered)
+            log.info(f"Added actions from {module.__name__}: {list(discovered.keys())}")
         else:
             log.warning(f"module: {module} is not a module object, try again")
             return

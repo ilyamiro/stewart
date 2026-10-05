@@ -54,7 +54,8 @@ class QwenPersonaCaller:
 
     def __init__(self,
                  model_path: Optional[Union[str, Path]] = None,
-                 base_model_id: str = "Qwen/Qwen2.5-0.5B-Instruct",
+                 model_size: Optional[str] = None,
+                 base_model_id: Optional[str] = None,
                  device: Optional[str] = None,
                  max_new_tokens: int = 64,
                  temperature: float = 0.6,
@@ -62,13 +63,17 @@ class QwenPersonaCaller:
                  backend: Optional[str] = None,
                  shared_caller: Optional[Any] = None):
         base_dir = Path(__file__).resolve().parent.parent.parent
+        
+        env_size = os.getenv("QWEN_MODEL_SIZE", "").lower()
+        self.model_size = (model_size or env_size or "0.5b").lower()
+
         gguf_candidates = [
-            base_dir / "data/models/gguf/qwen2.5-0.5b-persona-q8_0.gguf",
-            base_dir / "data/models/gguf/qwen2.5-0.5b-persona-f16.gguf",
-            base_dir / "data/models/gguf/qwen2.5-0.5b-persona.gguf"
+            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-persona-q8_0.gguf",
+            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-persona-f16.gguf",
+            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-persona.gguf",
         ]
-        lora_dir = base_dir / "data/models/qwen2.5-0.5b-persona-lora"
-        merged_dir = base_dir / "data/models/qwen2.5-0.5b-persona"
+        lora_dir = base_dir / f"data/models/qwen2.5-{self.model_size}-persona-lora"
+        merged_dir = base_dir / f"data/models/qwen2.5-{self.model_size}-persona"
 
         self.custom_path = Path(model_path) if model_path else None
         self.gguf_path: Optional[Path] = None
@@ -172,14 +177,37 @@ class QwenPersonaCaller:
 
             log.info(f"Loading PyTorch Qwen Persona model from {self.hf_path} on {self.device}...")
             is_lora = (self.hf_path / "adapter_config.json").exists()
-            tok_source = self.base_model_id if is_lora else str(self.hf_path)
+            base_model_id = self.base_model_id
+            if is_lora and not base_model_id:
+                try:
+                    with open(self.hf_path / "adapter_config.json", "r", encoding="utf-8") as f:
+                        cfg = json.load(f)
+                        base_model_id = cfg.get("base_model_name_or_path")
+                except Exception:
+                    pass
+            if not base_model_id:
+                base_model_id = f"Qwen/Qwen2.5-{self.model_size}-Instruct" if is_lora else str(self.hf_path)
+            tok_source = base_model_id
 
             self.tokenizer = AutoTokenizer.from_pretrained(tok_source, trust_remote_code=True)
-            torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
+            bnb_config = None
+            if self.device == "cuda" and self.model_size == "1.5b":
+                try:
+                    from transformers import BitsAndBytesConfig
+                    bnb_config = BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_quant_type="nf4",
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_compute_dtype=torch.float16
+                    )
+                except Exception:
+                    bnb_config = None
 
+            torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
             base_model = AutoModelForCausalLM.from_pretrained(
                 tok_source,
                 torch_dtype=torch_dtype,
+                quantization_config=bnb_config,
                 device_map=self.device if self.device == "cuda" else None,
                 trust_remote_code=True
             )

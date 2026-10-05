@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "studieplus": {
+      "command": "/home/ilyamiro/Projects/life/bin/studieplus-mcp",
+      "args": []
+    },
+    "gmail": {
+      "command": "/home/ilyamiro/Projects/life/bin/gmail-mcp",
+      "args": []
+    }
+  }
+}

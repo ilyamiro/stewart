@@ -1,224 +1,225 @@
 import logging
-import os
-import shutil
-import subprocess as sp
-import re
-from pathlib import Path as _Path
-from api import app
+from typing import Optional, List
+from api.commands.actions import BaseAction, ActionParameters, ActionResult, ExecutionContext, Field
 
 log = logging.getLogger("action: desktop")
 
-WORD_TO_NUM = {
-    "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
-    "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10",
-    "один": "1", "два": "2", "три": "3", "четыре": "4", "пять": "5",
-    "шесть": "6", "семь": "7", "восемь": "8", "девять": "9", "десять": "10",
-    "первый": "1", "второй": "2", "третий": "3", "четвертый": "4", "пятый": "5",
-    "шестой": "6", "седьмой": "7", "восьмой": "8", "девятый": "9", "десятый": "10",
-}
+
+# =====================================================================
+# Window Management Actions
+# =====================================================================
+
+class CloseWindowParams(ActionParameters):
+    force: bool = Field(default=False, description="Whether to force-kill the window if not responding")
 
 
-def _extract_workspace(text: str) -> str:
-    nums = re.findall(r"\d+", text)
-    if nums:
-        return nums[0]
-    for word, num in WORD_TO_NUM.items():
-        if word in text.lower():
-            return num
-    return "+1"
+class CloseWindowAction(BaseAction):
+    name = "close_window"
+    description = "Closes the currently active window using compositor IPC or Alt+F4 fallback."
+    parameters_schema = CloseWindowParams
+    category = "desktop"
+    sample_phrases = ["close window", "close this", "kill window", "exit application"]
+
+    def execute(self, params: CloseWindowParams, ctx: ExecutionContext) -> ActionResult:
+        ok = ctx.desktop.close_active_window()
+        return ActionResult(success=ok)
 
 
-SERP_DISPATCH_PATHS = [
-    _Path.home() / ".config/hypr/serp-dispatch.sh",
-    _Path.home() / ".config/niri/serp-dispatch.sh",
-]
+class ToggleFloatingParams(ActionParameters):
+    pass
 
 
-def _get_compositor() -> str:
-    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-        return "hyprland"
-    desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
-    if "hyprland" in desktop:
-        return "hyprland"
-    if "niri" in desktop:
-        return "niri"
-    if shutil.which("hyprctl"):
-        return "hyprland"
-    if shutil.which("niri"):
-        return "niri"
-    return "other"
+class ToggleFloatingAction(BaseAction):
+    name = "toggle_floating"
+    description = "Toggles floating mode for the currently active window."
+    parameters_schema = ToggleFloatingParams
+    category = "desktop"
+    sample_phrases = ["toggle floating", "make window float", "tile window"]
+
+    def execute(self, params: ToggleFloatingParams, ctx: ExecutionContext) -> ActionResult:
+        ok = ctx.desktop.toggle_floating()
+        return ActionResult(success=ok)
 
 
-def _run_serp(*args) -> bool:
-    for script_path in SERP_DISPATCH_PATHS:
-        if script_path.exists() and os.access(script_path, os.X_OK):
-            try:
-                res = sp.run([str(script_path), *args], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-                if res.returncode == 0:
-                    return True
-            except Exception as e:
-                log.debug(f"Failed to execute {script_path}: {e}")
-
-    serp = shutil.which("serpantinum")
-    if serp:
-        try:
-            res = sp.run([serp, *args], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-            return res.returncode == 0
-        except Exception as e:
-            log.debug(f"Failed to execute serpantinum: {e}")
-    return False
+class ToggleFullscreenParams(ActionParameters):
+    pass
 
 
-def close_window(**kwargs):
-    """
-    Closes the active window using Hyprland/Niri compositor calls or Alt+F4 fallback.
-    """
-    comp = _get_compositor()
-    if comp == "hyprland" and shutil.which("hyprctl"):
-        sp.run(["hyprctl", "dispatch", "killactive"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-        return
-    if comp == "niri" and shutil.which("niri"):
-        sp.run(["niri", "msg", "action", "close-window"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-        return
+class ToggleFullscreenAction(BaseAction):
+    name = "toggle_fullscreen"
+    description = "Toggles fullscreen mode for the active window."
+    parameters_schema = ToggleFullscreenParams
+    category = "desktop"
+    sample_phrases = ["fullscreen", "toggle fullscreen", "maximize window"]
 
-    # Fallback to hotkey Alt+F4
-    if app.keyboard and app.Key:
-        try:
-            with app.keyboard.pressed(app.Key.alt):
-                app.keyboard.tap(app.Key.f4)
-            return
-        except Exception as e:
-            log.warning(f"Fallback close window failed: {e}")
-    if shutil.which("xdotool"):
-        sp.run(["xdotool", "key", "alt+F4"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+    def execute(self, params: ToggleFullscreenParams, ctx: ExecutionContext) -> ActionResult:
+        ok = ctx.desktop.toggle_fullscreen()
+        return ActionResult(success=ok)
 
 
-def toggle_floating(**kwargs):
-    """
-    Toggles floating mode for the active window.
-    """
-    comp = _get_compositor()
-    if comp == "hyprland" and shutil.which("hyprctl"):
-        sp.run(["hyprctl", "dispatch", "togglefloating"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-    elif comp == "niri" and shutil.which("niri"):
-        sp.run(["niri", "msg", "action", "toggle-window-floating"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+class MoveWindowToMonitorParams(ActionParameters):
+    direction: str = Field(default="next", description="Monitor direction to move the active window ('next', 'previous', 'right', 'left')")
 
 
-def toggle_fullscreen(**kwargs):
-    """
-    Toggles fullscreen mode for the active window.
-    """
-    comp = _get_compositor()
-    if comp == "hyprland" and shutil.which("hyprctl"):
-        sp.run(["hyprctl", "dispatch", "fullscreen", "1"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-    elif comp == "niri" and shutil.which("niri"):
-        sp.run(["niri", "msg", "action", "fullscreen-window"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+class MoveWindowToMonitorAction(BaseAction):
+    name = "move_window_to_monitor"
+    description = "Moves the active window to the next or previous monitor display."
+    parameters_schema = MoveWindowToMonitorParams
+    category = "desktop"
+    sample_phrases = ["move window to next monitor", "switch display", "move to right monitor"]
+
+    def execute(self, params: MoveWindowToMonitorParams, ctx: ExecutionContext) -> ActionResult:
+        ok = ctx.desktop.move_window_to_monitor(params.direction)
+        return ActionResult(success=ok)
 
 
-def move_window_to_monitor(**kwargs):
-    """
-    Moves the active window to the other / next monitor.
-    """
-    direction = kwargs.get("command", {}).parameters.get("direction", "next") if "command" in kwargs else "next"
-    comp = _get_compositor()
-    if comp == "hyprland" and shutil.which("hyprctl"):
-        target = "mon:+1" if direction in ["next", "right"] else "mon:-1"
-        sp.run(["hyprctl", "dispatch", "movewindow", target], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-    elif comp == "niri" and shutil.which("niri"):
-        action = "move-window-to-monitor-right" if direction in ["next", "right"] else "move-window-to-monitor-left"
-        sp.run(["niri", "msg", "action", action], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+# =====================================================================
+# Workspace Actions
+# =====================================================================
+
+class SwitchWorkspaceParams(ActionParameters):
+    workspace: Optional[str] = Field(default=None, description="Workspace number, name, or direction (e.g. '1', '2', '+1', '-1')")
+    context: Optional[str] = Field(default="", description="Speech context to extract workspace from")
 
 
-def switch_workspace(**kwargs):
-    """
-    Switches to a workspace by number or relative direction.
-    """
-    params = kwargs.get("command", {}).parameters or {}
-    ws = params.get("workspace")
-    if not ws:
-        ws = _extract_workspace(kwargs.get("context", ""))
-    else:
-        ws = str(ws)
+class SwitchWorkspaceAction(BaseAction):
+    name = "switch_workspace"
+    description = "Switches desktop viewport to the specified workspace."
+    parameters_schema = SwitchWorkspaceParams
+    category = "desktop"
+    sample_phrases = ["switch to workspace 2", "go to workspace one", "next workspace"]
+    requires_context = True
 
-    comp = _get_compositor()
-    if _run_serp("msg", "workspace", ws):
-        return
-    if comp == "hyprland" and shutil.which("hyprctl"):
-        sp.run(["hyprctl", "dispatch", "workspace", ws], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-    elif comp == "niri" and shutil.which("niri"):
-        sp.run(["niri", "msg", "action", "focus-workspace", ws], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+    def execute(self, params: SwitchWorkspaceParams, ctx: ExecutionContext) -> ActionResult:
+        ws = params.workspace
+        if not ws:
+            ws = ctx.desktop.extract_workspace(params.context or ctx.context)
+        else:
+            ws = str(ws)
 
-
-def move_to_workspace(**kwargs):
-    """
-    Moves active window to a workspace.
-    """
-    params = kwargs.get("command", {}).parameters or {}
-    ws = params.get("workspace")
-    if not ws:
-        ws = _extract_workspace(kwargs.get("context", ""))
-    else:
-        ws = str(ws)
-
-    comp = _get_compositor()
-    if _run_serp("msg", "workspace", ws, "move"):
-        return
-    if comp == "hyprland" and shutil.which("hyprctl"):
-        sp.run(["hyprctl", "dispatch", "movetoworkspace", ws], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-    elif comp == "niri" and shutil.which("niri"):
-        sp.run(["niri", "msg", "action", "move-window-to-workspace", ws], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        ok = ctx.desktop.switch_workspace(ws)
+        return ActionResult(success=ok, data={"workspace": ws})
 
 
-def serp_widget(**kwargs):
-    """
-    Toggles a Serpantinum shell widget (launcher, clipboard, music, calendar, volume, network, system, wallpaper, guide).
-    """
-    params = kwargs.get("command", {}).parameters or {}
-    widget = params.get("widget", "launcher")
-    _run_serp("msg", "toggle", widget)
+class MoveToWorkspaceParams(ActionParameters):
+    workspace: Optional[str] = Field(default=None, description="Workspace number, name, or direction (e.g. '1', '2', '+1')")
+    context: Optional[str] = Field(default="", description="Speech context to extract workspace from")
 
 
-def serp_reload(**kwargs):
-    """
-    Forces quickshell / Serpantinum shell reload.
-    """
-    _run_serp("reload")
+class MoveToWorkspaceAction(BaseAction):
+    name = "move_to_workspace"
+    description = "Moves the active window to the specified workspace."
+    parameters_schema = MoveToWorkspaceParams
+    category = "desktop"
+    sample_phrases = ["move window to workspace 3", "send to workspace 2"]
+    requires_context = True
+
+    def execute(self, params: MoveToWorkspaceParams, ctx: ExecutionContext) -> ActionResult:
+        ws = params.workspace
+        if not ws:
+            ws = ctx.desktop.extract_workspace(params.context or ctx.context)
+        else:
+            ws = str(ws)
+
+        ok = ctx.desktop.move_to_workspace(ws)
+        return ActionResult(success=ok, data={"workspace": ws})
 
 
-def screenshot(**kwargs):
-    """
-    Captures a screenshot (full or interactive area).
-    """
-    params = kwargs.get("command", {}).parameters or {}
-    mode = params.get("mode", "area")
+# =====================================================================
+# Shell, Session & Media Actions
+# =====================================================================
 
-    if mode == "full":
-        if _run_serp("screenshot", "--full"):
-            return
-        if shutil.which("grim"):
-            sp.run(["bash", "-c", "grim - | wl-copy"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-    else:
-        if _run_serp("screenshot"):
-            return
-        if shutil.which("grim") and shutil.which("slurp"):
-            sp.run(["bash", "-c", "grim -g \"$(slurp)\" - | wl-copy"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+class SerpWidgetParams(ActionParameters):
+    widget: str = Field(default="launcher", description="Name of shell widget to toggle ('launcher', 'clipboard', 'music', 'calendar', 'volume', 'network', 'system', 'wallpaper', 'guide')")
 
 
-def lock_session(**kwargs):
-    """
-    Locks the user session cleanly.
-    """
-    if _run_serp("lock"):
-        return
-    if shutil.which("loginctl"):
-        sp.run(["loginctl", "lock-session"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+class SerpWidgetAction(BaseAction):
+    name = "serp_widget"
+    description = "Toggles a Serpantinum desktop shell widget."
+    parameters_schema = SerpWidgetParams
+    category = "desktop"
+    sample_phrases = ["open app launcher", "toggle clipboard", "show calendar widget"]
+
+    def execute(self, params: SerpWidgetParams, ctx: ExecutionContext) -> ActionResult:
+        ok = ctx.desktop.toggle_widget(params.widget)
+        return ActionResult(success=ok)
 
 
-def media_control(**kwargs):
-    """
-    Controls media playback using playerctl (play-pause, next, previous).
-    """
-    params = kwargs.get("command", {}).parameters or {}
-    cmd = params.get("control", "play-pause")
-    if shutil.which("playerctl"):
-        sp.run(["playerctl", cmd], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+class SerpReloadParams(ActionParameters):
+    pass
+
+
+class SerpReloadAction(BaseAction):
+    name = "serp_reload"
+    description = "Reloads the desktop shell / Serpantinum user interface."
+    parameters_schema = SerpReloadParams
+    category = "desktop"
+    sample_phrases = ["reload shell", "restart desktop shell"]
+
+    def execute(self, params: SerpReloadParams, ctx: ExecutionContext) -> ActionResult:
+        ok = ctx.desktop.reload_shell()
+        return ActionResult(success=ok)
+
+
+class ScreenshotParams(ActionParameters):
+    mode: str = Field(default="area", description="Screenshot capture mode ('area' for interactive selection, 'full' for full screen)")
+
+
+class ScreenshotAction(BaseAction):
+    name = "screenshot"
+    description = "Captures a screenshot (full screen or selected area) and copies it to clipboard."
+    parameters_schema = ScreenshotParams
+    category = "desktop"
+    sample_phrases = ["take a screenshot", "capture screen", "screenshot area"]
+
+    def execute(self, params: ScreenshotParams, ctx: ExecutionContext) -> ActionResult:
+        ok = ctx.desktop.screenshot(params.mode)
+        return ActionResult(success=ok)
+
+
+class LockSessionParams(ActionParameters):
+    pass
+
+
+class LockSessionAction(BaseAction):
+    name = "lock_session"
+    description = "Locks the active user session cleanly."
+    parameters_schema = LockSessionParams
+    category = "desktop"
+    sample_phrases = ["lock session", "lock screen", "lock computer"]
+
+    def execute(self, params: LockSessionParams, ctx: ExecutionContext) -> ActionResult:
+        ok = ctx.desktop.lock_session()
+        return ActionResult(success=ok)
+
+
+class MediaControlParams(ActionParameters):
+    control: str = Field(default="play-pause", description="Media playback command ('play-pause', 'play', 'pause', 'next', 'previous', 'stop')")
+
+
+class MediaControlAction(BaseAction):
+    name = "media_control"
+    description = "Controls media playback across active desktop media players via playerctl."
+    parameters_schema = MediaControlParams
+    category = "media"
+    sample_phrases = ["pause music", "resume video", "next track", "skip song"]
+
+    def execute(self, params: MediaControlParams, ctx: ExecutionContext) -> ActionResult:
+        ok = ctx.desktop.media_control(params.control)
+        return ActionResult(success=ok)
+
+
+# =====================================================================
+# Callable Module-Level Instances for Full Backward Compatibility
+# =====================================================================
+close_window = CloseWindowAction()
+toggle_floating = ToggleFloatingAction()
+toggle_fullscreen = ToggleFullscreenAction()
+move_window_to_monitor = MoveWindowToMonitorAction()
+switch_workspace = SwitchWorkspaceAction()
+move_to_workspace = MoveToWorkspaceAction()
+serp_widget = SerpWidgetAction()
+serp_reload = SerpReloadAction()
+screenshot = ScreenshotAction()
+lock_session = LockSessionAction()
+media_control = MediaControlAction()

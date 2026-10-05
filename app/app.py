@@ -200,6 +200,57 @@ class App:
                     log.debug(f"Persona non-streaming fallback failed: {fe}")
             return dispatched_count > 0
 
+    def ask_voice_confirmation(self, prompt: str, timeout: float = 8.0) -> bool:
+        """
+        Asks the user for confirmation using TTS voice, then waits for a spoken affirmative or negative response.
+        Works in both voice mode (via STT) and text-mode (via console input).
+        """
+        if not prompt:
+            prompt = "Do you confirm this action, Sir?"
+
+        log.info(f"Asking voice confirmation: '{prompt}'")
+        self.api.say(prompt)
+
+        # Wait until TTS has finished speaking before listening to avoid hearing assistant's own voice
+        while getattr(self.api, "is_speaking", False):
+            time.sleep(0.05)
+
+        is_text_mode = getattr(self.config.get("settings", {}), "text-mode", False) if isinstance(self.config.get("settings"), dict) else False
+        if is_text_mode or not hasattr(self, "stt") or not self.stt:
+            try:
+                ans = input(f"[Voice Confirmation] {prompt} [yes/no]: ").strip().lower()
+                return ans in ("y", "yes", "sure", "proceed", "do it", "confirm", "yeah", "yep", "да", "давай", "подтверждаю")
+            except Exception:
+                return False
+
+        # Voice mode listening
+        affirmatives = {"yes", "sure", "proceed", "do it", "confirm", "yeah", "yep", "ok", "okay", "да", "давай", "подтверждаю", "конечно", "делай"}
+        negatives = {"no", "cancel", "stop", "don't", "abort", "нет", "отмена", "не надо", "стоп"}
+
+        if hasattr(self.stt, "flush"):
+            self.stt.flush()
+
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                data = self.stt.stream.read(1024, exception_on_overflow=False)
+                for phrase in self.stt.listen(data):
+                    clean_phrase = phrase.strip().lower()
+                    log.info(f"Confirmation speech heard: '{clean_phrase}'")
+                    words = set(clean_phrase.split())
+                    if words.intersection(affirmatives):
+                        log.info("Voice confirmation: GRANTED")
+                        return True
+                    if words.intersection(negatives):
+                        log.info("Voice confirmation: DENIED")
+                        return False
+            except Exception as e:
+                log.warning(f"Error during voice confirmation listening: {e}")
+                break
+
+        log.info("Voice confirmation: TIMEOUT (denied by default)")
+        return False
+
     def handle(self, request):
         if not request:
             if self.config["settings"]["trigger"]["trigger-mode"] != "disabled" and not self.scenario_active:
@@ -220,7 +271,27 @@ class App:
             # Execute action IMMEDIATELY without waiting for TTS, logging, or event recording
             if len(result) == 1:
                 command = result[0]
+                cmd_obj = command[0]
+
+                # Voice confirmation flow for invasive actions
+                if getattr(cmd_obj, "needs_confirmation", False) or cmd_obj.action == "confirmation":
+                    conf_prompt = cmd_obj.parameters.get("prompt", cmd_obj.parameters.get("text", ""))
+                    confirmed = self.ask_voice_confirmation(conf_prompt)
+                    if confirmed:
+                        orig_req = cmd_obj.parameters.get("original_request", request)
+                        router = getattr(self.api, "router", None)
+                        if router and hasattr(router, "agy_caller"):
+                            exec_res = router.agy_caller.execute_request(orig_req, confirmed=True)
+                            if exec_res:
+                                self.api.say(str(exec_res))
+                        else:
+                            self.api.say("Confirmed, proceeding Sir.")
+                    else:
+                        self.api.say("Understood, cancelled Sir.")
+                    return
+
                 action_res = self.do(command)
+
 
                 # Process TTS / responses after action has been launched via first-chunk streaming
                 cmd_name = command[0].action if hasattr(command[0], "action") else None
@@ -430,12 +501,24 @@ class App:
             cmd_obj._action_callable = action
         if not action:
             return {"status": "error", "error": f"Action '{cmd_obj.action}' not found"}
-        self._action_executor.submit(
+        future = self._action_executor.submit(
             action,
             command=cmd_obj,
             context=command[1],
             history=self.api.eventLogger.history
         )
+        is_query = (getattr(cmd_obj, "is_query", False) or
+                    getattr(action, "is_query", False) or
+                    cmd_obj.action.startswith(("studieplus_", "study_", "gmail_")))
+        if is_query:
+            try:
+                # Wait up to 10 seconds for query results so persona model can speak them
+                query_result = future.result(timeout=10.0)
+                return query_result if query_result is not None else {"status": "success", "action": cmd_obj.action}
+            except Exception as e:
+                log.warning(f"Query action '{cmd_obj.action}' error or timeout: {e}")
+                return {"status": "error", "error": str(e)}
+
         return {"status": "success", "action": cmd_obj.action, "context": command[1]}
 
     def find_action(self, name):
@@ -445,8 +528,13 @@ class App:
         action = self.api.__actions__.get(name)
         if action is not None:
             return action
+        if hasattr(self.api, "tool_registry") and self.api.tool_registry:
+            tool = self.api.tool_registry.get(name)
+            if tool:
+                return tool.func
         log.info(f"Action not found: {name}")
         return None
+
 
     def grammar_recognition_restricted_create(self):
         """

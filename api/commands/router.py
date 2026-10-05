@@ -8,6 +8,7 @@ from .classifier import SpacyActionClassifier
 from .ollama import OllamaToolCaller
 from .qwen_caller import QwenToolCaller
 from .persona_caller import QwenPersonaCaller
+from .agy_caller import AgyCaller
 
 log = logging.getLogger("API: router")
 
@@ -16,7 +17,8 @@ class CommandRouter:
     """
     Unified Command & Tool Router.
     Dispatches user input between algorithmic tree matching, fine-grained command intent
-    classification via SpaCy, and local Ollama/Qwen tool calling with dynamic Persona voice responses.
+    classification via SpaCy, local Ollama/Qwen tool calling with dynamic Persona voice responses,
+    and Antigravity (agy -p) CLI execution.
     """
     def __init__(self, manager: Manager, tool_registry: Optional[ToolRegistry] = None, config: Optional[Dict[str, Any]] = None):
         self.manager = manager
@@ -47,21 +49,35 @@ class CommandRouter:
 
         # Qwen Local Tool Caller settings
         qwen_cfg = router_cfg.get("qwen", {})
-        default_qwen_dir = Path(__file__).resolve().parent.parent.parent / "data/models/qwen2.5-0.5b-stewart"
+        model_size = qwen_cfg.get("model_size") or router_cfg.get("model_size") or "0.5b"
+        default_qwen_dir = Path(__file__).resolve().parent.parent.parent / f"data/models/qwen2.5-{model_size}-stewart"
         qwen_path_str = qwen_cfg.get("model_path", str(default_qwen_dir))
-        self.qwen_caller = QwenToolCaller(model_path=qwen_path_str)
+        self.qwen_caller = QwenToolCaller(model_path=qwen_path_str, model_size=model_size)
 
         # Persona Voice Model settings
         persona_cfg = self.config.get("persona", {}) or router_cfg.get("persona", {})
         self.persona_enabled = persona_cfg.get("enabled", True)
-        default_persona_dir = Path(__file__).resolve().parent.parent.parent / "data/models/qwen2.5-0.5b-persona-lora"
+        default_persona_dir = Path(__file__).resolve().parent.parent.parent / f"data/models/qwen2.5-{model_size}-persona-lora"
         persona_path_str = persona_cfg.get("model_path", str(default_persona_dir))
         self.persona_caller = QwenPersonaCaller(
             model_path=persona_path_str,
+            model_size=model_size,
             max_new_tokens=int(persona_cfg.get("max_new_tokens", 64)),
             temperature=float(persona_cfg.get("temperature", 0.6)),
             shared_caller=self.qwen_caller
         )
+
+        # Agy CLI Caller settings
+        agy_cfg = router_cfg.get("agy", {}) or self.config.get("agy", {})
+        self.agy_caller = AgyCaller(
+            command=agy_cfg.get("command", "agy"),
+            model=agy_cfg.get("model", "gemini-3.8-flash-low"),
+            effort=agy_cfg.get("effort", "low"),
+            timeout=float(agy_cfg.get("timeout", 30.0)),
+            dangerously_skip_permissions=bool(agy_cfg.get("dangerously_skip_permissions", True)),
+            skill_name=agy_cfg.get("skill_name", "stewart-voice")
+        )
+
 
         # SpaCy Classifier
         lang = self.config.get("lang", {}).get("prefix", "en") if isinstance(self.config.get("lang"), dict) else "en"
@@ -99,7 +115,16 @@ class CommandRouter:
                     else:
                         log.warning("Auto-training did not succeed.")
 
+        # Sync MCP tools into tool registry
+        if hasattr(self.tool_registry, "sync_from_mcp"):
+            self.tool_registry.sync_from_mcp()
+        if hasattr(self.tool_registry, "sync_dynamic_tools"):
+            self.tool_registry.sync_dynamic_tools()
+
         log.info(f"CommandRouter initialized with mode='{self.mode}', provider='{self.provider}'")
+
+
+
 
     def _find_or_create_command(self, cmd_id: str, action: str, parameters: Dict[str, Any], context: str) -> Command:
         """Locates the exact Command matching cmd_id, or falls back to action template."""
@@ -126,7 +151,7 @@ class CommandRouter:
         tool = self.tool_registry.get(action)
         merged_params = dict(tool.default_params) if tool else {}
         merged_params.update(parameters)
-        return Command(
+        cmd = Command(
             keywords=[action],
             action=action,
             parameters=merged_params,
@@ -134,6 +159,12 @@ class CommandRouter:
             synonyms={},
             tts=False
         )
+        if tool:
+            cmd._action_callable = tool.func
+            if getattr(tool, "is_query", False):
+                cmd.is_query = True
+        return cmd
+
 
     def route(self, request: str) -> List[List[Any]]:
         """
@@ -173,6 +204,30 @@ class CommandRouter:
             elif self.fallback_to_algorithmic:
                 results = self.manager.find_algorithmic(clean_request)
 
+        elif self.mode == "agy":
+            ans = self.agy_caller.execute_request(clean_request)
+            if ans:
+                if hasattr(self.tool_registry, "sync_dynamic_tools"):
+                    self.tool_registry.sync_dynamic_tools()
+                is_conf = getattr(ans, "needs_confirmation", False)
+                cmd = Command(
+                    keywords=["confirmation" if is_conf else "speak"],
+                    action="confirmation" if is_conf else "speak",
+                    parameters={
+                        "text": str(ans),
+                        "prompt": getattr(ans, "confirmation_prompt", str(ans)),
+                        "original_request": clean_request,
+                        "needs_confirmation": is_conf
+                    },
+                    responses=[str(ans)],
+                    synonyms={},
+                    tts=True
+                )
+                cmd.needs_confirmation = is_conf
+                results = [[cmd, clean_request]]
+            elif self.fallback_to_algorithmic:
+                results = self.manager.find_algorithmic(clean_request)
+
         elif self.mode == "model":
             # Direct model selection first
             results = self._route_via_model(clean_request)
@@ -186,7 +241,7 @@ class CommandRouter:
             if algo_results:
                 results = algo_results
             else:
-                # 2. Fall back to smart model tool selection (SpaCy or Qwen)
+                # 2. Fall back to smart model tool selection (SpaCy, Qwen, or Agy)
                 results = self._route_via_model(clean_request)
 
         if len(self._route_cache) < 1000:
@@ -195,7 +250,32 @@ class CommandRouter:
         return results
 
     def _route_via_model(self, request: str) -> List[List[Any]]:
-        """Invokes Qwen, Ollama, or SpaCy model depending on configured provider."""
+        """Invokes Agy, Qwen, Ollama, or SpaCy model depending on configured provider."""
+        if self.provider == "agy":
+            ans = self.agy_caller.execute_request(request)
+            if ans:
+                if hasattr(self.tool_registry, "sync_dynamic_tools"):
+                    self.tool_registry.sync_dynamic_tools()
+                is_conf = getattr(ans, "needs_confirmation", False)
+                cmd = Command(
+                    keywords=["confirmation" if is_conf else "speak"],
+                    action="confirmation" if is_conf else "speak",
+                    parameters={
+                        "text": str(ans),
+                        "prompt": getattr(ans, "confirmation_prompt", str(ans)),
+                        "original_request": request,
+                        "needs_confirmation": is_conf
+                    },
+                    responses=[str(ans)],
+                    synonyms={},
+                    tts=True
+                )
+                cmd.needs_confirmation = is_conf
+                log.info(f"Agy routed and answered request '{request}' (needs_confirmation={is_conf})")
+                return [[cmd, request]]
+            return []
+
+
         if self.provider in ("qwen", "local_llm"):
             schemas = self.tool_registry.get_all_tool_schemas()
             call = self.qwen_caller.call_tool(request, schemas)
@@ -205,6 +285,7 @@ class CommandRouter:
                 log.info(f"Qwen routed request '{request}' -> tool '{action}' (args={args})")
                 return [[cmd, ctx]]
             return []
+
 
         if self.provider == "ollama":
             schemas = self.tool_registry.get_all_tool_schemas()
