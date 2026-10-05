@@ -307,6 +307,18 @@ class QwenPersonaCaller:
         Streams generated Persona response tokens in real-time.
         Yields individual text delta tokens as they are produced.
         """
+        # 1. Attempt GPU Worker first (Dynamic LoRA on RTX 3050 GPU)
+        try:
+            from .gpu_client import GPUClient
+            gpu_client = GPUClient.get_instance()
+            if gpu_client is not None and gpu_client.is_ready:
+                messages = self._build_messages(user_query, tool_name, tool_result, lang)
+                for token in gpu_client.stream_persona(messages, max_tokens=self.max_new_tokens, temperature=self.temperature):
+                    yield token
+                return
+        except Exception as ge:
+            log.debug(f"GPU Worker stream_persona failed or not available ({ge}); falling back to local runner.")
+
         if not self._is_loaded:
             if not self.load_model():
                 return

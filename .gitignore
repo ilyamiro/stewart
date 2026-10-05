@@ -51,4 +51,5 @@ har_and_cookies
 .env
 result
 result-*
+*.egg-info/
 

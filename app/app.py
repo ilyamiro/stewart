@@ -290,7 +290,7 @@ class App:
                         self.api.say("Understood, cancelled Sir.")
                     return
 
-                action_res = self.do(command)
+                action_res = self.do(command, request=request)
 
 
                 # Process TTS / responses after action has been launched via first-chunk streaming
@@ -306,7 +306,7 @@ class App:
                         self.api.say(answer)
             else:
                 for command in result:
-                    self.do(command)
+                    self.do(command, request=request)
 
                 spoken = self.stream_persona_speech(request, tool_name="multi_action")
 
@@ -490,11 +490,12 @@ class App:
 
         self.scenario_active = updated_scenarios
 
-    def do(self, command):
+    def do(self, command, request=""):
         """
         Start the action thread via pre-warmed thread pool executor
         """
         cmd_obj = command[0]
+        ctx = command[1] if (len(command) > 1 and command[1]) else request
         action = getattr(cmd_obj, "_action_callable", None)
         if action is None:
             action = self.find_action(cmd_obj.action)
@@ -504,7 +505,7 @@ class App:
         future = self._action_executor.submit(
             action,
             command=cmd_obj,
-            context=command[1],
+            context=ctx,
             history=self.api.eventLogger.history
         )
         is_query = (getattr(cmd_obj, "is_query", False) or

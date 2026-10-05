@@ -28,11 +28,19 @@ except ImportError:
     TRANSFORMERS_AVAILABLE = False
 
 
+PRIMARY_TOOLS = {
+    "media_control", "volume", "brightness", "tell_time", "say_weather",
+    "timer", "stopwatch", "hotkey", "subprocess", "screenshot",
+    "lock_session", "battery_health", "play_song", "find_video", "typing",
+    "change_file_name"
+}
+
+
 class QwenToolCaller:
     """
-    Local neural tool caller powered by fine-tuned Qwen2.5-0.5B.
+    Local neural tool caller powered by fine-tuned Qwen2.5-1.5B/0.5B.
     Performs fast, accurate tool selection, argument extraction, and slot-filling.
-    Supports high-speed GGUF inference via llama-cpp-python with full CUDA offload (30-50ms),
+    Supports high-speed dynamic LoRA inference on RTX 3050 GPU via GPUClient / llama-cpp-python,
     with seamless fallback to PyTorch FP16 / torch.compile.
     """
     def __init__(self,
@@ -243,8 +251,20 @@ class QwenToolCaller:
             return False
 
     def _format_system_prompt(self, tool_schemas: List[Dict[str, Any]]) -> str:
-        tool_lines = []
+        filtered = []
         for t in tool_schemas:
+            fn = t.get("function", t)
+            name = fn.get("name", "unknown")
+            if (name in PRIMARY_TOOLS 
+                or name.startswith(("studieplus_", "study_", "gmail_"))
+                or t.get("plugin_name", "").startswith("mcp")
+                or len(tool_schemas) <= 25):
+                filtered.append(t)
+        
+        target_schemas = filtered if filtered else tool_schemas
+
+        tool_lines = []
+        for t in target_schemas:
             fn = t.get("function", t)
             name = fn.get("name", "unknown")
             desc = fn.get("description", "")
@@ -290,11 +310,53 @@ ws ::= [ \t\n\r]*
             log.warning(f"Failed to compile GBNF tool grammar: {e}")
             return None
 
+    def _parse_tool_call(self, response_text: str, request: str) -> Optional[Tuple[str, Dict[str, Any], str]]:
+        match = re.search(r"<tool_call>\s*(.*?)(?:</tool_call>|$)", response_text, re.DOTALL)
+        if match:
+            try:
+                raw_call = match.group(1).strip()
+                call_data = json.loads(raw_call)
+                tool_name = call_data.get("name")
+                args = call_data.get("arguments") or call_data.get("parameters") or {}
+                if isinstance(args, str):
+                    try:
+                        args = json.loads(args)
+                    except Exception:
+                        args = {"context": args}
+                context = args.get("context", "")
+                if not context and "query" in args:
+                    context = args.get("query", "")
+                if not context:
+                    context = request
+                log.info(f"Qwen detected tool call '{tool_name}' with args {args} for request '{request}'")
+                return tool_name, args, context
+            except Exception as je:
+                log.warning(f"Failed to parse tool call JSON '{match.group(1)}': {je}")
+        return None
+
     def call_tool(self, request: str, tool_schemas: List[Dict[str, Any]]) -> Optional[Tuple[str, Dict[str, Any], str]]:
         """
         Sends the user request and available tool schemas to Qwen.
         Returns (tool_name, arguments, context) if a tool was chosen, else None.
         """
+        # 1. Attempt GPU Worker first (Dynamic LoRA on RTX 3050 GPU, ~600ms latency, zero host CPU usage)
+        try:
+            from .gpu_client import GPUClient
+            gpu_client = GPUClient.get_instance()
+            if gpu_client is not None and gpu_client.is_ready:
+                system_prompt = self._format_system_prompt(tool_schemas)
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": request}
+                ]
+                resp = gpu_client.call_tool(messages, max_tokens=self.max_new_tokens)
+                if resp:
+                    parsed = self._parse_tool_call(resp, request)
+                    if parsed:
+                        return parsed
+        except Exception as ge:
+            log.debug(f"GPU Worker call failed or not available ({ge}); falling back to local runner.")
+
         if not self._is_loaded:
             if not self.load_model():
                 return None
@@ -361,23 +423,4 @@ ws ::= [ \t\n\r]*
         if not response_text:
             return None
 
-        # Parse tool call from response
-        match = re.search(r"<tool_call>\s*(.*?)(?:</tool_call>|$)", response_text, re.DOTALL)
-        if match:
-            try:
-                raw_call = match.group(1).strip()
-                call_data = json.loads(raw_call)
-                tool_name = call_data.get("name")
-                args = call_data.get("arguments") or call_data.get("parameters") or {}
-                if isinstance(args, str):
-                    try:
-                        args = json.loads(args)
-                    except Exception:
-                        args = {"context": args}
-                context = args.get("context", "")
-                log.info(f"Qwen detected tool call '{tool_name}' with args {args} for request '{request}'")
-                return tool_name, args, context
-            except Exception as je:
-                log.warning(f"Failed to parse tool call JSON '{match.group(1)}': {je}")
-
-        return None
+        return self._parse_tool_call(response_text, request)
