@@ -290,6 +290,13 @@ class App:
                         self.api.say("Understood, cancelled Sir.")
                     return
 
+                # Direct spoken response from agy or router
+                if cmd_obj.action == "speak":
+                    text_to_speak = cmd_obj.parameters.get("text") or (cmd_obj.responses[0] if cmd_obj.responses else "")
+                    if text_to_speak:
+                        self.api.say(text_to_speak)
+                    return
+
                 action_res = self.do(command, request=request)
 
 
@@ -526,6 +533,8 @@ class App:
         """
         Find a module that has a function that corresponds to an action that has to be done
         """
+        if name == "speak":
+            return lambda command=None, context=None, history=None: self.api.say(command.parameters.get("text", "") if command else (context or ""))
         action = self.api.__actions__.get(name)
         if action is not None:
             return action

@@ -131,6 +131,28 @@ class TestRouterAgyIntegration(unittest.TestCase):
         self.assertTrue(cmd.tts)
         self.assertEqual(cmd.parameters.get("text"), "Mock voice response to what is my schedule")
 
+    def test_router_persona_provider_agy(self):
+        from api.commands.agy_caller import AgyResponse
+        self.assertEqual(self.router.persona_provider, "agy")
+        self.assertIsNone(self.router.persona_caller)
+
+        self.router.agy_caller.execute_request = lambda prompt, confirmed=False: AgyResponse("Very good, Sir. The volume has been adjusted.")
+        resp = self.router.generate_persona_response(
+            user_query="turn up the volume",
+            tool_name="volume",
+            tool_result={"status": "success", "level": 80}
+        )
+        self.assertEqual(resp, "Very good, Sir. The volume has been adjusted.")
+
+    def test_router_persona_stream_agy(self):
+        from api.commands.agy_caller import AgyResponse
+        self.router.agy_caller.execute_request = lambda prompt, confirmed=False: AgyResponse("Right away, Sir.")
+        stream = list(self.router.stream_persona_response(
+            user_query="hello",
+            lang="en"
+        ))
+        self.assertEqual(stream, ["Right away, Sir."])
+
 
 class TestDynamicTools(unittest.TestCase):
     def setUp(self):

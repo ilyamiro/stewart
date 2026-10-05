@@ -75,7 +75,9 @@ router:
 
 
   persona:
-    enabled: true # Dynamic British butler voice responses via fine-tuned Qwen2.5 Persona GGUF
+    enabled: true # Dynamic British butler voice responses via fine-tuned Qwen2.5 Persona GGUF or Antigravity (agy)
+    provider: qwen # Options: 'qwen' (local GGUF), 'agy' (Antigravity gemini-3.8-flash-low with stewart-voice skill)
+    skill_name: stewart-voice
     model_size: "1.5b"
     model_path: data/models/gguf/qwen2.5-1.5b-persona-q8_0.gguf
     max_new_tokens: 64

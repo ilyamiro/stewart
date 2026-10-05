@@ -1,11 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "ab91934c16dc3b8aba6958286fa98da4fde2c56a",
-    "indexed_at": "2026-10-05T12:56:30Z",
+    "commit": "9822fe82243a15db0a36ca535e2234a3e9906d06",
+    "indexed_at": "2026-10-05T14:41:12Z",
     "project": "home-ilyamiro-Projects-stewart",
-    "nodes": 4918,
-    "edges": 21885,
-    "original_size": 24772608,
-    "compressed_size": 4857152,
-    "compression_level": 3
+    "nodes": 4947,
+    "edges": 22020,
+    "original_size": 18219008,
+    "compressed_size": 3747923,
+    "compression_level": 9
 }

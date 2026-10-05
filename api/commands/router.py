@@ -56,15 +56,19 @@ class CommandRouter:
         # Persona Voice Model settings
         persona_cfg = router_cfg.get("persona", {}) or self.config.get("persona", {})
         self.persona_enabled = persona_cfg.get("enabled", True)
+        self.persona_provider = persona_cfg.get("provider", "agy" if self.mode == "agy" else "qwen").lower()
         persona_model_size = persona_cfg.get("model_size") or model_size
         persona_path_str = persona_cfg.get("model_path")
-        self.persona_caller = QwenPersonaCaller(
-            model_path=persona_path_str,
-            model_size=persona_model_size,
-            max_new_tokens=int(persona_cfg.get("max_new_tokens", 64)),
-            temperature=float(persona_cfg.get("temperature", 0.6)),
-            shared_caller=self.qwen_caller
-        )
+        if self.persona_provider == "agy":
+            self.persona_caller = None
+        else:
+            self.persona_caller = QwenPersonaCaller(
+                model_path=persona_path_str,
+                model_size=persona_model_size,
+                max_new_tokens=int(persona_cfg.get("max_new_tokens", 64)),
+                temperature=float(persona_cfg.get("temperature", 0.6)),
+                shared_caller=self.qwen_caller
+            )
 
         # Agy CLI Caller settings
         agy_cfg = router_cfg.get("agy", {}) or self.config.get("agy", {})
@@ -333,7 +337,19 @@ class CommandRouter:
                                   tool_result: Optional[Any] = None,
                                   lang: str = "en") -> Optional[str]:
         """Generates dynamic Butler persona voice response for Kokoro TTS."""
-        if not self.persona_enabled or not self.persona_caller:
+        if not self.persona_enabled:
+            return None
+        if self.persona_provider == "agy" and hasattr(self, "agy_caller"):
+            import json
+            tool_info = f"Tool executed: '{tool_name}' with result: {json.dumps(tool_result, ensure_ascii=False) if tool_result else 'None'}. " if tool_name else ""
+            prompt = (
+                f"You are Stewart, a polite British AI butler. The user said: '{user_query}'. {tool_info}"
+                f"Respond directly in 1-2 spoken sentences to the user in {lang}. "
+                f"No markdown, no emojis, no code blocks."
+            )
+            res = self.agy_caller.execute_request(prompt)
+            return str(res) if res else None
+        if not self.persona_caller:
             return None
         return self.persona_caller.generate_response(
             user_query=user_query,
@@ -348,7 +364,14 @@ class CommandRouter:
                                 tool_result: Optional[Any] = None,
                                 lang: str = "en"):
         """Streams dynamic Butler persona voice response tokens for Kokoro TTS."""
-        if not self.persona_enabled or not self.persona_caller:
+        if not self.persona_enabled:
+            return iter([])
+        if self.persona_provider == "agy" and hasattr(self, "agy_caller"):
+            full_text = self.generate_persona_response(user_query, tool_name, tool_result, lang)
+            if full_text:
+                return iter([full_text])
+            return iter([])
+        if not self.persona_caller:
             return iter([])
         return self.persona_caller.stream_response(
             user_query=user_query,
