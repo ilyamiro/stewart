@@ -208,10 +208,27 @@ class CommandRouter:
                 results = self.manager.find_algorithmic(clean_request)
 
         elif self.mode == "agy":
-            ans = self.agy_caller.execute_request(clean_request)
+            schemas = self.tool_registry.get_all_tool_schemas()
+            ans = self.agy_caller.execute_request(clean_request, tools=schemas)
             if ans:
                 if hasattr(self.tool_registry, "sync_dynamic_tools"):
                     self.tool_registry.sync_dynamic_tools()
+
+                # Check if AGY emitted a tool call tag
+                import re, json
+                match = re.search(r"<tool_call>\s*(.*?)(?:</tool_call>|$)", str(ans), re.DOTALL)
+                if match:
+                    try:
+                        call_data = json.loads(match.group(1).strip())
+                        action = call_data.get("name")
+                        args = call_data.get("arguments") or call_data.get("parameters") or {}
+                        ctx = clean_request
+                        cmd = self._find_or_create_command(action, action, args, ctx)
+                        log.info(f"AGY tool caller selected tool '{action}' (args={args})")
+                        return [[cmd, ctx]]
+                    except Exception as je:
+                        log.debug(f"Failed parsing tool call from AGY output: {je}")
+
                 is_conf = getattr(ans, "needs_confirmation", False)
                 cmd = Command(
                     keywords=["confirmation" if is_conf else "speak"],
@@ -262,10 +279,27 @@ class CommandRouter:
     def _route_via_model(self, request: str) -> List[List[Any]]:
         """Invokes Agy, Qwen, Ollama, or SpaCy model depending on configured provider."""
         if self.provider == "agy":
-            ans = self.agy_caller.execute_request(request)
+            schemas = self.tool_registry.get_all_tool_schemas()
+            ans = self.agy_caller.execute_request(request, tools=schemas)
             if ans:
                 if hasattr(self.tool_registry, "sync_dynamic_tools"):
                     self.tool_registry.sync_dynamic_tools()
+
+                # Check if AGY emitted a tool call tag
+                import re, json
+                match = re.search(r"<tool_call>\s*(.*?)(?:</tool_call>|$)", str(ans), re.DOTALL)
+                if match:
+                    try:
+                        call_data = json.loads(match.group(1).strip())
+                        action = call_data.get("name")
+                        args = call_data.get("arguments") or call_data.get("parameters") or {}
+                        ctx = request
+                        cmd = self._find_or_create_command(action, action, args, ctx)
+                        log.info(f"AGY tool caller selected tool '{action}' (args={args})")
+                        return [[cmd, ctx]]
+                    except Exception as je:
+                        log.debug(f"Failed parsing tool call from AGY output: {je}")
+
                 is_conf = getattr(ans, "needs_confirmation", False)
                 cmd = Command(
                     keywords=["confirmation" if is_conf else "speak"],

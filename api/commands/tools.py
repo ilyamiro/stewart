@@ -110,6 +110,28 @@ class ToolRegistry:
     def get_all_tool_schemas(self) -> List[Dict[str, Any]]:
         return [tool.to_ollama_tool() for tool in self._tools.values()]
 
+    @staticmethod
+    def format_tool_schemas(tool_schemas: List[Dict[str, Any]]) -> str:
+        """Formats tool schemas into concise text representation for LLM prompts."""
+        tool_lines = []
+        for tool in tool_schemas:
+            fn = tool.get("function", {})
+            name = fn.get("name", "")
+            desc = fn.get("description", "")
+            params = fn.get("parameters", {}).get("properties", {})
+            param_strs = []
+            for pname, pinfo in params.items():
+                ptype = pinfo.get("type", "any")
+                if "enum" in pinfo:
+                    ptype = "|".join(f'"{e}"' for e in pinfo["enum"])
+                param_strs.append(f"{pname}: {ptype}")
+            params_repr = ", ".join(param_strs)
+            tool_lines.append(f"- {name}({params_repr}) - {desc}")
+        return "\n".join(tool_lines)
+
+    def get_formatted_tool_schemas(self) -> str:
+        return self.format_tool_schemas(self.get_all_tool_schemas())
+
     def sync_from_app(self, api):
         """
         Inspects api.__actions__ and configured commands to discover and enrich all available tools.

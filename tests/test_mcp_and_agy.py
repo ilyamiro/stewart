@@ -122,7 +122,7 @@ class TestRouterAgyIntegration(unittest.TestCase):
     def test_router_mode_agy(self):
         # Mock agy caller to return plain text
         from api.commands.agy_caller import AgyResponse
-        self.router.agy_caller.execute_request = lambda req, confirmed=False: AgyResponse(f"Mock voice response to {req}")
+        self.router.agy_caller.execute_request = lambda req, confirmed=False, **kwargs: AgyResponse(f"Mock voice response to {req}")
         results = self.router.route("what is my schedule")
 
         self.assertEqual(len(results), 1)
@@ -146,12 +146,46 @@ class TestRouterAgyIntegration(unittest.TestCase):
 
     def test_router_persona_stream_agy(self):
         from api.commands.agy_caller import AgyResponse
-        self.router.agy_caller.execute_request = lambda prompt, confirmed=False: AgyResponse("Right away, Sir.")
+        self.router.agy_caller.execute_request = lambda prompt, confirmed=False, tools=None: AgyResponse("Right away, Sir.")
         stream = list(self.router.stream_persona_response(
             user_query="hello",
             lang="en"
         ))
         self.assertEqual(stream, ["Right away, Sir."])
+
+    def test_router_mode_agy_passes_tools_and_handles_tool_call(self):
+        from api.commands.agy_caller import AgyResponse
+        captured = {}
+
+        def mock_exec(req, confirmed=False, tools=None):
+            captured["tools"] = tools
+            captured["req"] = req
+            return AgyResponse('<tool_call>{"name": "volume", "arguments": {"level": 70}}</tool_call>')
+
+        self.router.agy_caller.execute_request = mock_exec
+        results = self.router.route("set volume to 70 percent")
+        self.assertEqual(len(results), 1)
+        cmd, ctx = results[0]
+        self.assertEqual(cmd.action, "volume")
+        self.assertEqual(cmd.parameters.get("level"), 70)
+        self.assertIsNotNone(captured.get("tools"))
+
+    def test_agy_caller_tools_prompt_formatting(self):
+        caller = AgyCaller(command="echo", skill_name="stewart-voice")
+        sample_tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "volume",
+                    "description": "Adjust system sound volume",
+                    "parameters": {"properties": {"level": {"type": "integer"}}}
+                }
+            }
+        ]
+        # Test format_tool_schemas from ToolRegistry
+        formatted = ToolRegistry.format_tool_schemas(sample_tools)
+        self.assertIn("volume(level: integer)", formatted)
+        self.assertIn("Adjust system sound volume", formatted)
 
 
 class TestDynamicTools(unittest.TestCase):
@@ -233,7 +267,7 @@ class TestVoiceConfirmation(unittest.TestCase):
             config={"router": {"mode": "agy"}}
         )
         # Mock agy caller returning a confirmation required response
-        router.agy_caller.execute_request = lambda req, confirmed=False: AgyResponse(
+        router.agy_caller.execute_request = lambda req, confirmed=False, **kwargs: AgyResponse(
             "Sir, deleting this requires confirmation.",
             needs_confirmation=True,
             confirmation_prompt="Sir, deleting this requires confirmation."

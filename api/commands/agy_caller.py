@@ -98,14 +98,29 @@ class AgyCaller:
         lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
         return " ".join(lines).strip()
 
-    def execute_request(self, request: str, confirmed: bool = False) -> Optional[AgyResponse]:
+    def execute_request(self,
+                        request: str,
+                        confirmed: bool = False,
+                        tools: Optional[Any] = None) -> Optional[AgyResponse]:
         """
         Executes agy -p for the user request and returns the clean spoken text response.
         If confirmation is required by safety protocol, returns AgyResponse with needs_confirmation=True.
+        Accepts optional tool schemas (list of dicts or pre-formatted string) to provide AGY with full tool knowledge.
         """
         clean_req = request.strip()
         if not clean_req:
             return None
+
+        # Build tools block
+        tools_block = ""
+        if tools:
+            if isinstance(tools, str):
+                formatted_tools = tools.strip()
+            else:
+                from .tools import ToolRegistry
+                formatted_tools = ToolRegistry.format_tool_schemas(tools).strip()
+            if formatted_tools:
+                tools_block = f"\n\nAvailable tools:\n{formatted_tools}"
 
         # Build prompt: prepend skill slash command if available or reinforce concise plain text
         if confirmed:
@@ -114,11 +129,11 @@ class AgyCaller:
             prompt_payload = clean_req
 
         if self.skill_name:
-            full_prompt = f"/{self.skill_name} {prompt_payload}"
+            full_prompt = f"/{self.skill_name} {prompt_payload}{tools_block}"
         else:
             full_prompt = (
                 f"You are Stewart. Respond in plain speech text only (1-2 sentences), "
-                f"no markdown, no emojis, no artifacts. Execute any needed tools and respond directly: {prompt_payload}"
+                f"no markdown, no emojis, no artifacts. Execute any needed tools and respond directly: {prompt_payload}{tools_block}"
             )
 
         cmd = [
@@ -130,7 +145,7 @@ class AgyCaller:
         if self.dangerously_skip_permissions:
             cmd.append("--dangerously-skip-permissions")
 
-        log.info(f"Dispatching request to agy (model={self.model}, effort={self.effort}): '{clean_req}' (confirmed={confirmed})")
+        log.info(f"Dispatching request to agy (model={self.model}, effort={self.effort}): '{clean_req}' (confirmed={confirmed}, tools_count={len(tools) if isinstance(tools, list) else (1 if tools else 0)})")
         try:
             res = subprocess.run(
                 cmd,
