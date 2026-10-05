@@ -50,12 +50,12 @@ start-up:
   voice-enable: true
 
 router:
-  mode: hybrid # Options: 'hybrid' (algorithmic tree first, then neural model), 'algorithmic', 'model', 'qwen', 'ollama', 'agy'
+  mode: qwen # Options: 'qwen' (local fine-tuned Qwen2.5-1.5B GGUF with algorithmic fallback), 'hybrid', 'algorithmic', 'model', 'ollama', 'agy'
   confidence_threshold: 0.55 # Minimum confidence score for model prediction
   model:
-    provider: spacy # 'spacy' (ultra-fast <2ms CPU classifier), 'qwen' (local fine-tuned Qwen2.5-0.5B), 'ollama', 'agy'
-    model_path: data/models/action_classifier
-    auto_train: true # Automatically trains on start if not already trained
+    provider: qwen # 'qwen' (local fine-tuned Qwen2.5-1.5B GGUF), 'spacy', 'ollama', 'agy'
+    model_path: data/models/gguf/qwen2.5-1.5b-tool-caller-q8_0.gguf
+    auto_train: false
     fallback_to_algorithmic: true # Fallback to algorithmic matching
   qwen:
     model_size: "1.5b" # Options: '0.5b' (ultra-fast ~130ms), '1.5b' (maximum 100% precision)

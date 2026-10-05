@@ -94,6 +94,9 @@ pypkgs.buildPythonApplication rec {
     faster-whisper
     spacy
     spacy-models.en_core_web_sm
+    llama-cpp-python
+    peft
+    accelerate
   ];
 
   makeWrapperArgs = [

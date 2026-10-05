@@ -62,41 +62,61 @@ class QwenPersonaCaller:
                  n_ctx: int = 512,
                  backend: Optional[str] = None,
                  shared_caller: Optional[Any] = None):
-        base_dir = Path(__file__).resolve().parent.parent.parent
-        
+        search_roots = [
+            Path.cwd(),
+            Path.home() / "Projects/stewart",
+            Path.home() / ".cache/stewart",
+            Path.home() / ".local/share/stewart",
+            Path(__file__).resolve().parent.parent.parent,
+        ]
+
+        def resolve_file(rel_path: Union[str, Path]) -> Optional[Path]:
+            p = Path(rel_path).expanduser()
+            if p.is_absolute() and p.exists():
+                return p
+            for root in search_roots:
+                cand = root / rel_path
+                if cand.exists():
+                    return cand
+            return None
+
         env_size = os.getenv("QWEN_MODEL_SIZE", "").lower()
         self.model_size = (model_size or env_size or "0.5b").lower()
 
-        gguf_candidates = [
-            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-persona-q8_0.gguf",
-            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-persona-f16.gguf",
-            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-persona.gguf",
-        ]
-        lora_dir = base_dir / f"data/models/qwen2.5-{self.model_size}-persona-lora"
-        merged_dir = base_dir / f"data/models/qwen2.5-{self.model_size}-persona"
-
-        self.custom_path = Path(model_path) if model_path else None
+        self.custom_path: Optional[Path] = None
         self.gguf_path: Optional[Path] = None
         self.hf_path: Optional[Path] = None
 
-        if self.custom_path:
-            if self.custom_path.is_file() and self.custom_path.suffix == ".gguf":
-                self.gguf_path = self.custom_path
-            elif self.custom_path.is_dir():
-                found_gguf = list(self.custom_path.glob("*.gguf"))
-                if found_gguf:
-                    self.gguf_path = found_gguf[0]
-                else:
-                    self.hf_path = self.custom_path
+        if model_path:
+            resolved = resolve_file(model_path)
+            if resolved:
+                self.custom_path = resolved
+                if resolved.is_file() and resolved.suffix == ".gguf":
+                    self.gguf_path = resolved
+                elif resolved.is_dir():
+                    found_gguf = list(resolved.glob("*.gguf"))
+                    if found_gguf:
+                        self.gguf_path = found_gguf[0]
+                    else:
+                        self.hf_path = resolved
 
         if not self.gguf_path:
-            for cand in gguf_candidates:
-                if cand.exists():
-                    self.gguf_path = cand
+            for suffix in [
+                f"data/models/gguf/qwen2.5-{self.model_size}-persona-q8_0.gguf",
+                f"data/models/gguf/qwen2.5-{self.model_size}-persona-f16.gguf",
+                f"data/models/gguf/qwen2.5-{self.model_size}-persona.gguf",
+            ]:
+                found = resolve_file(suffix)
+                if found:
+                    self.gguf_path = found
                     break
 
         if not self.hf_path:
-            self.hf_path = lora_dir if lora_dir.exists() else merged_dir
+            self.hf_path = (
+                resolve_file(f"data/models/qwen2.5-{self.model_size}-persona-lora")
+                or resolve_file(f"data/models/qwen2.5-{self.model_size}-persona")
+                or (Path(__file__).resolve().parent.parent.parent / f"data/models/qwen2.5-{self.model_size}-persona")
+            )
 
         self.model_path = self.gguf_path if (self.gguf_path and LLAMA_CPP_AVAILABLE) else self.hf_path
         self.base_model_id = base_model_id
@@ -126,13 +146,27 @@ class QwenPersonaCaller:
             try:
                 n_gpu = -1 if self.device == "cuda" else 0
                 log.info(f"Loading persistent GGUF Persona model from {self.gguf_path} (n_gpu_layers={n_gpu})...")
-                self.llm = llama_cpp.Llama(
-                    model_path=str(self.gguf_path),
-                    n_gpu_layers=n_gpu,
-                    n_ctx=self.n_ctx,
-                    n_threads=4,
-                    verbose=False
-                )
+                try:
+                    self.llm = llama_cpp.Llama(
+                        model_path=str(self.gguf_path),
+                        n_gpu_layers=n_gpu,
+                        n_ctx=self.n_ctx,
+                        n_threads=4,
+                        verbose=False
+                    )
+                except Exception as cuda_err:
+                    if n_gpu != 0:
+                        log.warning(f"CUDA initialization failed for GGUF persona ({cuda_err}), falling back to CPU...")
+                        self.llm = llama_cpp.Llama(
+                            model_path=str(self.gguf_path),
+                            n_gpu_layers=0,
+                            n_ctx=self.n_ctx,
+                            n_threads=4,
+                            verbose=False
+                        )
+                    else:
+                        raise cuda_err
+
                 # Warm-up pass
                 _ = self.llm.create_chat_completion(
                     messages=[

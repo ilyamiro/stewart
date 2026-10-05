@@ -17,13 +17,20 @@ def numbers_to_strings(text: str):
 
 
 def find_num(text):
+    if not text:
+        return []
+    text_lower = text.lower()
+
     word_to_num = {
-        "один": 1, "два": 2, "три": 3, "четыре": 4, "пять": 5,
+        "ноль": 0, "нуль": 0, "нуля": 0, "нулю": 0, "нуле": 0,
+        "один": 1, "одна": 1, "одно": 1, "одну": 1,
+        "два": 2, "две": 2, "три": 3, "четыре": 4, "пять": 5,
         "шесть": 6, "семь": 7, "восемь": 8, "девять": 9,
         "десять": 10, "одиннадцать": 11, "двенадцать": 12,
-        "тринадцать": 13, "четырнадцать": 14, "пятнадцать": 15,
+        "тринадцать": 13, "четырнадцать": 14, "пятнадцать": 15, "пятьнадцать": 15,
         "шестнадцать": 16, "семнадцать": 17, "восемнадцать": 18,
-        "девятнадцать": 19, "двадцать": 20, "тридцать": 30,
+        "девятнадцать": 19, "двадцать": 20, "двацать": 20,
+        "тридцать": 30, "трицать": 30,
         "сорок": 40, "пятьдесят": 50, "шестьдесят": 60,
         "семьдесят": 70, "восемьдесят": 80, "девяносто": 90,
         "сто": 100
@@ -31,13 +38,41 @@ def find_num(text):
 
     numbers = []
 
-    matches = re.findall(r'\b(' + '|'.join(word_to_num.keys()) + r')\b', text.lower())
-    for match in matches:
-        numbers.append(word_to_num[match])
+    # First check digits with optional suffixes like 20ти, 15%, 100
+    digit_matches = re.findall(r'\b(\d+)(?:ти|ми|ка|%|процент[а-я]*)?', text_lower)
+    for m in digit_matches:
+        if m.isdigit():
+            numbers.append(int(m))
 
-    matches = re.findall(r'\b([1-9][0-9]?)\b', text)
-    for match in matches:
-        numbers.append(int(match))
+    if numbers:
+        return numbers
+
+    # Check words and combine consecutive numbers (e.g. двадцать пять -> 25)
+    words = re.findall(r'[а-яё]+', text_lower)
+    current_acc = 0
+    in_acc = False
+    for w in words:
+        if w in word_to_num:
+            val = word_to_num[w]
+            if in_acc:
+                if val < 10 and current_acc >= 10:
+                    current_acc += val
+                    numbers.append(current_acc)
+                    in_acc = False
+                    current_acc = 0
+                else:
+                    numbers.append(current_acc)
+                    current_acc = val
+            else:
+                current_acc = val
+                in_acc = True
+        else:
+            if in_acc:
+                numbers.append(current_acc)
+                in_acc = False
+                current_acc = 0
+    if in_acc:
+        numbers.append(current_acc)
 
     return numbers
 

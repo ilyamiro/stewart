@@ -49,19 +49,18 @@ class CommandRouter:
 
         # Qwen Local Tool Caller settings
         qwen_cfg = router_cfg.get("qwen", {})
-        model_size = qwen_cfg.get("model_size") or router_cfg.get("model_size") or "0.5b"
-        default_qwen_dir = Path(__file__).resolve().parent.parent.parent / f"data/models/qwen2.5-{model_size}-stewart"
-        qwen_path_str = qwen_cfg.get("model_path", str(default_qwen_dir))
+        model_size = qwen_cfg.get("model_size") or router_cfg.get("model_size") or "1.5b"
+        qwen_path_str = qwen_cfg.get("model_path")
         self.qwen_caller = QwenToolCaller(model_path=qwen_path_str, model_size=model_size)
 
         # Persona Voice Model settings
-        persona_cfg = self.config.get("persona", {}) or router_cfg.get("persona", {})
+        persona_cfg = router_cfg.get("persona", {}) or self.config.get("persona", {})
         self.persona_enabled = persona_cfg.get("enabled", True)
-        default_persona_dir = Path(__file__).resolve().parent.parent.parent / f"data/models/qwen2.5-{model_size}-persona-lora"
-        persona_path_str = persona_cfg.get("model_path", str(default_persona_dir))
+        persona_model_size = persona_cfg.get("model_size") or model_size
+        persona_path_str = persona_cfg.get("model_path")
         self.persona_caller = QwenPersonaCaller(
             model_path=persona_path_str,
-            model_size=model_size,
+            model_size=persona_model_size,
             max_new_tokens=int(persona_cfg.get("max_new_tokens", 64)),
             temperature=float(persona_cfg.get("temperature", 0.6)),
             shared_caller=self.qwen_caller
@@ -239,7 +238,14 @@ class CommandRouter:
             # 1. Fast algorithmic tree check (<0.1ms)
             algo_results = self.manager.find_algorithmic(clean_request)
             if algo_results:
-                results = algo_results
+                # If command has no parameters/context (e.g. "stop", "time", "lock"), algorithmic handles it immediately
+                has_context = any(bool(c[1] and c[1].strip()) for c in algo_results)
+                if not has_context:
+                    results = algo_results
+                else:
+                    # If command has natural language arguments/context, prefer model tool caller (Qwen) if available
+                    model_res = self._route_via_model(clean_request)
+                    results = model_res if model_res else algo_results
             else:
                 # 2. Fall back to smart model tool selection (SpaCy, Qwen, or Agy)
                 results = self._route_via_model(clean_request)
@@ -310,7 +316,7 @@ class CommandRouter:
                 return [[cmd, ctx]]
 
         # Secondary fallback to Qwen if SpaCy was uncertain and Qwen model exists
-        if self.qwen_caller.model_path.exists():
+        if self.qwen_caller.model_path and self.qwen_caller.model_path.exists():
             schemas = self.tool_registry.get_all_tool_schemas()
             call = self.qwen_caller.call_tool(request, schemas)
             if call:

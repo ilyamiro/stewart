@@ -42,45 +42,63 @@ class QwenToolCaller:
                  max_new_tokens: int = 128,
                  n_ctx: int = 4096,
                  backend: Optional[str] = None):
-        base_dir = Path(__file__).resolve().parent.parent.parent
-        
+        search_roots = [
+            Path.cwd(),
+            Path.home() / "Projects/stewart",
+            Path.home() / ".cache/stewart",
+            Path.home() / ".local/share/stewart",
+            Path(__file__).resolve().parent.parent.parent,
+        ]
+
+        def resolve_file(rel_path: Union[str, Path]) -> Optional[Path]:
+            p = Path(rel_path).expanduser()
+            if p.is_absolute() and p.exists():
+                return p
+            for root in search_roots:
+                cand = root / rel_path
+                if cand.exists():
+                    return cand
+            return None
+
         env_size = os.getenv("QWEN_MODEL_SIZE", "").lower()
         self.model_size = (model_size or env_size or "0.5b").lower()
 
-        gguf_candidates = [
-            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-tool-caller-q8_0.gguf",
-            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-stewart-q8_0.gguf",
-            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-tool-caller-f16.gguf",
-            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-stewart-f16.gguf",
-            base_dir / f"data/models/gguf/qwen2.5-{self.model_size}-tool-caller.gguf",
-        ]
-        
-        default_hf_dir = base_dir / f"data/models/qwen2.5-{self.model_size}-stewart"
-        lora_hf_dir = base_dir / f"data/models/qwen2.5-{self.model_size}-stewart-lora"
-
-        self.custom_path = Path(model_path) if model_path else None
+        self.custom_path: Optional[Path] = None
         self.gguf_path: Optional[Path] = None
         self.hf_path: Optional[Path] = None
 
-        if self.custom_path:
-            if self.custom_path.is_file() and self.custom_path.suffix == ".gguf":
-                self.gguf_path = self.custom_path
-            elif self.custom_path.is_dir():
-                # Check if dir contains gguf or is HF
-                found_gguf = list(self.custom_path.glob("*.gguf"))
-                if found_gguf:
-                    self.gguf_path = found_gguf[0]
-                else:
-                    self.hf_path = self.custom_path
-        
+        if model_path:
+            resolved = resolve_file(model_path)
+            if resolved:
+                self.custom_path = resolved
+                if resolved.is_file() and resolved.suffix == ".gguf":
+                    self.gguf_path = resolved
+                elif resolved.is_dir():
+                    found_gguf = list(resolved.glob("*.gguf"))
+                    if found_gguf:
+                        self.gguf_path = found_gguf[0]
+                    else:
+                        self.hf_path = resolved
+
         if not self.gguf_path:
-            for cand in gguf_candidates:
-                if cand.exists():
-                    self.gguf_path = cand
+            for suffix in [
+                f"data/models/gguf/qwen2.5-{self.model_size}-tool-caller-q8_0.gguf",
+                f"data/models/gguf/qwen2.5-{self.model_size}-stewart-q8_0.gguf",
+                f"data/models/gguf/qwen2.5-{self.model_size}-tool-caller-f16.gguf",
+                f"data/models/gguf/qwen2.5-{self.model_size}-stewart-f16.gguf",
+                f"data/models/gguf/qwen2.5-{self.model_size}-tool-caller.gguf",
+            ]:
+                found = resolve_file(suffix)
+                if found:
+                    self.gguf_path = found
                     break
 
         if not self.hf_path:
-            self.hf_path = default_hf_dir if default_hf_dir.exists() else lora_hf_dir
+            self.hf_path = (
+                resolve_file(f"data/models/qwen2.5-{self.model_size}-stewart")
+                or resolve_file(f"data/models/qwen2.5-{self.model_size}-stewart-lora")
+                or (Path(__file__).resolve().parent.parent.parent / f"data/models/qwen2.5-{self.model_size}-stewart")
+            )
 
         self.model_path = self.gguf_path if (self.gguf_path and LLAMA_CPP_AVAILABLE) else self.hf_path
 
@@ -108,13 +126,27 @@ class QwenToolCaller:
             try:
                 n_gpu = -1 if self.device == "cuda" else 0
                 log.info(f"Loading persistent GGUF tool caller from {self.gguf_path} (n_gpu_layers={n_gpu})...")
-                self.llm = llama_cpp.Llama(
-                    model_path=str(self.gguf_path),
-                    n_gpu_layers=n_gpu,
-                    n_ctx=self.n_ctx,
-                    n_threads=4,
-                    verbose=False
-                )
+                try:
+                    self.llm = llama_cpp.Llama(
+                        model_path=str(self.gguf_path),
+                        n_gpu_layers=n_gpu,
+                        n_ctx=self.n_ctx,
+                        n_threads=4,
+                        verbose=False
+                    )
+                except Exception as cuda_err:
+                    if n_gpu != 0:
+                        log.warning(f"CUDA initialization failed for GGUF tool caller ({cuda_err}), falling back to CPU...")
+                        self.llm = llama_cpp.Llama(
+                            model_path=str(self.gguf_path),
+                            n_gpu_layers=0,
+                            n_ctx=self.n_ctx,
+                            n_threads=4,
+                            verbose=False
+                        )
+                    else:
+                        raise cuda_err
+
                 # Warm-up pass to compile/initialize GPU kernels
                 _ = self.llm.create_chat_completion(
                     messages=[

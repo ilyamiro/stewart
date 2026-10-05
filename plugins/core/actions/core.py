@@ -342,10 +342,21 @@ def update(**kwargs) -> None:
 
 
 def brightness(**kwargs):
-    results = find_num(kwargs["context"])
-    num = results[0] if results else None
+    cmd_obj = kwargs.get("command")
+    cmd_params = cmd_obj.parameters if cmd_obj and hasattr(cmd_obj, "parameters") else {}
+    command = cmd_params.get("command", "set")
 
-    command = kwargs["command"].parameters["command"]
+    raw_ctx = str(kwargs.get("context") or cmd_params.get("context") or "").strip().lower()
+
+    if any(w in raw_ctx for w in ("max", "максимум", "максимальная", "предел")):
+        command = "set"
+        num = 100
+    elif any(w in raw_ctx for w in ("min", "минимум", "минимальная", "ноль", "нуля", "нулю", "до нуля")):
+        command = "set"
+        num = 0
+    else:
+        results = find_num(raw_ctx)
+        num = results[0] if results else None
 
     try:
         # Get brightnessctl output and parse percentage in Python
@@ -362,19 +373,22 @@ def brightness(**kwargs):
         log.error(f"Failed to get current brightness: {e}")
         return
 
-    adjustment = num if num is not None else 25  # Default step
-
-    if command == "set" and num is not None:
-        try:
-            sp.run(
-                ["brightnessctl", "set", f"{num}%"],
-                stdout=sp.DEVNULL,
-                stderr=sp.DEVNULL
-            )
-            log.info(f"Set brightness to {num}%")
-        except Exception as e:
-            log.error(f"Failed to set brightness: {e}")
+    if command == "set":
+        if num is not None:
+            new_brightness = max(0, min(100, num))
+            try:
+                sp.run(
+                    ["brightnessctl", "set", f"{new_brightness}%"],
+                    stdout=sp.DEVNULL,
+                    stderr=sp.DEVNULL
+                )
+                log.info(f"Set brightness to {new_brightness}%")
+            except Exception as e:
+                log.error(f"Failed to set brightness: {e}")
+        else:
+            log.warning("Brightness 'set' command received without a target number; keeping current brightness.")
     else:
+        adjustment = num if num is not None else 25  # Default step
         new_brightness = max(0, min(100, current + adjustment if command == "up" else current - adjustment))
         try:
             sp.run(
