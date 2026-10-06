@@ -56,6 +56,7 @@ pypkgs.buildPythonApplication rec {
         || base == "__pycache__"
         || base == "docs"
         || base == "models"
+        || base == "dataset"
         || base == "result");
   };
 
@@ -97,6 +98,7 @@ pypkgs.buildPythonApplication rec {
     llama-cpp-python
     peft
     accelerate
+    json-repair
   ];
 
   makeWrapperArgs = [

@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import threading
 from pathlib import Path
 from typing import Optional
@@ -9,6 +10,74 @@ import numpy as np
 from data.constants import PROJECT_DIR, USER_CACHE_DIR
 
 log = logging.getLogger("tts.silero")
+
+COMMON_WORDS_RU = {
+    'google': 'гугл',
+    'youtube': 'ютуб',
+    'gmail': 'джимейл',
+    'email': 'мейл',
+    'github': 'гитхаб',
+    'linux': 'линукс',
+    'daily.dev': 'дейли дэв',
+    'daily': 'дейли',
+    'dev': 'дэв',
+    'taken': 'сделан',
+    'wifi': 'вай-фай',
+    'wi-fi': 'вай-фай',
+    'bluetooth': 'блютуз',
+    'stewart': 'стюарт',
+    'telegram': 'телеграм',
+    'ok': 'окей',
+    'stop': 'стоп',
+}
+
+TRANSLIT_PAIRS = [
+    ('shch', 'щ'), ('yo', 'ё'), ('zh', 'ж'), ('ch', 'ч'), ('sh', 'ш'),
+    ('yu', 'ю'), ('ya', 'я'), ('th', 'с'), ('ph', 'ф'), ('ck', 'к'),
+    ('ee', 'и'), ('oo', 'у'),
+    ('a', 'а'), ('b', 'б'), ('c', 'к'), ('d', 'д'), ('e', 'е'),
+    ('f', 'ф'), ('g', 'г'), ('h', 'х'), ('i', 'и'), ('j', 'дж'),
+    ('k', 'к'), ('l', 'л'), ('m', 'м'), ('n', 'н'), ('o', 'о'),
+    ('p', 'п'), ('q', 'к'), ('r', 'р'), ('s', 'с'), ('t', 'т'),
+    ('u', 'у'), ('v', 'в'), ('w', 'в'), ('x', 'кс'), ('y', 'и'), ('z', 'з')
+]
+
+ONES_RU = {0: 'ноль', 1: 'один', 2: 'два', 3: 'три', 4: 'четыре', 5: 'пять', 6: 'шесть', 7: 'семь', 8: 'восемь', 9: 'девять'}
+TEENS_RU = {10: 'десять', 11: 'одиннадцать', 12: 'двенадцать', 13: 'тринадцать', 14: 'четырнадцать', 15: 'пятнадцать', 16: 'шестнадцать', 17: 'семнадцать', 18: 'восемнадцать', 19: 'девятнадцать'}
+TENS_RU = {20: 'двадцать', 30: 'тридцать', 40: 'сорок', 50: 'пятьдесят', 60: 'шестьдесят', 70: 'семьдесят', 80: 'восемьдесят', 90: 'девяносто'}
+HUNDREDS_RU = {100: 'сто', 200: 'двести', 300: 'триста', 400: 'четыреста', 500: 'пятьсот', 600: 'шестьсот', 700: 'семьсот', 800: 'восемьсот', 900: 'девятьсот'}
+
+def num_to_ru(n: int) -> str:
+    if n in ONES_RU: return ONES_RU[n]
+    if n in TEENS_RU: return TEENS_RU[n]
+    if n in TENS_RU: return TENS_RU[n]
+    if n in HUNDREDS_RU: return HUNDREDS_RU[n]
+    if 21 <= n <= 99:
+        return f'{TENS_RU[(n // 10) * 10]} {ONES_RU[n % 10]}'
+    if 101 <= n <= 999:
+        rem = n % 100
+        h_str = HUNDREDS_RU[(n // 100) * 100]
+        if rem == 0: return h_str
+        return f'{h_str} {num_to_ru(rem)}'
+    return str(n)
+
+def clean_for_silero(text: str) -> str:
+    if not text or not isinstance(text, str):
+        return ""
+    text = text.lower()
+    for w, r in COMMON_WORDS_RU.items():
+        text = re.sub(r'\b' + re.escape(w) + r'\b', r, text)
+    for eng, ru in TRANSLIT_PAIRS:
+        text = text.replace(eng, ru)
+    # Expand 1-3 digit numbers to Russian words
+    text = re.sub(r'\b(\d{1,3})\b', lambda m: num_to_ru(int(m.group(1))), text)
+    # Normalize dashes and punctuation
+    text = text.replace('—', '–').replace('"', '').replace("'", "")
+    # Allowed symbols in Silero v5 ru
+    allowed = set('_~|!+,-.:;?абвгдежзийклмнопрстуфхцчшщъыьэюяё–… ')
+    text = ''.join(c for c in text if c in allowed)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
 SILERO_V5_RU_URL = "https://models.silero.ai/models/tts/ru/v5_ru.pt"
 AVAILABLE_SPEAKERS = ["aidar", "baya", "kseniya", "xenia", "eugene"]
@@ -154,11 +223,16 @@ class SileroTTS:
 
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
 
+        clean_text = clean_for_silero(text)
+        if not clean_text or not any(c in 'абвгдежзийклмнопрстуфхцчшщъыьэюяё' for c in clean_text):
+            log.debug(f"Silero: text '{text}' has no synthesizable Russian Cyrillic characters after cleaning, skipping.")
+            return path
+
         if backend == "torch":
             try:
                 # Apply TTS inference
                 audio_tensor = model.apply_tts(
-                    text=text,
+                    text=clean_text,
                     speaker=speaker,
                     sample_rate=self.sample_rate,
                 )

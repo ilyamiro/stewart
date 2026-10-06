@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Register learned algorithmic action into Stewart on the fly
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
+if [ "$1" = "list" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ] || [ "$1" = "register" ]; then
+    exec python3 -m api.commands.learned_actions "$@"
+else
+    exec python3 -m api.commands.learned_actions register "$@"
+fi

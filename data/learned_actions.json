@@ -1,0 +1,72 @@
+{
+  "actions": [
+    {
+      "name": "find_image",
+      "keywords": [
+        "find",
+        "image"
+      ],
+      "description": "Search and view images on the web",
+      "synonyms": {
+        "find": [
+          "search",
+          "download",
+          "look",
+          "найди",
+          "поищи"
+        ],
+        "image": [
+          "picture",
+          "photo",
+          "картинку",
+          "фото"
+        ]
+      },
+      "equivalents": [],
+      "action_type": "existing_action",
+      "target_action": "browser",
+      "command_template": null,
+      "parameters": {
+        "url": "https://duckduckgo.com/?q={context}&iax=images&ia=images"
+      },
+      "continues": true,
+      "responses": [
+        "Searching for images of {context}, sir."
+      ],
+      "tts": true,
+      "requires_thinking": false,
+      "created_at": "2026-10-06T15:10:15.253475"
+    },
+    {
+      "name": "search_duckduckgo",
+      "keywords": [
+        "search",
+        "duck"
+      ],
+      "description": "Search the web with DuckDuckGo",
+      "synonyms": {
+        "search": [
+          "find",
+          "google"
+        ],
+        "duck": [
+          "duckduckgo"
+        ]
+      },
+      "equivalents": [],
+      "action_type": "existing_action",
+      "target_action": "browser",
+      "command_template": null,
+      "parameters": {
+        "url": "https://duckduckgo.com/?q={context}"
+      },
+      "continues": true,
+      "responses": [
+        "Searching for {context}, sir."
+      ],
+      "tts": true,
+      "requires_thinking": false,
+      "created_at": "2026-10-06T15:15:00.816387"
+    }
+  ]
+}

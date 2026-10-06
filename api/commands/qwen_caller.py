@@ -3,7 +3,7 @@ import re
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Union
 
 if os.path.exists("/run/opengl-driver/lib"):
     os.environ.setdefault("TRITON_LIBCUDA_PATH", "/run/opengl-driver/lib")
@@ -29,8 +29,9 @@ except ImportError:
 
 
 PRIMARY_TOOLS = {
-    "media_control", "volume", "brightness", "tell_time", "say_weather",
-    "timer", "stopwatch", "hotkey", "subprocess", "screenshot",
+    "file", "web", "app", "brightness", "volume", "music", "hotkey", "timer", "system",
+    "media_control", "tell_time", "say_weather",
+    "stopwatch", "subprocess", "screenshot",
     "lock_session", "battery_health", "play_song", "find_video", "typing",
     "change_file_name"
 }
@@ -139,6 +140,7 @@ class QwenToolCaller:
                         model_path=str(self.gguf_path),
                         n_gpu_layers=n_gpu,
                         n_ctx=self.n_ctx,
+                        flash_attn=True,
                         n_threads=4,
                         verbose=False
                     )
@@ -270,7 +272,7 @@ class QwenToolCaller:
             desc = fn.get("description", "")
             params = fn.get("parameters", {}).get("properties", {})
             param_strs = []
-            for pname, pinfo in params.items():
+            for pname, pinfo in sorted(params.items()):
                 ptype = pinfo.get("type", "any")
                 if "enum" in pinfo:
                     ptype = "|".join(f'"{e}"' for e in pinfo["enum"])
@@ -279,10 +281,10 @@ class QwenToolCaller:
             tool_lines.append(f"- {name}({params_repr}) - {desc}")
         tools_block = "\n".join(tool_lines)
         return (
-            "You are Stewart, an intelligent Linux AI voice assistant.\n"
+            "You are Stewart, an intelligent Linux AI voice assistant on Hyprland.\n"
             "Available tools:\n"
             f"{tools_block}\n"
-            "Call single tool using: <tool_call>{\"name\": \"...\", \"arguments\": {...}}</tool_call>.\n"
+            "Call tools using: <tool_call>{\"arguments\": {...}, \"name\": \"...\"}</tool_call>.\n"
             "If no tool applies, answer directly."
         )
 
@@ -293,8 +295,8 @@ class QwenToolCaller:
             return None
         try:
             grammar_text = r"""
-root ::= (tool-call | text-response)
-tool-call ::= "<tool_call>\n" json-object "\n</tool_call>"
+root ::= (ws (tool-call | text-response))+
+tool-call ::= "<tool_call>" ws json-object ws "</tool_call>"
 text-response ::= [^<]+
 json-object ::= "{" ws (member ("," ws member)*)? ws "}"
 member ::= string ws ":" ws value
@@ -310,66 +312,68 @@ ws ::= [ \t\n\r]*
             log.warning(f"Failed to compile GBNF tool grammar: {e}")
             return None
 
-    def _parse_tool_call(self, response_text: str, request: str) -> Optional[Tuple[str, Dict[str, Any], str]]:
-        match = re.search(r"<tool_call>\s*(.*?)(?:</tool_call>|$)", response_text, re.DOTALL)
-        if match:
+    def _parse_tool_calls(self, response_text: str, request: str) -> List[Tuple[str, Dict[str, Any], str]]:
+        calls = []
+        matches = list(re.finditer(r"<tool_call>\s*(.*?)(?:</tool_call>|$)", response_text, re.DOTALL))
+        for match in matches:
             try:
                 raw_call = match.group(1).strip()
-                call_data = json.loads(raw_call)
-                tool_name = call_data.get("name")
-                args = call_data.get("arguments") or call_data.get("parameters") or {}
-                if isinstance(args, str):
+                if not raw_call:
+                    continue
+                call_data = None
+                try:
+                    import json_repair
+                    call_data = json_repair.repair_json(raw_call, return_objects=True)
+                except Exception:
+                    pass
+                if not isinstance(call_data, (dict, list)):
                     try:
-                        args = json.loads(args)
+                        call_data = json.loads(raw_call)
                     except Exception:
-                        args = {"context": args}
-                context = args.get("context", "")
-                if not context and "query" in args:
-                    context = args.get("query", "")
-                if not context:
-                    context = request
-                log.info(f"Qwen detected tool call '{tool_name}' with args {args} for request '{request}'")
-                return tool_name, args, context
+                        pass
+                if not call_data:
+                    continue
+                items = call_data if isinstance(call_data, list) else [call_data]
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    tool_name = item.get("name")
+                    args = item.get("arguments") or item.get("parameters")
+                    if isinstance(args, dict) and not tool_name:
+                        tool_name = args.pop("name", None)
+                    if args is None:
+                        args = {k: v for k, v in item.items() if k != "name"}
+                    if not tool_name:
+                        continue
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except Exception:
+                            args = {"context": args}
+                    context = args.get("context", "")
+                    if not context and "query" in args:
+                        context = args.get("query", "")
+                    if not context:
+                        context = request
+                    log.info(f"Qwen detected tool call '{tool_name}' with args {args} for request '{request}'")
+                    calls.append((tool_name, args, context))
             except Exception as je:
-                log.warning(f"Failed to parse tool call JSON '{match.group(1)}': {je}")
-        return None
+                log.warning(f"Failed to parse tool call JSON: {je}")
+        return calls
 
-    def call_tool(self, request: str, tool_schemas: List[Dict[str, Any]]) -> Optional[Tuple[str, Dict[str, Any], str]]:
-        """
-        Sends the user request and available tool schemas to Qwen.
-        Returns (tool_name, arguments, context) if a tool was chosen, else None.
-        """
-        # 1. Attempt GPU Worker first (Dynamic LoRA on RTX 3050 GPU, ~600ms latency, zero host CPU usage)
-        try:
-            from .gpu_client import GPUClient
-            gpu_client = GPUClient.get_instance()
-            if gpu_client is not None and gpu_client.is_ready:
-                system_prompt = self._format_system_prompt(tool_schemas)
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": request}
-                ]
-                resp = gpu_client.call_tool(messages, max_tokens=self.max_new_tokens)
-                if resp:
-                    parsed = self._parse_tool_call(resp, request)
-                    if parsed:
-                        return parsed
-        except Exception as ge:
-            log.debug(f"GPU Worker call failed or not available ({ge}); falling back to local runner.")
+    def _parse_tool_call(self, response_text: str, request: str) -> Optional[Tuple[str, Dict[str, Any], str]]:
+        calls = self._parse_tool_calls(response_text, request)
+        return calls[0] if calls else None
 
+    def run_agent_turn(self, messages: List[Dict[str, str]], tool_schemas: List[Dict[str, Any]]) -> str:
+        """
+        Executes a single step given conversation history messages.
+        Returns the raw model response string.
+        """
         if not self._is_loaded:
             if not self.load_model():
-                return None
+                return ""
 
-        system_prompt = self._format_system_prompt(tool_schemas)
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": request}
-        ]
-
-        response_text = ""
-
-        # GGUF Execution (~10-40ms) with GBNF Constrained Decoding
         if self.backend == "gguf" and self.llm is not None:
             try:
                 grammar = self._get_tool_grammar()
@@ -380,6 +384,62 @@ ws ::= [ \t\n\r]*
                 }
                 if grammar is not None:
                     kwargs["grammar"] = grammar
+                res = self.llm.create_chat_completion(**kwargs)
+                return res["choices"][0]["message"].get("content", "").strip()
+            except Exception as e:
+                log.warning(f"Error during agent turn completion: {e}")
+                return ""
+        return ""
+
+    def call_tools(self, request: str, tool_schemas: List[Dict[str, Any]]) -> List[Tuple[str, Dict[str, Any], str]]:
+        """
+        Sends the user request and available tool schemas to Qwen.
+        Returns a list of (tool_name, arguments, context) for all chosen tools.
+        """
+        # 1. Attempt GPU Worker first if explicitly enabled or if local model not loaded
+        if (self.llm is None and not self._is_loaded) or os.getenv("USE_GPU_WORKER", "0").lower() in ("1", "true", "yes"):
+            try:
+                from .gpu_client import GPUClient
+                gpu_client = GPUClient.get_instance()
+                if gpu_client is not None and gpu_client.is_ready:
+                    system_prompt = self._format_system_prompt(tool_schemas)
+                    from .session_memory import SessionMemory
+                    session_mem = SessionMemory.get_instance()
+                    rolling = session_mem.get_rolling_messages(request)
+                    messages = [{"role": "system", "content": system_prompt}] + rolling
+                    resp = gpu_client.call_tool(messages, max_tokens=self.max_new_tokens)
+                    if resp:
+                        parsed = self._parse_tool_calls(resp, request)
+                        if parsed:
+                            session_mem.record_turn(request, resp)
+                            return parsed
+            except Exception as ge:
+                log.debug(f"GPU Worker call failed or not available ({ge}); falling back to local runner.")
+
+        if not self._is_loaded:
+            if not self.load_model():
+                return None
+
+        system_prompt = self._format_system_prompt(tool_schemas)
+        from .session_memory import SessionMemory
+        session_mem = SessionMemory.get_instance()
+        rolling = session_mem.get_rolling_messages(request)
+        messages = [{"role": "system", "content": system_prompt}] + rolling
+
+        response_text = ""
+
+        # GGUF Execution (~10-40ms)
+        if self.backend == "gguf" and self.llm is not None:
+            try:
+                kwargs = {
+                    "messages": messages,
+                    "max_tokens": self.max_new_tokens,
+                    "temperature": 0.0
+                }
+                if os.getenv("USE_TOOL_GRAMMAR", "0").lower() in ("1", "true", "yes"):
+                    grammar = self._get_tool_grammar()
+                    if grammar is not None:
+                        kwargs["grammar"] = grammar
 
                 res = self.llm.create_chat_completion(**kwargs)
                 response_text = res["choices"][0]["message"].get("content", "").strip()
@@ -421,6 +481,11 @@ ws ::= [ \t\n\r]*
                 return None
 
         if not response_text:
-            return None
+            return []
 
-        return self._parse_tool_call(response_text, request)
+        session_mem.record_turn(request, response_text)
+        return self._parse_tool_calls(response_text, request)
+
+    def call_tool(self, request: str, tool_schemas: List[Dict[str, Any]]) -> Optional[Tuple[str, Dict[str, Any], str]]:
+        calls = self.call_tools(request, tool_schemas)
+        return calls[0] if calls else None

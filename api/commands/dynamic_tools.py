@@ -8,7 +8,9 @@ from typing import Dict, Any, List, Optional, Callable
 
 log = logging.getLogger("API: dynamic_tools")
 
-DEFAULT_DYNAMIC_TOOLS_FILE = Path(__file__).resolve().parent.parent.parent / "data/dynamic_tools.json"
+BASE_DYNAMIC_TOOLS_FILE = Path(__file__).resolve().parent.parent.parent / "data/dynamic_tools.json"
+USER_DYNAMIC_TOOLS_FILE = Path(os.environ.get("STEWART_CONFIG_DIR") or (Path.home() / ".config/stewart")) / "dynamic_tools.json"
+DEFAULT_DYNAMIC_TOOLS_FILE = USER_DYNAMIC_TOOLS_FILE
 
 
 class DynamicTool:
@@ -103,20 +105,25 @@ class DynamicToolManager:
         self.load()
 
     def load(self):
-        """Loads registered dynamic tools from disk."""
-        if not self.storage_file.exists():
-            return
-        try:
-            with open(self.storage_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                tools_list = data.get("tools", []) if isinstance(data, dict) else data
-                for item in tools_list:
-                    if isinstance(item, dict) and "name" in item:
-                        tool = DynamicTool.from_dict(item)
-                        self._tools[tool.name] = tool
-            log.info(f"Loaded {len(self._tools)} dynamic tools from {self.storage_file}")
-        except Exception as e:
-            log.warning(f"Error loading dynamic tools from {self.storage_file}: {e}")
+        """Loads registered dynamic tools from disk, merging base defaults and user tools."""
+        files_to_load = []
+        if BASE_DYNAMIC_TOOLS_FILE.exists() and BASE_DYNAMIC_TOOLS_FILE != self.storage_file:
+            files_to_load.append(BASE_DYNAMIC_TOOLS_FILE)
+        if self.storage_file.exists():
+            files_to_load.append(self.storage_file)
+
+        for sfile in files_to_load:
+            try:
+                with open(sfile, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    tools_list = data.get("tools", []) if isinstance(data, dict) else data
+                    for item in tools_list:
+                        if isinstance(item, dict) and "name" in item:
+                            tool = DynamicTool.from_dict(item)
+                            self._tools[tool.name] = tool
+                log.info(f"Loaded dynamic tools from {sfile} (total registered: {len(self._tools)})")
+            except Exception as e:
+                log.warning(f"Error loading dynamic tools from {sfile}: {e}")
 
     def save(self):
         """Persists registered dynamic tools to disk."""

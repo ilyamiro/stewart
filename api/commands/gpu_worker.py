@@ -124,12 +124,15 @@ ws ::= [ \t\n\r]*
 
                 messages = req.get("messages", [])
                 max_tokens = int(req.get("max_tokens", 128))
-                res = llm.create_chat_completion(
-                    messages=messages,
-                    max_tokens=max_tokens,
-                    temperature=0.0,
-                    grammar=grammar
-                )
+                grammar_to_use = grammar if os.getenv("USE_TOOL_GRAMMAR", "0").lower() in ("1", "true", "yes") else None
+                kwargs = {
+                    "messages": messages,
+                    "max_tokens": max_tokens,
+                    "temperature": 0.0
+                }
+                if grammar_to_use is not None:
+                    kwargs["grammar"] = grammar_to_use
+                res = llm.create_chat_completion(**kwargs)
                 content = res["choices"][0]["message"].get("content", "").strip()
                 print(json.dumps({"status": "ok", "content": content}))
                 sys.stdout.flush()

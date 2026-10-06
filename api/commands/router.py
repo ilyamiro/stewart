@@ -124,6 +124,24 @@ class CommandRouter:
         if hasattr(self.tool_registry, "sync_dynamic_tools"):
             self.tool_registry.sync_dynamic_tools()
 
+        # Load and bind persistent learned algorithmic actions synthesized by AGY
+        try:
+            from .learned_actions import get_learned_action_manager
+            self.learned_action_manager = get_learned_action_manager(manager=self.manager, api=getattr(self.manager, "api", None))
+            self.learned_action_manager.bind_all(manager=self.manager)
+        except Exception as le:
+            log.warning(f"Error binding learned actions: {le}")
+            self.learned_action_manager = None
+
+        # Instant pre-warming of Qwen model on startup only when explicitly in Qwen mode
+        if self.mode in ("qwen", "local_llm") and hasattr(self, "qwen_caller"):
+            try:
+                if not self.qwen_caller.is_loaded():
+                    log.info("Pre-warming Qwen local tool caller during router initialization...")
+                    self.qwen_caller.load_model()
+            except Exception as pe:
+                log.debug(f"Async pre-warm deferred: {pe}")
+
         log.info(f"CommandRouter initialized with mode='{self.mode}', provider='{self.provider}'")
 
 
@@ -169,6 +187,60 @@ class CommandRouter:
         return cmd
 
 
+    def execute_react_pipeline(self, request: str, max_steps: int = 3) -> List[List[Any]]:
+        """
+        Executes a multi-step ReAct agent loop for complex multi-step tasks.
+        Iteratively executes tools and feeds observations back to the model until final answer.
+        """
+        if self.provider == "agy" or self.mode == "agy":
+            return self._route_via_model(request)
+
+        schemas = self.tool_registry.get_all_tool_schemas()
+        messages = [
+            {"role": "system", "content": self.qwen_caller._format_system_prompt(schemas)},
+            {"role": "user", "content": request}
+        ]
+        all_executed_cmds = []
+        final_answer = ""
+
+        for step in range(max_steps):
+            resp = self.qwen_caller.run_agent_turn(messages, schemas)
+            if not resp:
+                break
+
+            tool_calls = self.qwen_caller._parse_tool_calls(resp, request)
+            if not tool_calls:
+                final_answer = resp
+                break
+
+            step_observations = []
+            for action, args, ctx in tool_calls:
+                cmd = self._find_or_create_command(action, action, args, ctx)
+                all_executed_cmds.append([cmd, ctx])
+
+                res = self.tool_registry.execute(action, parameters=args, context=ctx)
+                if hasattr(self.tool_registry, "sync_dynamic_tools"):
+                    self.tool_registry.sync_dynamic_tools()
+                step_observations.append({"tool": action, "output": res})
+
+            messages.append({"role": "assistant", "content": resp})
+            import json
+            obs_str = json.dumps(step_observations, ensure_ascii=False)
+            messages.append({"role": "user", "content": f"<tool_response>{obs_str}</tool_response>"})
+
+        if final_answer:
+            speak_cmd = Command(
+                keywords=["speak"],
+                action="speak",
+                parameters={"text": final_answer},
+                responses=[final_answer],
+                synonyms={},
+                tts=True
+            )
+            all_executed_cmds.append([speak_cmd, request])
+
+        return all_executed_cmds
+
     def route(self, request: str) -> List[List[Any]]:
         """
         Main routing function for user requests.
@@ -181,6 +253,13 @@ class CommandRouter:
         cached = self._route_cache.get(clean_request)
         if cached is not None:
             return [[c[0], c[1]] for c in cached]
+
+        multistep_markers = (" then ", " and then ", " затем ", " потом ", " после этого ", " afterwards ")
+        is_multistep = any(m in f" {clean_request.lower()} " for m in multistep_markers)
+        if is_multistep and self.mode in ("qwen", "local_llm", "hybrid"):
+            react_res = self.execute_react_pipeline(clean_request)
+            if react_res:
+                return react_res
 
         results = []
 
@@ -199,11 +278,12 @@ class CommandRouter:
 
         elif self.mode in ("qwen", "local_llm"):
             schemas = self.tool_registry.get_all_tool_schemas()
-            call = self.qwen_caller.call_tool(clean_request, schemas)
-            if call:
-                action, args, ctx = call
-                cmd = self._find_or_create_command(action, action, args, ctx)
-                results = [[cmd, ctx]]
+            calls = self.qwen_caller.call_tools(clean_request, schemas)
+            if calls:
+                results = []
+                for action, args, ctx in calls:
+                    cmd = self._find_or_create_command(action, action, args, ctx)
+                    results.append([cmd, ctx])
             elif self.fallback_to_algorithmic:
                 results = self.manager.find_algorithmic(clean_request)
 
@@ -214,20 +294,26 @@ class CommandRouter:
                 if hasattr(self.tool_registry, "sync_dynamic_tools"):
                     self.tool_registry.sync_dynamic_tools()
 
-                # Check if AGY emitted a tool call tag
                 import re, json
-                match = re.search(r"<tool_call>\s*(.*?)(?:</tool_call>|$)", str(ans), re.DOTALL)
-                if match:
-                    try:
-                        call_data = json.loads(match.group(1).strip())
-                        action = call_data.get("name")
-                        args = call_data.get("arguments") or call_data.get("parameters") or {}
-                        ctx = clean_request
-                        cmd = self._find_or_create_command(action, action, args, ctx)
-                        log.info(f"AGY tool caller selected tool '{action}' (args={args})")
-                        return [[cmd, ctx]]
-                    except Exception as je:
-                        log.debug(f"Failed parsing tool call from AGY output: {je}")
+                raw_payload = getattr(ans, "raw_output", str(ans))
+                matches = list(re.finditer(r"<tool_call>\s*(.*?)(?:</tool_call>|$)", raw_payload, re.DOTALL))
+                if matches:
+                    tool_cmds = []
+                    for m in matches:
+                        try:
+                            call_data = json.loads(m.group(1).strip())
+                            items = call_data if isinstance(call_data, list) else [call_data]
+                            for it in items:
+                                if isinstance(it, dict) and "name" in it:
+                                    action = it.get("name")
+                                    args = it.get("arguments") or it.get("parameters") or {}
+                                    cmd = self._find_or_create_command(action, action, args, clean_request)
+                                    tool_cmds.append([cmd, clean_request])
+                        except Exception as je:
+                            log.debug(f"Failed parsing tool call from AGY output: {je}")
+                    if tool_cmds:
+                        log.info(f"AGY tool caller selected {len(tool_cmds)} tool(s)")
+                        return tool_cmds
 
                 is_conf = getattr(ans, "needs_confirmation", False)
                 cmd = Command(
@@ -256,34 +342,62 @@ class CommandRouter:
 
         else:
             # "hybrid" mode (Default):
-            # 1. Fast algorithmic tree check (<0.1ms)
-            algo_results = self.manager.find_algorithmic(clean_request)
-            if algo_results:
-                # If command has no parameters/context (e.g. "stop", "time", "lock"), algorithmic handles it immediately
-                has_context = any(bool(c[1] and c[1].strip()) for c in algo_results)
-                if not has_context:
+            # 1. Check if request requires multi-step cognitive reasoning or temporal waiting
+            if self.provider == "agy" and self._requires_reasoning_or_waiting(clean_request):
+                log.info(f"Hybrid router: query requires cognitive reasoning/waiting ('{clean_request}'). Routing directly to Antigravity.")
+                results = self._route_via_model(clean_request)
+            else:
+                # 2. Fast algorithmic tree check (<0.1ms)
+                algo_results = self.manager.find_algorithmic(clean_request)
+                if algo_results:
+                    log.info(f"Instant algorithmic match for '{clean_request}': {[c[0].action for c in algo_results]}")
                     results = algo_results
                 else:
-                    # If command has natural language arguments/context, prefer model tool caller (Qwen) if available
-                    model_res = self._route_via_model(clean_request)
-                    results = model_res if model_res else algo_results
-            else:
-                # 2. Fall back to smart model tool selection (SpaCy, Qwen, or Agy)
-                results = self._route_via_model(clean_request)
+                    # 3. Fall back to cognitive model (Agy, Qwen, Ollama, SpaCy)
+                    results = self._route_via_model(clean_request)
 
         if len(self._route_cache) < 1000:
             self._route_cache[clean_request] = [[c[0], c[1]] for c in results]
 
         return results
 
+    def _requires_reasoning_or_waiting(self, request: str) -> bool:
+        """
+        Determines whether a user request requires multi-step cognitive reasoning,
+        temporal waiting (e.g. for download/process completion), or cross-step context passing.
+        Such requests must be handled by Antigravity rather than direct algorithmic execution.
+        """
+        lowered = f" {request.lower().strip()} "
+        # 1. Temporal connectors indicating sequential chained actions with potential wait
+        temporal_markers = [
+            " then ", " and then ", " after that ", " afterwards ", " wait for ", " until ",
+            " затем ", " потом ", " после этого ", " подожди ", " а потом ", " и затем "
+        ]
+        if any(m in lowered for m in temporal_markers):
+            return True
+
+        # 2. Pronoun coreferences referencing output of a preceding action
+        coref_markers = [
+            " it ", " that ", " them ", " its ", " this ",
+            " его ", " ее ", " их ", " это ", " этот ", " эту "
+        ]
+        has_conjunction = any(c in lowered for c in [" and ", " then ", " also ", " и ", " а также "])
+        has_coreference = any(cr in lowered for cr in coref_markers)
+        if has_conjunction and has_coreference:
+            return True
+
+        return False
+
     def _route_via_model(self, request: str) -> List[List[Any]]:
         """Invokes Agy, Qwen, Ollama, or SpaCy model depending on configured provider."""
         if self.provider == "agy":
-            schemas = self.tool_registry.get_all_tool_schemas()
-            ans = self.agy_caller.execute_request(request, tools=schemas)
+            ans = self.agy_caller.execute_request(request)
             if ans:
                 if hasattr(self.tool_registry, "sync_dynamic_tools"):
                     self.tool_registry.sync_dynamic_tools()
+                if hasattr(self, "learned_action_manager") and self.learned_action_manager:
+                    self.learned_action_manager.load()
+                    self.learned_action_manager.bind_all(self.manager)
 
                 # Check if AGY emitted a tool call tag
                 import re, json
@@ -322,12 +436,14 @@ class CommandRouter:
 
         if self.provider in ("qwen", "local_llm"):
             schemas = self.tool_registry.get_all_tool_schemas()
-            call = self.qwen_caller.call_tool(request, schemas)
-            if call:
-                action, args, ctx = call
-                cmd = self._find_or_create_command(action, action, args, ctx)
-                log.info(f"Qwen routed request '{request}' -> tool '{action}' (args={args})")
-                return [[cmd, ctx]]
+            calls = self.qwen_caller.call_tools(request, schemas)
+            if calls:
+                results = []
+                for action, args, ctx in calls:
+                    cmd = self._find_or_create_command(action, action, args, ctx)
+                    log.info(f"Qwen routed request '{request}' -> tool '{action}' (args={args})")
+                    results.append([cmd, ctx])
+                return results
             return []
 
 
@@ -374,13 +490,33 @@ class CommandRouter:
         if not self.persona_enabled:
             return None
         if self.persona_provider == "agy" and hasattr(self, "agy_caller"):
+            # Avoid redundant 10s LLM roundtrip for non-query actions that returned success
+            is_query = bool(tool_name and (tool_name.startswith(("studieplus_", "study_", "gmail_")) or (isinstance(tool_result, dict) and any(k in tool_result for k in ("stdout", "message", "emails", "schedule", "assignments")))))
+            if tool_name and not is_query:
+                import random
+                if lang.lower().startswith("ru"):
+                    return random.choice(["Сделано, сэр.", "Выполнено, сэр.", "Слушаюсь, сэр.", "Готово, сэр."])
+                else:
+                    return random.choice(["Done, Sir.", "At once, Sir.", "Right away, Sir.", "Completed, Sir."])
+
             import json
             tool_info = f"Tool executed: '{tool_name}' with result: {json.dumps(tool_result, ensure_ascii=False) if tool_result else 'None'}. " if tool_name else ""
-            prompt = (
-                f"You are Stewart, a polite British AI butler. The user said: '{user_query}'. {tool_info}"
-                f"Respond directly in 1-2 spoken sentences to the user in {lang}. "
-                f"No markdown, no emojis, no code blocks."
-            )
+            if lang.lower().startswith("ru"):
+                prompt = (
+                    f"You are Stewart, a polite British AI butler. The user said: '{user_query}'. {tool_info}"
+                    f"Respond directly in 1-2 spoken sentences to the user STRICTLY in Russian using ONLY Cyrillic letters. "
+                    f"CRITICAL FOR VOICE SYNTHESIS (Silero TTS): Absolutely no Latin/English characters or words are allowed. "
+                    f"Transliterate all brand names, services, tech terms, email subjects, and senders phonetically into Russian Cyrillic (e.g. Google -> Гугл, daily.dev -> Дейли дэв, YouTube -> Ютуб, Gmail -> Джимейл). "
+                    f"Do NOT use numbered lists (1., 2., 3.) or bullet points. Speak in smooth, connected conversational sentences. "
+                    f"No markdown, no emojis, no code blocks."
+                )
+            else:
+                prompt = (
+                    f"You are Stewart, a polite British AI butler. The user said: '{user_query}'. {tool_info}"
+                    f"Respond directly in 1-2 spoken sentences to the user STRICTLY in English. "
+                    f"CRITICAL FOR VOICE SYNTHESIS: Speak purely in English without mixing other languages. "
+                    f"No markdown, no emojis, no code blocks, no numbered lists or bullet points."
+                )
             res = self.agy_caller.execute_request(prompt)
             return str(res) if res else None
         if not self.persona_caller:

@@ -13,10 +13,11 @@ class AgyResponse(str):
     Result string from AgyCaller with metadata indicating if user confirmation is required.
     Acts as a standard string for full backward compatibility.
     """
-    def __new__(cls, text: str, needs_confirmation: bool = False, confirmation_prompt: str = ""):
+    def __new__(cls, text: str, needs_confirmation: bool = False, confirmation_prompt: str = "", raw_output: str = ""):
         obj = super().__new__(cls, text)
         obj.needs_confirmation = needs_confirmation
         obj.confirmation_prompt = confirmation_prompt
+        obj.raw_output = raw_output or text
         return obj
 
 
@@ -63,6 +64,19 @@ class AgyCaller:
 
         # Remove code blocks and inline backticks
         cleaned = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+        if not cleaned.strip():
+            # If removing code blocks left nothing, extract text from within code block (excluding tool_call)
+            inner_blocks = re.findall(r"```(?:[a-zA-Z0-9_\-]+)?\n?(.*?)```", text, flags=re.DOTALL)
+            extracted = []
+            for b in inner_blocks:
+                b_stripped = b.strip()
+                if not b_stripped.startswith("<tool_call>") and not b_stripped.startswith("{"):
+                    extracted.append(b_stripped)
+            if extracted:
+                cleaned = " ".join(extracted)
+            else:
+                cleaned = text
+
         cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
 
         # Remove markdown headers (# Header)
@@ -176,11 +190,11 @@ class AgyCaller:
                 conf_prompt = conf_match.group(1).strip()
                 cleaned_conf = self.clean_text_for_tts(conf_prompt)
                 log.info(f"agy requested voice confirmation: '{cleaned_conf}'")
-                return AgyResponse(cleaned_conf, needs_confirmation=True, confirmation_prompt=cleaned_conf)
+                return AgyResponse(cleaned_conf, needs_confirmation=True, confirmation_prompt=cleaned_conf, raw_output=raw_out)
 
             cleaned_speech = self.clean_text_for_tts(raw_out)
             log.info(f"agy response generated ({len(cleaned_speech)} chars): '{cleaned_speech}'")
-            return AgyResponse(cleaned_speech, needs_confirmation=False)
+            return AgyResponse(cleaned_speech, needs_confirmation=False, raw_output=raw_out)
         except subprocess.TimeoutExpired:
             log.warning(f"agy request timed out after {self.timeout}s for '{clean_req}'")
             return None

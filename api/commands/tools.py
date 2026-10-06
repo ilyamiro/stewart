@@ -62,16 +62,18 @@ class ActionTool:
 
     def invoke(self, command=None, context: str = "", history: Optional[List] = None, **kwargs) -> Any:
         """Invokes the action function with the standard Stewart signature."""
-        if command is None:
-            # Create a lightweight stub Command for direct tool invocations
-            from .tree import Command
+        from .tree import Command
+        if not isinstance(command, Command):
+            cmd_args = dict(kwargs)
+            if isinstance(command, str):
+                cmd_args["command"] = command
             command = Command(
                 keywords=[self.name],
                 action=self.name,
-                parameters={**self.default_params, **kwargs}
+                parameters={**self.default_params, **cmd_args}
             )
         try:
-            return self.func(command=command, context=context, history=history or [])
+            return self.func(command=command, context=context, history=history or [], **kwargs)
         except Exception as e:
             log.error(f"Error invoking tool '{self.name}': {e}", exc_info=True)
             return None
@@ -225,7 +227,374 @@ class ToolRegistry:
             self.register(tool)
 
         log.info(f"Synchronized {len(self._tools)} tools into ToolRegistry from actions.")
+        self.register_core_categorical_tools()
         self.sync_from_mcp()
+
+    def register_core_categorical_tools(self):
+        """
+        Registers first-class categorical MCP-style tools:
+        file, web, app, brightness, volume, music, hotkey, timer, system.
+        """
+        import os
+        import shutil
+        import urllib.parse
+        from api.services.desktop import get_desktop_service
+
+        # 1. file tool
+        def file_action(command=None, context: str = "", history=None, **kwargs):
+            args = dict(kwargs)
+            if command and hasattr(command, "parameters"):
+                args.update(command.parameters)
+            action = args.get("action", "open")
+            path = args.get("path") or args.get("target") or context
+            new_name = args.get("new_name") or args.get("dst")
+            desktop = get_desktop_service(api=self.api)
+            if action == "open" and path:
+                ok = desktop.open_file(path)
+                return {"status": "success" if ok else "error", "opened_file": path}
+            elif action == "rename" and path and new_name:
+                try:
+                    p = os.path.expanduser(os.path.expandvars(path))
+                    n = os.path.expanduser(os.path.expandvars(new_name))
+                    if not os.path.isabs(n) and os.path.dirname(p):
+                        n = os.path.join(os.path.dirname(p), n)
+                    os.rename(p, n)
+                    return {"status": "success", "renamed": f"{path} -> {new_name}"}
+                except Exception as e:
+                    return {"status": "error", "error": str(e)}
+            elif action == "delete" and path:
+                try:
+                    os.remove(os.path.expanduser(os.path.expandvars(path)))
+                    return {"status": "success", "deleted": path}
+                except Exception as e:
+                    return {"status": "error", "error": str(e)}
+            return {"status": "error", "error": f"Invalid file action '{action}' or missing path"}
+
+        file_action.__name__ = "file"
+        file_action.is_query = True
+        self.register(ActionTool(
+            name="file",
+            func=file_action,
+            description="Open, rename, or delete files and directories on the local Linux filesystem.",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["open", "rename", "delete"], "description": "File action"},
+                    "path": {"type": "string", "description": "Target file or folder path (e.g. ~/Downloads, report.pdf)"},
+                    "new_name": {"type": "string", "description": "New filename when renaming"}
+                },
+                "required": ["action", "path"]
+            },
+            plugin_name="core"
+        ))
+
+        # 2. web tool
+        def web_action(command=None, context: str = "", history=None, **kwargs):
+            args = dict(kwargs)
+            if command and hasattr(command, "parameters"):
+                args.update(command.parameters)
+            action = args.get("action", "open")
+            url = args.get("url")
+            query = args.get("query") or (context if action == "search" else None)
+            desktop = get_desktop_service(api=self.api)
+            if action == "open" and url:
+                if not url.startswith("http://") and not url.startswith("https://"):
+                    url = f"https://{url}"
+                ok = desktop.open_url(url)
+                return {"status": "success" if ok else "error", "opened_url": url}
+            elif action == "search" and query:
+                search_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
+                ok = desktop.open_url(search_url)
+                return {"status": "success" if ok else "error", "searched": query}
+            elif url:
+                if not url.startswith("http://") and not url.startswith("https://"):
+                    url = f"https://{url}"
+                ok = desktop.open_url(url)
+                return {"status": "success" if ok else "error", "opened_url": url}
+            return {"status": "error", "error": "Neither URL nor query specified"}
+
+        web_action.__name__ = "web"
+        web_action.is_query = True
+        self.register(ActionTool(
+            name="web",
+            func=web_action,
+            description="Open web URLs or perform internet search queries in the default browser.",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["open", "search"], "description": "Web action"},
+                    "url": {"type": "string", "description": "Website URL to open (e.g. https://wikipedia.org, https://youtube.com)"},
+                    "query": {"type": "string", "description": "Search query terms"}
+                },
+                "required": ["action"]
+            },
+            plugin_name="core"
+        ))
+
+        # 3. app tool
+        def app_action(command=None, context: str = "", history=None, **kwargs):
+            args = dict(kwargs)
+            if command and hasattr(command, "parameters"):
+                args.update(command.parameters)
+            action = args.get("action", "launch")
+            name = (args.get("name") or args.get("app") or context).strip()
+            desktop = get_desktop_service(api=self.api)
+            if action == "close":
+                ok = desktop.close_active_window()
+                return {"status": "success" if ok else "error", "message": "Closed active window"}
+            elif action == "switch" and name:
+                ok = desktop.focus_window(name)
+                return {"status": "success" if ok else "error", "switched_to": name}
+            elif action == "launch" and name:
+                name_lower = name.lower()
+                if name_lower in ("youtube", "yt"):
+                    ok = desktop.open_url("https://youtube.com")
+                    return {"status": "success" if ok else "error", "launched": "youtube"}
+                elif name_lower in ("terminal", "term", "console"):
+                    for term in ["kitty", "alacritty", "foot", "wezterm", "gnome-terminal"]:
+                        if shutil.which(term):
+                            ok = desktop.launch_app(term)
+                            return {"status": "success" if ok else "error", "launched": term}
+                    desktop.launch_app("xterm")
+                    return {"status": "success", "launched": "xterm"}
+                elif name_lower in ("files", "file manager", "nautilus", "explorer"):
+                    for fm in ["nautilus", "thunar", "dolphin", "pcmanfm"]:
+                        if shutil.which(fm):
+                            desktop.launch_app(fm)
+                            return {"status": "success", "launched": fm}
+                    desktop.launch_app(["xdg-open", "."])
+                    return {"status": "success", "launched": "files"}
+                elif name_lower in ("browser", "chrome", "google chrome"):
+                    for b in ["google-chrome", "brave", "firefox", "chromium"]:
+                        if shutil.which(b):
+                            desktop.launch_app(b)
+                            return {"status": "success", "launched": b}
+                    desktop.open_url("https://google.com")
+                    return {"status": "success", "launched": "browser"}
+                else:
+                    ok = desktop.launch_app(name)
+                    return {"status": "success" if ok else "error", "launched": name}
+            return {"status": "error", "error": "Missing application name or action"}
+
+        app_action.__name__ = "app"
+        app_action.is_query = True
+        self.register(ActionTool(
+            name="app",
+            func=app_action,
+            description="Launch, close, or switch desktop applications (terminal, browser, files, code, etc.).",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["launch", "close", "switch"], "description": "Application action"},
+                    "name": {"type": "string", "description": "Application name or binary (e.g. kitty, terminal, files, telegram, code, youtube)"}
+                },
+                "required": ["action"]
+            },
+            plugin_name="core"
+        ))
+
+        # 4. brightness tool
+        def brightness_action(command=None, context: str = "", history=None, **kwargs):
+            args = dict(kwargs)
+            if command and hasattr(command, "parameters"):
+                args.update(command.parameters)
+            cmd = args.get("command") or args.get("action", "set")
+            val = args.get("value") or context
+            desktop = get_desktop_service(api=self.api)
+            ok = desktop.set_brightness(command=cmd, value=val)
+            return {"status": "success" if ok else "error", "brightness": val, "command": cmd}
+
+        brightness_action.__name__ = "brightness"
+        brightness_action.is_query = True
+        self.register(ActionTool(
+            name="brightness",
+            func=brightness_action,
+            description="Adjust or set display screen brightness via brightnessctl.",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "enum": ["set", "up", "down"], "description": "Brightness operation"},
+                    "value": {"type": "string", "description": "Brightness percentage (e.g. 100%, 50%, 20%)"}
+                },
+                "required": ["command"]
+            },
+            plugin_name="core"
+        ))
+
+        # 5. volume tool
+        def volume_action(command=None, context: str = "", history=None, **kwargs):
+            args = dict(kwargs)
+            if command and hasattr(command, "parameters"):
+                args.update(command.parameters)
+            cmd = args.get("command") or args.get("action", "set")
+            val = args.get("value") or context
+            desktop = get_desktop_service(api=self.api)
+            ok = desktop.set_volume(command=cmd, value=val)
+            return {"status": "success" if ok else "error", "volume": val, "command": cmd}
+
+        volume_action.__name__ = "volume"
+        volume_action.is_query = True
+        self.register(ActionTool(
+            name="volume",
+            func=volume_action,
+            description="Adjust or set master system volume level via PipeWire/PulseAudio.",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "enum": ["set", "up", "down", "mute", "unmute"], "description": "Volume operation"},
+                    "value": {"type": "string", "description": "Volume percentage or step (e.g. 80%, 50%, 15%)"}
+                },
+                "required": ["command"]
+            },
+            plugin_name="core"
+        ))
+
+        # 6. music tool
+        def music_action(command=None, context: str = "", history=None, **kwargs):
+            args = dict(kwargs)
+            if command and hasattr(command, "parameters"):
+                args.update(command.parameters)
+            action = args.get("action", "play-pause")
+            track = args.get("track") or args.get("query")
+            desktop = get_desktop_service(api=self.api)
+            if action == "play" and track:
+                from plugins.core.actions.media import play_song
+                cmd_mock = type("Cmd", (), {"parameters": {}})()
+                play_song(command=cmd_mock, context=track)
+                return {"status": "success", "playing": track}
+            elif action in ("pause", "resume", "play-pause", "next", "previous", "stop"):
+                player_act = "play-pause" if action in ("pause", "resume") else action
+                desktop.media_control(player_act)
+                return {"status": "success", "music_action": action}
+            return {"status": "error", "error": f"Unknown music action '{action}'"}
+
+        music_action.__name__ = "music"
+        music_action.is_query = True
+        self.register(ActionTool(
+            name="music",
+            func=music_action,
+            description="Control music and media playback (pause, resume, play, next, previous, stop).",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["pause", "resume", "play", "next", "previous", "stop"], "description": "Playback action"},
+                    "track": {"type": "string", "description": "Song title or artist query when playing"}
+                },
+                "required": ["action"]
+            },
+            plugin_name="core"
+        ))
+
+        # 7. hotkey tool
+        def hotkey_action(command=None, context: str = "", history=None, **kwargs):
+            args = dict(kwargs)
+            if command and hasattr(command, "parameters"):
+                args.update(command.parameters)
+            keys = args.get("keys") or args.get("hotkey") or []
+            if isinstance(keys, str):
+                keys = [k.strip() for k in keys.split("+")]
+            desktop = get_desktop_service(api=self.api)
+            ok = desktop.send_hotkey(keys)
+            return {"status": "success" if ok else "error", "pressed_keys": keys}
+
+        hotkey_action.__name__ = "hotkey"
+        hotkey_action.is_query = True
+        self.register(ActionTool(
+            name="hotkey",
+            func=hotkey_action,
+            description="Send keyboard shortcut or hotkey combination to focused window.",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["press"], "description": "Keypress action"},
+                    "keys": {"type": "array", "items": {"type": "string"}, "description": "List of keys (e.g. ['ctrl', 'f'], ['ctrl', 'w'])"}
+                },
+                "required": ["action", "keys"]
+            },
+            plugin_name="core"
+        ))
+
+        # 8. timer tool
+        def timer_action(command=None, context: str = "", history=None, **kwargs):
+            args = dict(kwargs)
+            if command and hasattr(command, "parameters"):
+                args.update(command.parameters)
+            action = args.get("action", "set")
+            duration = args.get("duration") or context
+            from plugins.core.actions.core import timer
+            cmd_mock = type("Cmd", (), {"parameters": {"action": action}})()
+            timer(command=cmd_mock, context=duration)
+            return {"status": "success", "timer_action": action, "duration": duration}
+
+        timer_action.__name__ = "timer"
+        timer_action.is_query = True
+        self.register(ActionTool(
+            name="timer",
+            func=timer_action,
+            description="Set, cancel or inspect countdown timers.",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["set", "cancel", "status"], "description": "Timer action"},
+                    "duration": {"type": "string", "description": "Timer duration (e.g. 5 minutes, 30 seconds)"}
+                },
+                "required": ["action"]
+            },
+            plugin_name="core"
+        ))
+
+        # 9. system tool
+        def system_action(command=None, context: str = "", history=None, **kwargs):
+            args = dict(kwargs)
+            if command and hasattr(command, "parameters"):
+                args.update(command.parameters)
+            action = args.get("action", "lock")
+            target = args.get("target") or context
+            desktop = get_desktop_service(api=self.api)
+            if action == "lock":
+                desktop.lock_session()
+                return {"status": "success", "locked": True}
+            elif action == "screenshot":
+                desktop.screenshot(mode=target or "full")
+                return {"status": "success", "screenshot": True}
+            elif action == "workspace" and target:
+                desktop.switch_workspace(str(target))
+                return {"status": "success", "workspace": target}
+            elif action == "battery":
+                from plugins.core.actions.core import battery
+                cmd_mock = type("Cmd", (), {"parameters": {}})()
+                battery(command=cmd_mock, context="")
+                return {"status": "success", "checked": "battery"}
+            elif action == "time":
+                from plugins.core.actions.core import tell_time
+                cmd_mock = type("Cmd", (), {"parameters": {}})()
+                tell_time(command=cmd_mock, context="")
+                return {"status": "success", "checked": "time"}
+            elif action == "weather":
+                from plugins.core.actions.core import say_weather
+                cmd_mock = type("Cmd", (), {"parameters": {}})()
+                say_weather(command=cmd_mock, context=target)
+                return {"status": "success", "checked": "weather"}
+            return {"status": "error", "error": f"Unknown system action '{action}'"}
+
+        system_action.__name__ = "system"
+        system_action.is_query = True
+        self.register(ActionTool(
+            name="system",
+            func=system_action,
+            description="System level operations: lock screen, check battery, tell time, weather, screenshot, or switch workspace.",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["lock", "battery", "time", "weather", "screenshot", "workspace"], "description": "System action"},
+                    "target": {"type": "string", "description": "Target argument (e.g. workspace number '2')"}
+                },
+                "required": ["action"]
+            },
+            plugin_name="core"
+        ))
+
+        log.info("Registered 9 core categorical MCP-style tools into ToolRegistry.")
 
     def sync_from_mcp(self, mcp_manager=None):
         """
@@ -329,6 +698,57 @@ class ToolRegistry:
                 self.register(tool)
                 if self.api and hasattr(self.api, "__actions__") and isinstance(self.api.__actions__, dict):
                     self.api.__actions__[dt.name] = caller
+
+            # Register built-in dynamic tool creator tool
+            def create_tool_action(command=None, context: str = "", history: Optional[List] = None, **kwargs):
+                args = dict(kwargs)
+                if isinstance(command, str) and "command" not in args:
+                    args["command"] = command
+                elif command and hasattr(command, "parameters") and isinstance(command.parameters, dict):
+                    args.update(command.parameters)
+                name = args.get("name")
+                desc = args.get("description") or args.get("desc") or f"Custom tool {name}"
+                cmd_template = args.get("command") or args.get("cmd") or args.get("command_template")
+                samples = args.get("sample_phrases") or args.get("samples") or []
+                if isinstance(samples, str):
+                    samples = [s.strip() for s in samples.split(",") if s.strip()]
+                params = args.get("parameters_schema") or args.get("params") or {}
+                if isinstance(params, str):
+                    import json
+                    try:
+                        params = json.loads(params)
+                    except Exception:
+                        params = {}
+                if not name or not cmd_template:
+                    return {"status": "error", "error": "Both 'name' and 'command' are required"}
+                dt = dtm.register(name=name, description=desc, command_template=cmd_template, parameters_schema=params, sample_phrases=samples)
+                self.sync_dynamic_tools()
+                return {"status": "success", "tool_name": name, "message": f"Tool '{name}' created and saved successfully."}
+            create_tool_action.__name__ = "create_tool"
+            create_tool_action.is_query = True
+            creator_tool = ActionTool(
+                name="create_tool",
+                func=create_tool_action,
+                description="Dynamically creates and permanently registers a new custom tool or command. Executes shell commands or scripts on demand.",
+                parameters_schema={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Identifier for the new tool (e.g. check_cpu_temp, get_weather)"},
+                        "description": {"type": "string", "description": "Explanation of what the tool does"},
+                        "command": {"type": "string", "description": "Shell command template to execute, with optional {context} placeholder"},
+                        "sample_phrases": {"type": "array", "items": {"type": "string"}, "description": "Sample voice phrases"}
+                    },
+                    "required": ["name", "command"]
+                },
+                default_params={},
+                requires_context=False,
+                sample_phrases=["create a tool", "new tool", "register tool", "создай команду", "создай инструмент"],
+                plugin_name="dynamic"
+            )
+            creator_tool.is_query = True
+            self.register(creator_tool)
+            if self.api and hasattr(self.api, "__actions__") and isinstance(self.api.__actions__, dict):
+                self.api.__actions__["create_tool"] = create_tool_action
 
             log.info(f"Synchronized {len(tools)} dynamic tools into ToolRegistry (Total tools: {len(self._tools)}).")
         except Exception as e:

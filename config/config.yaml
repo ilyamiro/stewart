@@ -50,15 +50,14 @@ start-up:
   voice-enable: true
 
 router:
-  mode: qwen # Options: 'qwen' (local fine-tuned Qwen2.5-1.5B GGUF with algorithmic fallback), 'hybrid', 'algorithmic', 'model', 'ollama', 'agy'
-  confidence_threshold: 0.55 # Minimum confidence score for model prediction
+  mode: hybrid # Dual-engine: instant algorithmic matching first (<0.1ms), then Antigravity (agy -p)
+  confidence_threshold: 0.50 # Minimum confidence score for model prediction
   model:
-    provider: qwen # 'qwen' (local fine-tuned Qwen2.5-1.5B GGUF), 'spacy', 'ollama', 'agy'
-    model_path: data/models/gguf/qwen2.5-1.5b-tool-caller-q8_0.gguf
+    provider: agy # 'agy' (Antigravity gemini-3.8-flash-low with stewart-voice skill)
     auto_train: false
-    fallback_to_algorithmic: true # Fallback to algorithmic matching
+    fallback_to_algorithmic: true
   qwen:
-    model_size: "1.5b" # Options: '0.5b' (ultra-fast ~130ms), '1.5b' (maximum 100% precision)
+    model_size: "1.5b"
     model_path: data/models/gguf/qwen2.5-1.5b-tool-caller-q8_0.gguf
     max_new_tokens: 128
   ollama:
@@ -71,12 +70,11 @@ router:
     effort: low
     skill_name: stewart-voice
     timeout: 60.0
-    dangerously_skip_permissions: false
-
+    dangerously_skip_permissions: true
 
   persona:
-    enabled: true # Dynamic British butler voice responses via fine-tuned Qwen2.5 Persona GGUF or Antigravity (agy)
-    provider: qwen # Options: 'qwen' (local GGUF), 'agy' (Antigravity gemini-3.8-flash-low with stewart-voice skill)
+    enabled: true # Dynamic British butler voice responses via Antigravity (agy)
+    provider: agy # 'agy' (Antigravity gemini-3.8-flash-low with stewart-voice skill)
     skill_name: stewart-voice
     model_size: "1.5b"
     model_path: data/models/gguf/qwen2.5-1.5b-persona-q8_0.gguf

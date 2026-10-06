@@ -1,33 +1,70 @@
 #!/usr/bin/env python3
 """
-Enhanced Dataset Generator for Qwen2.5-1.5B (Tool Calling & Butler Voice Persona).
-Expands tool coverage to include MCP tools (Studieplus, Gmail) and Dynamic Tools,
-incorporates rich bilingual (EN/RU) phrasings, speech variations, and negative chitchat,
-and formats system prompts with compact candidate tool schemas to optimize sequence length
-and VRAM footprint (<200 tokens) for high-speed training on RTX 3050 (3.2-3.3 GB VRAM).
+Massive Curated Bilingual Dataset Generator for Qwen2.5-1.5B Tool Calling.
+Produces ~14,000 high-quality, nuanced training samples (~7,000 EN + ~7,000 RU).
+Implements:
+1. Categorical MCP-style tool calls (file, web, app, brightness, volume, music, hotkey, timer, system).
+2. Deep semantic resolution (mapping entities to URLs/paths, colloquialisms like 'максимум' -> '100%').
+3. Multi-turn situational follow-ups (e.g. open YouTube -> open search -> ctrl+f).
+4. MCP Suites (Studieplus, Gmail, Study IB) + synthetic future MCP tools.
+5. Strict negative chitchat rejection (direct text replies with zero tool hallucination).
+6. Canonical sorted JSON serialization for minimal entropy and rapid convergence.
 """
 
 import json
 import random
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Tuple
 
-ALL_TOOLS = [
-    # Built-in Core Tools
+CATEGORICAL_TOOLS = [
     {
-        "name": "media_control",
-        "description": "Control music and media playback (pause, resume, skip track, previous song, mute).",
+        "name": "web",
+        "description": "Open website URLs or perform search queries in default web browser.",
         "parameters": {
             "type": "object",
             "properties": {
-                "control": {
-                    "type": "string",
-                    "enum": ["play-pause", "next", "previous", "stop", "mute", "unmute"],
-                    "description": "Playback action to perform"
-                },
-                "context": {"type": "string", "description": "Optional media details or search query"}
+                "action": {"type": "string", "enum": ["open", "search"], "description": "Web action"},
+                "url": {"type": "string", "description": "Website URL to open (e.g. https://wikipedia.org, https://youtube.com)"},
+                "query": {"type": "string", "description": "Search query terms if searching"}
             },
-            "required": ["control"]
+            "required": ["action"]
+        }
+    },
+    {
+        "name": "app",
+        "description": "Launch, close, or switch desktop applications (terminal, browser, files, code, etc.).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["launch", "close", "switch"], "description": "Application action"},
+                "name": {"type": "string", "description": "Application name or binary (e.g. kitty, terminal, files, telegram, code, youtube)"}
+            },
+            "required": ["action"]
+        }
+    },
+    {
+        "name": "file",
+        "description": "Open, rename, or delete files and directories on the local Linux filesystem.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["open", "rename", "delete"], "description": "File action"},
+                "path": {"type": "string", "description": "Target file or folder path (e.g. ~/Downloads, report.pdf)"},
+                "new_name": {"type": "string", "description": "New filename when renaming"}
+            },
+            "required": ["action", "path"]
+        }
+    },
+    {
+        "name": "brightness",
+        "description": "Adjust or set display screen brightness level.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "command": {"type": "string", "enum": ["set", "up", "down"], "description": "Brightness operation"},
+                "value": {"type": "string", "description": "Brightness percentage or delta (e.g. 100%, 50%, 20%)"}
+            },
+            "required": ["command"]
         }
     },
     {
@@ -36,176 +73,72 @@ ALL_TOOLS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "command": {
-                    "type": "string",
-                    "enum": ["up", "down", "set", "mute", "unmute"],
-                    "description": "Volume direction or action"
-                },
-                "context": {"type": "string", "description": "Amount, percentage or specific volume level (e.g. '50%', '10', 'maximum')"}
+                "command": {"type": "string", "enum": ["set", "up", "down", "mute", "unmute"], "description": "Volume operation"},
+                "value": {"type": "string", "description": "Volume percentage or step (e.g. 80%, 50%, 15%)"}
             },
             "required": ["command"]
         }
     },
     {
-        "name": "brightness",
-        "description": "Adjust or set screen display brightness.",
+        "name": "music",
+        "description": "Control music and media playback (pause, resume, play, next, previous, stop).",
         "parameters": {
             "type": "object",
             "properties": {
-                "command": {
-                    "type": "string",
-                    "enum": ["up", "down", "set"],
-                    "description": "Brightness direction or action"
-                },
-                "context": {"type": "string", "description": "Percentage or level (e.g. '80%', 'max', 'minimum')"}
+                "action": {"type": "string", "enum": ["pause", "resume", "play", "next", "previous", "stop"], "description": "Playback action"},
+                "track": {"type": "string", "description": "Song title or artist query when playing"}
             },
-            "required": ["command"]
-        }
-    },
-    {
-        "name": "tell_time",
-        "description": "Announce the current system time or date.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "context": {"type": "string", "description": "Optional format request (e.g. 'date', 'time', 'exact')"}
-            }
-        }
-    },
-    {
-        "name": "say_weather",
-        "description": "Fetch and announce the current weather forecast.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "context": {"type": "string", "description": "Optional city name or location"}
-            }
-        }
-    },
-    {
-        "name": "timer",
-        "description": "Set, start or cancel a countdown timer.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "context": {"type": "string", "description": "Timer duration (e.g. '5 minutes', '30 seconds', '1 hour', '10 мин')"},
-                "action": {"type": "string", "enum": ["set", "cancel", "status"], "default": "set"}
-            },
-            "required": ["context"]
-        }
-    },
-    {
-        "name": "stopwatch",
-        "description": "Control stopwatch (start, stop, reset, lap).",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "way": {"type": "string", "enum": ["on", "off", "reset", "lap"], "description": "Stopwatch operation"}
-            },
-            "required": ["way"]
+            "required": ["action"]
         }
     },
     {
         "name": "hotkey",
-        "description": "Simulate keyboard shortcut or window management hotkey.",
+        "description": "Send keyboard shortcut or hotkey combination to focused window.",
         "parameters": {
             "type": "object",
             "properties": {
-                "hotkey": {"type": "array", "items": {"type": "string"}, "description": "Key combination list, e.g. ['ctrl', 'w'] to close tab, ['ctrl', 't'] for new tab, ['alt', 'f4'] to close window"},
-                "context": {"type": "string", "description": "Target description"}
+                "action": {"type": "string", "enum": ["press"], "description": "Keypress action"},
+                "keys": {"type": "array", "items": {"type": "string"}, "description": "List of keys (e.g. ['ctrl', 'f'], ['ctrl', 'w'])"}
             },
-            "required": ["hotkey"]
+            "required": ["action", "keys"]
         }
     },
     {
-        "name": "subprocess",
-        "description": "Launch or open a desktop application (file manager, terminal, browser, text editor).",
+        "name": "timer",
+        "description": "Set, cancel or inspect countdown timers.",
         "parameters": {
             "type": "object",
             "properties": {
-                "subprocess": {"type": "array", "items": {"type": "string"}, "description": "Application command to execute, e.g. ['xdg-open', '.'] or ['nautilus'] or ['google-chrome']"},
-                "context": {"type": "string", "description": "File or folder name or app name"}
+                "action": {"type": "string", "enum": ["set", "cancel", "status"], "description": "Timer action"},
+                "duration": {"type": "string", "description": "Timer duration (e.g. 5 minutes, 30 seconds)"}
             },
-            "required": ["subprocess"]
+            "required": ["action"]
         }
     },
     {
-        "name": "screenshot",
-        "description": "Capture a screenshot of the entire screen or active window.",
+        "name": "system",
+        "description": "System level operations: lock screen, check battery, tell time, weather, screenshot, or switch workspace.",
         "parameters": {
             "type": "object",
             "properties": {
-                "context": {"type": "string", "description": "Optional area specification ('full', 'window', 'selection')"}
-            }
-        }
-    },
-    {
-        "name": "lock_session",
-        "description": "Lock the user session or screen immediately.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "battery_health",
-        "description": "Report current battery state, percentage, and health status.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "play_song",
-        "description": "Search and play a specific song, artist, or music track on YouTube/YouTube Music.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "context": {"type": "string", "description": "Song title or artist query"}
+                "action": {"type": "string", "enum": ["lock", "battery", "time", "weather", "screenshot", "workspace"], "description": "System action"},
+                "target": {"type": "string", "description": "Target argument (e.g. workspace number '2')"}
             },
-            "required": ["context"]
+            "required": ["action"]
         }
-    },
-    {
-        "name": "find_video",
-        "description": "Search and open a video on YouTube.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "context": {"type": "string", "description": "Search phrase or topic for the video"}
-            },
-            "required": ["context"]
-        }
-    },
-    {
-        "name": "typing",
-        "description": "Type text directly into the focused window via keyboard emulation.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "context": {"type": "string", "description": "Text to type out"}
-            },
-            "required": ["context"]
-        }
-    },
+    }
+]
 
-    # Dynamic Tools
-    {
-        "name": "change_file_name",
-        "description": "Rename or move a file or folder on the local Linux filesystem.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "src": {"type": "string", "description": "Source path"},
-                "dst": {"type": "string", "description": "Destination path"}
-            },
-            "required": ["src", "dst"]
-        }
-    },
-
-    # MCP Studieplus Tools
+MCP_TOOLS = [
     {
         "name": "studieplus_get_schedule",
         "description": "Fetch school timetable and class schedule for a specific day or week from Studieplus.",
         "parameters": {
             "type": "object",
             "properties": {
-                "day": {"type": "string", "description": "Target day (e.g. 'today', 'tomorrow', 'monday', 'next week')"}
-            }
+                "day": {"type": "string", "description": "Target day (e.g. today, tomorrow, monday, next week)"}
+            },
+            "required": ["day"]
         }
     },
     {
@@ -215,7 +148,7 @@ ALL_TOOLS = [
             "type": "object",
             "properties": {
                 "status": {"type": "string", "enum": ["pending", "all", "upcoming"], "description": "Filter assignments by status"},
-                "subject": {"type": "string", "description": "Optional school subject name (e.g. 'Math', 'Physics', 'History')"}
+                "subject": {"type": "string", "description": "Optional school subject name (e.g. Math, Physics)"}
             }
         }
     },
@@ -240,7 +173,7 @@ ALL_TOOLS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "subject": {"type": "string", "description": "IB subject (e.g. 'Mathematics HL', 'Physics HL', 'Economics SL')"},
+                "subject": {"type": "string", "description": "IB subject (e.g. Mathematics HL, Physics HL, Economics SL)"},
                 "resource_type": {"type": "string", "enum": ["past_papers", "study_guide", "question_bank", "syllabus"], "description": "Type of resource requested"}
             },
             "required": ["subject"]
@@ -252,14 +185,12 @@ ALL_TOOLS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "topic": {"type": "string", "description": "Subject or specific topic to practice (e.g. 'Calculus Derivatives', 'Wave Optics')"},
+                "topic": {"type": "string", "description": "Subject or specific topic to practice (e.g. Calculus Derivatives, Wave Optics)"},
                 "difficulty": {"type": "string", "enum": ["standard", "higher", "easy", "hard"], "description": "Level of difficulty"}
             },
             "required": ["topic"]
         }
     },
-
-    # MCP Gmail Tools
     {
         "name": "gmail_check_status",
         "description": "Check Gmail connection and report count of unread emails or new messages.",
@@ -271,7 +202,7 @@ ALL_TOOLS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "Search query or sender name (e.g. 'from:teacher', 'invoice', 'Google')"},
+                "query": {"type": "string", "description": "Search query or sender name (e.g. from:Google, invoice)"},
                 "max_results": {"type": "integer", "description": "Maximum number of email results to return"}
             },
             "required": ["query"]
@@ -292,637 +223,717 @@ ALL_TOOLS = [
     }
 ]
 
-EN_PREFIXES = [
-    "", "please ", "stewart ", "hey stewart ", "stewart please ", "could you ", "can you please ",
-    "would you mind to ", "go ahead and ", "just ", "quick question ", "hey "
+SYNTHETIC_FUTURE_MCP_TOOLS = [
+    {
+        "name": "calendar_create_event",
+        "description": "Create a new calendar entry with title, date, and start time.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Title of event"},
+                "date": {"type": "string", "description": "Event date (YYYY-MM-DD or 'tomorrow')"},
+                "time": {"type": "string", "description": "Start time (HH:MM)"}
+            },
+            "required": ["title", "date"]
+        }
+    },
+    {
+        "name": "notes_create_note",
+        "description": "Quickly create and save a markdown note.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Title of note"},
+                "content": {"type": "string", "description": "Body text of note"}
+            },
+            "required": ["title", "content"]
+        }
+    },
+    {
+        "name": "home_toggle_device",
+        "description": "Turn on, off, or toggle a smart home device or light.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "device": {"type": "string", "description": "Name of smart home device (e.g. desk light, bedroom fan)"},
+                "state": {"type": "string", "enum": ["on", "off", "toggle"], "description": "Target power state"}
+            },
+            "required": ["device", "state"]
+        }
+    }
 ]
-RU_PREFIXES = [
-    "", "пожалуйста ", "стюарт ", "стюарт пожалуйста ", "эй стюарт ", "можешь ", "сделай ",
-    "будь добр ", "пожалуйста сделай ", "давай ", "просто "
-]
+
+ALL_SYSTEM_TOOLS = CATEGORICAL_TOOLS + MCP_TOOLS + SYNTHETIC_FUTURE_MCP_TOOLS
 
 
-def format_compact_schema(tool: Dict[str, Any]) -> str:
-    """Produces a dense single-line representation of a tool schema for compact prompts."""
-    name = tool["name"]
-    params = tool.get("parameters", {}).get("properties", {})
-    param_strs = []
-    for pname, pinfo in params.items():
-        ptype = pinfo.get("type", "any")
-        if "enum" in pinfo:
-            ptype = "|".join(f'"{e}"' for e in pinfo["enum"])
-        param_strs.append(f"{pname}: {ptype}")
-    params_repr = ", ".join(param_strs)
-    desc = tool.get("description", "")
-    return f"{name}({params_repr}) - {desc}"
-
-
-def generate_all_samples() -> List[Dict[str, Any]]:
-    samples = []
-
-    # 1. MEDIA CONTROL
-    media = [
-        ("pause the music", "media_control", {"control": "play-pause"}),
-        ("pause playback", "media_control", {"control": "play-pause"}),
-        ("pause video", "media_control", {"control": "play-pause"}),
-        ("unpause the song", "media_control", {"control": "play-pause"}),
-        ("resume playback", "media_control", {"control": "play-pause"}),
-        ("resume music", "media_control", {"control": "play-pause"}),
-        ("stop the music", "media_control", {"control": "play-pause"}),
-        ("halt audio", "media_control", {"control": "play-pause"}),
-        ("skip this track", "media_control", {"control": "next"}),
-        ("next song", "media_control", {"control": "next"}),
-        ("next track please", "media_control", {"control": "next"}),
-        ("previous song", "media_control", {"control": "previous"}),
-        ("previous track", "media_control", {"control": "previous"}),
-        ("go back to last song", "media_control", {"control": "previous"}),
-        ("mute the sound", "media_control", {"control": "mute"}),
-        ("unmute audio", "media_control", {"control": "unmute"}),
-        ("поставь на паузу", "media_control", {"control": "play-pause"}),
-        ("пауза музыки", "media_control", {"control": "play-pause"}),
-        ("останови воспроизведение", "media_control", {"control": "play-pause"}),
-        ("возобнови музыку", "media_control", {"control": "play-pause"}),
-        ("продолжи воспроизведение", "media_control", {"control": "play-pause"}),
-        ("сними с паузы", "media_control", {"control": "play-pause"}),
-        ("следующий трек", "media_control", {"control": "next"}),
-        ("следующая песня", "media_control", {"control": "next"}),
-        ("переключи на следующий", "media_control", {"control": "next"}),
-        ("скипни песню", "media_control", {"control": "next"}),
-        ("предыдущий трек", "media_control", {"control": "previous"}),
-        ("предыдущая песня", "media_control", {"control": "previous"}),
-        ("заглуши звук", "media_control", {"control": "mute"}),
-        ("включи звук обратно", "media_control", {"control": "unmute"}),
-    ]
-    for text, tool, args in media:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": tool, "args": args})
-
-    # 2. VOLUME
-    vol_steps = ["5", "10", "15", "20", "25", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%", "max"]
-    for s in vol_steps:
-        samples.append({"query": f"set volume to {s}", "tool": "volume", "args": {"command": "set", "context": s}})
-        samples.append({"query": f"volume {s}", "tool": "volume", "args": {"command": "set", "context": s}})
-        samples.append({"query": f"установи громкость на {s}", "tool": "volume", "args": {"command": "set", "context": s}})
-        samples.append({"query": f"сделай звук {s}", "tool": "volume", "args": {"command": "set", "context": s}})
-
-    vols = [
-        ("make it louder", "volume", {"command": "up", "context": "10"}),
-        ("turn up the sound", "volume", {"command": "up", "context": "10"}),
-        ("volume up please", "volume", {"command": "up", "context": "10"}),
-        ("boost audio", "volume", {"command": "up", "context": "10"}),
-        ("turn the sound down", "volume", {"command": "down", "context": "10"}),
-        ("volume down", "volume", {"command": "down", "context": "10"}),
-        ("make it quieter", "volume", {"command": "down", "context": "10"}),
-        ("lower the sound", "volume", {"command": "down", "context": "10"}),
-        ("сделай погромче", "volume", {"command": "up", "context": "10"}),
-        ("прибавь звук", "volume", {"command": "up", "context": "10"}),
-        ("увеличь громкость", "volume", {"command": "up", "context": "10"}),
-        ("сделай тише", "volume", {"command": "down", "context": "10"}),
-        ("убавь громкость", "volume", {"command": "down", "context": "10"}),
-        ("потише звук", "volume", {"command": "down", "context": "10"}),
-        ("mute master sound", "volume", {"command": "mute", "context": ""}),
-        ("выключи звук полностью", "volume", {"command": "mute", "context": ""}),
-    ]
-    for text, tool, args in vols:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": tool, "args": args})
-
-    # 3. BRIGHTNESS
-    bright = [
-        ("screen brightness up", "brightness", {"command": "up", "context": "10"}),
-        ("increase display brightness", "brightness", {"command": "up", "context": "10"}),
-        ("make screen brighter", "brightness", {"command": "up", "context": "10"}),
-        ("dim the screen", "brightness", {"command": "down", "context": "10"}),
-        ("lower screen brightness", "brightness", {"command": "down", "context": "10"}),
-        ("make screen darker", "brightness", {"command": "down", "context": "10"}),
-        ("прибавь яркость экрана", "brightness", {"command": "up", "context": "10"}),
-        ("сделай экран поярче", "brightness", {"command": "up", "context": "10"}),
-        ("увеличь яркость дисплея", "brightness", {"command": "up", "context": "10"}),
-        ("убавь яркость", "brightness", {"command": "down", "context": "10"}),
-        ("сделай потемнее экран", "brightness", {"command": "down", "context": "10"}),
-    ]
-    for text, tool, args in bright:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": tool, "args": args})
-
-    for bval in ["30%", "50%", "70%", "80%", "100%", "maximum"]:
-        samples.append({"query": f"set brightness to {bval}", "tool": "brightness", "args": {"command": "set", "context": bval}})
-        samples.append({"query": f"поставь яркость на {bval}", "tool": "brightness", "args": {"command": "set", "context": bval}})
-
-    # 4. TELL TIME & WEATHER
-    times = [
-        "what time is it", "tell me the time", "current time please", "what hour is it",
-        "сколько сейчас времени", "который час", "подскажи время", "назови точное время"
-    ]
-    for t in times:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in t) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{t}".strip(), "tool": "tell_time", "args": {}})
-
-    weathers = [
-        ("what is the weather like", ""), ("how is the weather outside", ""),
-        ("weather in Berlin", "Berlin"), ("weather in London", "London"), ("weather in Paris", "Paris"),
-        ("какая сейчас погода", ""), ("какая погода в Москве", "Москва"), ("погода в Санкт-Петербурге", "Санкт-Петербург")
-    ]
-    for wtext, loc in weathers:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in wtext) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{wtext}".strip(), "tool": "say_weather", "args": {"context": loc} if loc else {}})
-
-    # 5. TIMER & STOPWATCH
-    tdurs = [
-        ("5 minutes", "5 minutes"), ("10 minutes", "10 minutes"), ("15 minutes", "15 minutes"),
-        ("1 hour", "1 hour"), ("30 seconds", "30 seconds"),
-        ("5 минут", "5 минут"), ("10 минут", "10 минут"), ("15 минут", "15 минут"), ("полчаса", "30 минут")
-    ]
-    for dtext, dnorm in tdurs:
-        samples.append({"query": f"set a timer for {dtext}", "tool": "timer", "args": {"context": dnorm, "action": "set"}})
-        samples.append({"query": f"timer {dtext}", "tool": "timer", "args": {"context": dnorm, "action": "set"}})
-        samples.append({"query": f"поставь таймер на {dtext}", "tool": "timer", "args": {"context": dnorm, "action": "set"}})
-        samples.append({"query": f"таймер {dtext}", "tool": "timer", "args": {"context": dnorm, "action": "set"}})
-
-    sws = [
-        ("start stopwatch", {"way": "on"}), ("stop stopwatch", {"way": "off"}), ("reset stopwatch", {"way": "reset"}),
-        ("запусти секундомер", {"way": "on"}), ("останови секундомер", {"way": "off"}), ("сбрось секундомер", {"way": "reset"})
-    ]
-    for text, args in sws:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": "stopwatch", "args": args})
-
-    # 6. HOTKEY & APPS & SYSTEM
-    hk_apps = [
-        ("close this tab", "hotkey", {"hotkey": ["ctrl", "w"], "context": "close tab"}),
-        ("open new tab", "hotkey", {"hotkey": ["ctrl", "t"], "context": "new tab"}),
-        ("close this window", "hotkey", {"hotkey": ["alt", "f4"], "context": "close window"}),
-        ("закрой вкладку", "hotkey", {"hotkey": ["ctrl", "w"], "context": "close tab"}),
-        ("открой новую вкладку", "hotkey", {"hotkey": ["ctrl", "t"], "context": "new tab"}),
-        ("закрой окно", "hotkey", {"hotkey": ["alt", "f4"], "context": "close window"}),
-        ("open file manager", "subprocess", {"subprocess": ["xdg-open", "."], "context": "files"}),
-        ("open browser", "subprocess", {"subprocess": ["google-chrome"], "context": "browser"}),
-        ("open terminal", "subprocess", {"subprocess": ["x-terminal-emulator"], "context": "terminal"}),
-        ("launch code editor", "subprocess", {"subprocess": ["code"], "context": "code editor"}),
-        ("открой проводник", "subprocess", {"subprocess": ["xdg-open", "."], "context": "files"}),
-        ("открой терминал", "subprocess", {"subprocess": ["x-terminal-emulator"], "context": "terminal"}),
-        ("запусти браузер", "subprocess", {"subprocess": ["google-chrome"], "context": "browser"}),
-        ("take a screenshot", "screenshot", {}),
-        ("capture the screen", "screenshot", {}),
-        ("сделай скриншот", "screenshot", {}),
-        ("lock the screen", "lock_session", {}),
-        ("lock my computer", "lock_session", {}),
-        ("заблокируй экран", "lock_session", {}),
-        ("check battery status", "battery_health", {}),
-        ("what is my battery level", "battery_health", {}),
-        ("уровень заряда батареи", "battery_health", {})
-    ]
-    for text, tool, args in hk_apps:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": tool, "args": args})
-
-    # 7. SONGS & VIDEOS & TYPING
-    songs = [
-        ("play song bohemian rhapsody", "play_song", {"context": "bohemian rhapsody"}),
-        ("play music daft punk", "play_song", {"context": "daft punk"}),
-        ("включи песню группа крови", "play_song", {"context": "группа крови"}),
-        ("find video about quantum computing", "find_video", {"context": "quantum computing"}),
-        ("найди видео про черные дыры", "find_video", {"context": "черные дыры"}),
-        ("type hello world", "typing", {"context": "hello world"}),
-        ("напечатай добрый вечер", "typing", {"context": "добрый вечер"})
-    ]
-    for text, tool, args in songs:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": tool, "args": args})
-
-    # =========================================================================
-    # 8. MCP TOOLS & DYNAMIC TOOLS (NEW & ENHANCED)
-    # =========================================================================
-
-    # Dynamic Tool: change_file_name
-    rename_samples = [
-        ("rename notes.txt to notes_backup.txt", {"src": "notes.txt", "dst": "notes_backup.txt"}),
-        ("change file name report.pdf to final_report.pdf", {"src": "report.pdf", "dst": "final_report.pdf"}),
-        ("move document.docx to archive.docx", {"src": "document.docx", "dst": "archive.docx"}),
-        ("переименуй файл data.json в data_old.json", {"src": "data.json", "dst": "data_old.json"}),
-        ("переименуй фото img1.png в avatar.png", {"src": "img1.png", "dst": "avatar.png"}),
-        ("смени имя файла draft.txt на publication.txt", {"src": "draft.txt", "dst": "publication.txt"})
-    ]
-    for text, args in rename_samples:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": "change_file_name", "args": args})
-
-    # MCP Studieplus: Schedule
-    schedule_samples = [
-        ("what is my school schedule today", {"day": "today"}),
-        ("check today's timetable", {"day": "today"}),
-        ("what classes do I have today", {"day": "today"}),
-        ("what is on my schedule for tomorrow", {"day": "tomorrow"}),
-        ("check timetable for tomorrow", {"day": "tomorrow"}),
-        ("show my monday class schedule", {"day": "monday"}),
-        ("what is my schedule for next week", {"day": "next week"}),
-        ("какое у меня расписание на сегодня", {"day": "today"}),
-        ("какие уроки сегодня в школе", {"day": "today"}),
-        ("что у меня по расписанию завтра", {"day": "tomorrow"}),
-        ("покажи расписание на понедельник", {"day": "monday"}),
-        ("какое расписание на следующую неделю", {"day": "next week"})
-    ]
-    for text, args in schedule_samples:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": "studieplus_get_schedule", "args": args})
-
-    # MCP Studieplus: Assignments & Homework
-    assign_samples = [
-        ("what homework do I have due", {"status": "pending"}),
-        ("check pending assignments in Studieplus", {"status": "pending"}),
-        ("do I have any upcoming homework", {"status": "upcoming"}),
-        ("show all assignments for math", {"status": "all", "subject": "Math"}),
-        ("check physics homework deadlines", {"status": "pending", "subject": "Physics"}),
-        ("какая домашняя работа задана", {"status": "pending"}),
-        ("какие задания висят в studieplus", {"status": "pending"}),
-        ("проверь домашку по математике", {"status": "all", "subject": "Math"}),
-        ("есть ли дедлайны по физике", {"status": "pending", "subject": "Physics"}),
-        ("покажи все невыполненные задания", {"status": "pending"})
-    ]
-    for text, args in assign_samples:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": "studieplus_get_assignments", "args": args})
-
-    # MCP Studieplus: School Conversations & Messages
-    conv_samples = [
-        ("check my school messages in Studieplus", {}),
-        ("did my teacher send any announcements", {}),
-        ("search messages from Mr. Anderson", {"query": "Mr. Anderson"}),
-        ("any recent messages from school", {}),
-        ("проверь школьные сообщения в studieplus", {}),
-        ("писали ли преподаватели объявления", {}),
-        ("найди сообщения от учителя математики", {"query": "математика"}),
-        ("есть ли новые сообщения из школы", {})
-    ]
-    for text, args in conv_samples:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": "studieplus_get_conversations", "args": args})
-
-    # MCP Studieplus: Session check
-    sess_samples = [
-        ("check if Studieplus session is active", {}),
-        ("am I logged into Studieplus", {}),
-        ("проверь сессию studieplus", {}),
-        ("активен ли вход в школьный портал", {})
-    ]
-    for text, args in sess_samples:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": "studieplus_check_session", "args": args})
-
-    # MCP Study IB Resources & Test Prep
-    study_samples = [
-        ("get IB past papers for Mathematics HL", "study_get_ib_resources", {"subject": "Mathematics HL", "resource_type": "past_papers"}),
-        ("fetch physics study guide for IB", "study_get_ib_resources", {"subject": "Physics HL", "resource_type": "study_guide"}),
-        ("get question bank for chemistry SL", "study_get_ib_resources", {"subject": "Chemistry SL", "resource_type": "question_bank"}),
-        ("подбери экзаменационные билеты IB по математике", "study_get_ib_resources", {"subject": "Mathematics HL", "resource_type": "past_papers"}),
-        ("найди материалы подготовки IB по физике", "study_get_ib_resources", {"subject": "Physics HL", "resource_type": "study_guide"}),
-        ("prepare a practice test on Calculus derivatives", "study_prepare_test", {"topic": "Calculus derivatives", "difficulty": "higher"}),
-        ("quiz me on wave optics", "study_prepare_test", {"topic": "wave optics", "difficulty": "standard"}),
-        ("создай проверочный тест по кинематике", "study_prepare_test", {"topic": "кинематика", "difficulty": "standard"}),
-        ("подготовь практические вопросы по интегралам", "study_prepare_test", {"topic": "интегралы", "difficulty": "hard"})
-    ]
-    for text, tool, args in study_samples:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": tool, "args": args})
-
-    # MCP Gmail: Check Status & Search & Send
-    gmail_samples = [
-        ("check my email status", "gmail_check_status", {}),
-        ("do I have any unread emails", "gmail_check_status", {}),
-        ("check gmail for new messages", "gmail_check_status", {}),
-        ("проверь почту gmail", "gmail_check_status", {}),
-        ("есть ли новые письма на почте", "gmail_check_status", {}),
-        ("сколько непрочитанных сообщений в gmail", "gmail_check_status", {}),
-        ("search emails from teacher", "gmail_search_emails", {"query": "from:teacher", "max_results": 5}),
-        ("find emails about project deadline", "gmail_search_emails", {"query": "project deadline", "max_results": 5}),
-        ("search inbox for GitHub notifications", "gmail_search_emails", {"query": "GitHub", "max_results": 5}),
-        ("найди письма от университета", "gmail_search_emails", {"query": "университет", "max_results": 5}),
-        ("поищи в почте квитанцию об оплате", "gmail_search_emails", {"query": "квитанция", "max_results": 5}),
-        ("send email to teacher@school.org about homework", "gmail_send_email", {"to": "teacher@school.org", "subject": "Homework submission", "body": "Dear teacher, here is my homework."}),
-        ("отправь письмо на test@example.com с темой Отчет", "gmail_send_email", {"to": "test@example.com", "subject": "Отчет", "body": "Здравствуйте, высылаю отчет."})
-    ]
-    for text, tool, args in gmail_samples:
-        pref = RU_PREFIXES if any(ord(c) > 127 for c in text) else EN_PREFIXES
-        for p in pref[:6]:
-            samples.append({"query": f"{p}{text}".strip(), "tool": tool, "args": args})
-
-    # 9. NEGATIVE / GENERAL CHITCHAT (NO TOOL DISPATCHED)
-    chitchat = [
-        ("who is the current prime minister of the UK?", "The Prime Minister of the United Kingdom is Keir Starmer, sir."),
-        ("tell me an elegant programming joke", "Why do programmers prefer dark mode? Because light attracts bugs, sir."),
-        ("what is an operating system kernel?", "The kernel is the core program that manages system resources and hardware communication, sir."),
-        ("how does quantum entanglement work in physics?", "Quantum entanglement describes particles whose states remain interconnected regardless of distance, sir."),
-        ("good morning Stewart, how are you today?", "Good morning, sir. All subsystems are optimal and ready for your commands."),
-        ("thank you very much Stewart", "It is my absolute pleasure to assist, sir."),
-        ("доброе утро Стюарт как твои дела", "Доброе утро, сэр. Все системы функционируют безупречно."),
-        ("кто такой иссак ньютон", "Исаак Ньютон — великий английский физик и математик, открывший закон всемирного тяготения, сэр."),
-        ("расскажи короткую шутку", "Теория — это когда всё известно, но ничего не работает. Практика — когда всё работает, но никто не знает почему."),
-        ("какое расстояние от Земли до Луны", "Среднее расстояние до Луны составляет около 384 тысяч километров, сэр."),
-        ("спасибо за помощь Стюарт", "Всегда к вашим услугам, сэр.")
-    ]
-    for q, ans in chitchat:
-        samples.append({"query": q, "tool": None, "args": None, "response": ans})
-
-    return samples
-
-
-def build_compact_tool_prompt(target_tool_name: Optional[str], all_tools: List[Dict[str, Any]]) -> str:
-    """
-    Builds a compact prompt containing candidate tool schemas.
-    To ensure prompt length remains <= 170 tokens while maintaining high accuracy:
-    If target_tool_name is provided: includes target tool + 2 random distractor tools.
-    If no tool (chitchat): includes 3 random candidate tools.
-    """
-    tools_by_name = {t["name"]: t for t in all_tools}
-    selected_tools = []
-
-    if target_tool_name and target_tool_name in tools_by_name:
-        selected_tools.append(tools_by_name[target_tool_name])
-
-    other_tools = [t for t in all_tools if t["name"] != target_tool_name]
-    distractors = random.sample(other_tools, min(2, len(other_tools)))
-    selected_tools.extend(distractors)
-    random.shuffle(selected_tools)
-
-    lines = [format_compact_schema(t) for t in selected_tools]
-    tools_str = "\n".join(f"- {l}" for l in lines)
-
+def format_tool_schema(tools: List[Dict[str, Any]]) -> str:
+    lines = []
+    for t in tools:
+        name = t["name"]
+        desc = t.get("description", "")
+        props = t.get("parameters", {}).get("properties", {})
+        param_strs = []
+        for pname, pinfo in sorted(props.items()):
+            ptype = pinfo.get("type", "any")
+            if "enum" in pinfo:
+                ptype = "|".join(f'"{e}"' for e in pinfo["enum"])
+            param_strs.append(f"{pname}: {ptype}")
+        lines.append(f"- {name}({', '.join(param_strs)}) - {desc}")
+    tools_block = "\n".join(lines)
     return (
-        "You are Stewart, an intelligent Linux AI voice assistant.\n"
-        f"Available tools:\n{tools_str}\n"
-        "Call single tool using: <tool_call>{\"name\": \"...\", \"arguments\": {...}}</tool_call>.\n"
+        "You are Stewart, an intelligent Linux AI voice assistant on Hyprland.\n"
+        "Available tools:\n"
+        f"{tools_block}\n"
+        "Call tools using: <tool_call>{\"arguments\": {...}, \"name\": \"...\"}</tool_call>.\n"
         "If no tool applies, answer directly."
     )
 
 
-def generate_persona_samples() -> List[Dict[str, Any]]:
-    """Generates comprehensive bilingual refined British butler voice persona examples."""
-    sys_en = (
-        "You are Stewart, an intelligent, refined AI butler running on Linux. "
-        "You speak concisely (1-2 sentences) in a polite, respectful tone, addressing the user as Sir or Illia. "
-        "You confirm actions smoothly and provide witty, helpful answers."
-    )
-    sys_ru = (
-        "Вы — Стюарт, умный и вежливый голосовой дворецкий для Linux. "
-        "Вы говорите лаконично (1-2 предложения), уважительно, называя пользователя сэр или Илья. "
-        "Вы изящно подтверждаете действия и даете остроумные, полезные ответы."
-    )
+def make_tool_call(name: str, arguments: Dict[str, Any]) -> str:
+    # Strict canonical format with sorted keys
+    data = {
+        "arguments": {k: arguments[k] for k in sorted(arguments.keys())},
+        "name": name
+    }
+    return f"<tool_call>\n{json.dumps(data, ensure_ascii=False, sort_keys=True)}\n</tool_call>"
 
-    examples = []
 
-    # First load existing high quality persona dataset
-    existing_file = Path(__file__).resolve().parent.parent / "data/dataset/persona_train.jsonl"
-    if existing_file.exists():
-        with open(existing_file, "r", encoding="utf-8") as f:
-            for line in f:
-                try:
-                    data = json.loads(line)
-                    # Filter out any unusually long dialogue
-                    total_chars = sum(len(m.get("content", "")) for m in data.get("messages", []))
-                    if total_chars < 500:
-                        examples.append(data)
-                except Exception:
-                    pass
+def pick_candidate_tools(target_tool_names: List[str], max_candidates: int = 10) -> List[Dict[str, Any]]:
+    # Select candidate tools ensuring target tools are present + random distractors
+    targets = [t for t in ALL_SYSTEM_TOOLS if t["name"] in target_tool_names]
+    distractors = [t for t in ALL_SYSTEM_TOOLS if t["name"] not in target_tool_names]
+    random.shuffle(distractors)
+    needed = max_candidates - len(targets)
+    candidates = targets + distractors[:max(0, needed)]
+    random.shuffle(candidates)
+    return candidates
 
-    # MCP Studieplus Schedule
-    sched_cases = [
-        ("en", "What is my schedule for today Stewart?", "studieplus_get_schedule", {"day": "today", "classes": ["Mathematics HL", "Physics HL", "English Literature"]}, "Here is your timetable for today, sir. You have Mathematics followed by Physics and English."),
-        ("en", "Do I have school tomorrow?", "studieplus_get_schedule", {"day": "tomorrow", "classes": ["Chemistry", "History"]}, "Tomorrow you have Chemistry followed by History, Illia. A well-balanced day ahead."),
-        ("ru", "Стюарт, какое у меня расписание на сегодня?", "studieplus_get_schedule", {"day": "today", "classes": ["Математика", "Физика"]}, "На сегодня у вас математика и физика, сэр. Желаю продуктивного дня."),
-        ("ru", "Что по урокам на завтра?", "studieplus_get_schedule", {"day": "tomorrow", "classes": ["Химия", "История"]}, "Завтра в вашем расписании химия и история, Илья.")
+
+# =========================================================================
+# 1. Categorical Desktop Tools Generators
+# =========================================================================
+
+def gen_brightness_samples(is_ru: bool) -> List[Tuple[str, str, List[str]]]:
+    samples = []
+    levels = [
+        ("10%", ["10 percent", "ten percent", "ten%"], ["10 процентов", "десять процентов", "на десять"]),
+        ("25%", ["quarter", "25 percent"], ["на четверть", "двадцать пять процентов"]),
+        ("50%", ["half", "halfway", "50 percent", "medium"], ["наполовину", "на 50 процентов", "среднюю яркость"]),
+        ("75%", ["75 percent", "three quarters"], ["на семьдесят пять процентов", "три четверти"]),
+        ("80%", ["80 percent", "eighty"], ["80 процентов", "на восемьдесят"]),
+        ("100%", ["maximum", "max", "full brightness", "hundred percent"], ["максимум", "на максимум", "на полную", "сто процентов"])
     ]
-    # MCP Studieplus Assignments
-    hw_cases = [
-        ("en", "Check my pending assignments Stewart.", "studieplus_get_assignments", {"count": 2, "items": ["Math problem set", "Physics lab"]}, "You have two assignments due, sir: the Mathematics problem set and your Physics lab report."),
-        ("en", "Any homework for tonight?", "studieplus_get_assignments", {"count": 0}, "No pending assignments detected for tonight, sir. An excellent opportunity to relax."),
-        ("ru", "Какая домашка задана?", "studieplus_get_assignments", {"count": 2, "items": ["Математика", "Физика"]}, "У вас два активных задания, сэр: упражнения по математике и лабораторная по физике."),
-        ("ru", "Есть ли долги по учебе?", "studieplus_get_assignments", {"count": 0}, "Никаких задолженностей нет, Илья. Все сдано вовремя.")
-    ]
-    # MCP Gmail
-    mail_cases = [
-        ("en", "Do I have any unread emails?", "gmail_check_status", {"unread": 3}, "You have three unread messages in your inbox, sir, including an update from school."),
-        ("en", "Check my Gmail please.", "gmail_check_status", {"unread": 0}, "Your inbox is completely clear, sir. Not a single unread message."),
-        ("ru", "Проверь новые письма на почте.", "gmail_check_status", {"unread": 2}, "В вашем ящике два новых письма, сэр. Одно из них от преподавателя."),
-        ("ru", "Есть непрочитанные сообщения в Gmail?", "gmail_check_status", {"unread": 0}, "Входящих нет, сэр. Почтовый ящик в полном порядке.")
-    ]
-    # MCP Study Resources & Prep
-    study_cases = [
-        ("en", "Stewart, fetch IB past papers for Mathematics HL.", "study_get_ib_resources", {"status": "success", "subject": "Mathematics HL"}, "I have retrieved the IB Mathematics HL past papers, sir. They are ready for your revision."),
-        ("en", "Prepare a quiz on Calculus derivatives.", "study_prepare_test", {"topic": "Calculus", "questions": 5}, "Practice quiz prepared, Illia. Five calculus problems await your expertise."),
-        ("ru", "Подготовь тест по физике.", "study_prepare_test", {"topic": "Физика", "questions": 5}, "Проверочный тест по физике готов, сэр. Можем приступать."),
-        ("ru", "Найди материалы IB по математике.", "study_get_ib_resources", {"status": "success", "subject": "Математика"}, "Материалы IB успешно получены и подготовлены к работе, Илья.")
-    ]
-    # Dynamic tool
-    rename_cases = [
-        ("en", "Rename notes.txt to notes_backup.txt please.", "change_file_name", {"status": "success", "src": "notes.txt", "dst": "notes_backup.txt"}, "File successfully renamed to notes_backup.txt, sir."),
-        ("ru", "Стюарт, переименуй отчет в final_report.pdf.", "change_file_name", {"status": "success"}, "Файл переименован в final_report.pdf, сэр.")
+    deltas = [
+        ("10%", ["a bit", "a little", "10 percent"], ["чуть-чуть", "немного", "на десять процентов"]),
+        ("15%", ["slightly", "a little bit", "15%"], ["слегка", "на 15 процентов"]),
+        ("20%", ["a notch", "20 percent"], ["на двадцать процентов", "посильнее"]),
     ]
 
-    base_cases = sched_cases + hw_cases + mail_cases + study_cases + rename_cases
-    for lang, q, tool, res, ans in base_cases:
-        sys_p = sys_ru if lang == "ru" else sys_en
-        msgs = [
-            {"role": "system", "content": sys_p},
-            {"role": "user", "content": q},
-            {"role": "tool", "name": tool, "content": json.dumps(res, ensure_ascii=False)},
-            {"role": "assistant", "content": ans}
-        ]
-        examples.append({"messages": msgs})
+    for val, en_phrases, ru_phrases in levels:
+        if is_ru:
+            for p in ru_phrases:
+                for verb in ["поставь яркость ", "сделай яркость ", "яркость ", "установи яркость "]:
+                    samples.append((f"{verb}{p}", make_tool_call("brightness", {"command": "set", "value": val}), ["brightness"]))
+        else:
+            for p in en_phrases:
+                for verb in ["set brightness to ", "make brightness ", "brightness ", "adjust brightness to "]:
+                    samples.append((f"{verb}{p}", make_tool_call("brightness", {"command": "set", "value": val}), ["brightness"]))
 
-    # Augment newly added cases with polite variations
-    polite_fillers_en = ["", "Stewart, ", "Please, ", "Could you ", "Hey Stewart, "]
-    polite_fillers_ru = ["", "Стюарт, ", "Пожалуйста, ", "Будь добр, ", "Эй Стюарт, "]
+    for val, en_phrases, ru_phrases in deltas:
+        if is_ru:
+            for p in ru_phrases:
+                samples.append((f"сделай поярче {p}", make_tool_call("brightness", {"command": "up", "value": val}), ["brightness"]))
+                samples.append((f"прибавь яркость {p}", make_tool_call("brightness", {"command": "up", "value": val}), ["brightness"]))
+                samples.append((f"сделай потемнее {p}", make_tool_call("brightness", {"command": "down", "value": val}), ["brightness"]))
+                samples.append((f"убавь яркость {p}", make_tool_call("brightness", {"command": "down", "value": val}), ["brightness"]))
+                samples.append((f"приглуши экран {p}", make_tool_call("brightness", {"command": "down", "value": val}), ["brightness"]))
+        else:
+            for p in en_phrases:
+                samples.append((f"make it brighter {p}", make_tool_call("brightness", {"command": "up", "value": val}), ["brightness"]))
+                samples.append((f"turn up brightness {p}", make_tool_call("brightness", {"command": "up", "value": val}), ["brightness"]))
+                samples.append((f"dim screen {p}", make_tool_call("brightness", {"command": "down", "value": val}), ["brightness"]))
+                samples.append((f"make it darker {p}", make_tool_call("brightness", {"command": "down", "value": val}), ["brightness"]))
+                samples.append((f"lower brightness {p}", make_tool_call("brightness", {"command": "down", "value": val}), ["brightness"]))
 
-    augmented = []
-    for ex in examples:
-        augmented.append(ex)
-        m = ex["messages"]
-        if len(m) >= 4 and m[2].get("role") == "tool":
-            is_ru = any(ord(c) > 127 for c in m[1]["content"])
-            fillers = polite_fillers_ru if is_ru else polite_fillers_en
-            for f in fillers[1:4]:
-                new_msgs = [
-                    m[0],
-                    {"role": "user", "content": f"{f}{m[1]['content']}"},
-                    m[2],
-                    m[3]
-                ]
-                augmented.append({"messages": new_msgs})
+    return samples
 
-    random.seed(42)
-    random.shuffle(augmented)
-    return augmented
-    # Core system tools (Volume, Brightness, Media, Weather, Timer)
-    core_cases = [
-        ("en", "Lower the volume a bit Stewart.", "volume", {"status": "success", "volume": 35}, "Volume reduced to thirty-five percent, sir."),
-        ("en", "Make it louder.", "volume", {"status": "success", "volume": 65}, "Audio level raised to sixty-five percent, sir."),
-        ("en", "Make the screen a bit brighter.", "brightness", {"status": "success", "brightness": 80}, "Display brightness established at eighty percent, sir."),
-        ("en", "Pause the music.", "media_control", {"status": "success", "control": "play-pause"}, "Playback paused, sir."),
-        ("en", "Next track please Stewart.", "media_control", {"status": "success", "control": "next"}, "Advancing to the next track, Illia."),
-        ("en", "Set a timer for 10 minutes for my tea.", "timer", {"status": "set", "duration": "10 minutes"}, "Ten minute timer running, sir. I shall notify you when your tea is ready."),
-        ("en", "How is the weather in Berlin today?", "say_weather", {"city": "Berlin", "temp": 17, "cond": "cloudy"}, "It is currently 17 degrees and overcast in Berlin, sir. Rain remains improbable."),
-        ("ru", "Сделай потише звук.", "volume", {"status": "success", "volume": 30}, "Громкость снижена до тридцати процентов, сэр."),
-        ("ru", "Сделай экран поярче.", "brightness", {"status": "success", "brightness": 85}, "Яркость увеличена до восьмидесяти пяти процентов, сэр."),
-        ("ru", "Поставь музыку на паузу.", "media_control", {"status": "success"}, "Воспроизведение приостановлено, сэр."),
-        ("ru", "Поставь таймер на 15 минут.", "timer", {"status": "set", "duration": "15 минут"}, "Таймер на пятнадцать минут запущен, сэр."),
-        ("ru", "Какая погода в Москве?", "say_weather", {"city": "Москва", "temp": 5, "cond": "ясно"}, "В Москве сейчас пять градусов тепла и ясно, сэр.")
+
+def gen_volume_samples(is_ru: bool) -> List[Tuple[str, str, List[str]]]:
+    samples = []
+    levels = [
+        ("0%", ["zero", "0 percent"], ["ноль", "на ноль"]),
+        ("20%", ["twenty percent", "20%"], ["двадцать процентов", "на 20"]),
+        ("40%", ["forty percent", "40%"], ["сорок процентов", "на сорок"]),
+        ("50%", ["half", "half volume", "50 percent"], ["наполовину", "на 50 процентов"]),
+        ("80%", ["eighty percent", "80%"], ["восемьдесят процентов", "на восемьдесят"]),
+        ("100%", ["max volume", "maximum", "full volume", "hundred percent"], ["на максимум", "максимальная громкость", "на полную"])
+    ]
+    deltas = [
+        ("10%", ["a bit", "a little", "10%"], ["чуть-чуть", "немного", "на десять"]),
+        ("15%", ["a little bit", "15%"], ["слегка", "на пятнадцать"]),
+        ("20%", ["a notch", "20%"], ["посильнее", "на двадцать"])
     ]
 
-    base_cases = sched_cases + hw_cases + mail_cases + study_cases + rename_cases + core_cases
+    for val, en_phrases, ru_phrases in levels:
+        if is_ru:
+            for p in ru_phrases:
+                for v in ["громкость ", "поставь звук ", "сделай громкость ", "звук "]:
+                    samples.append((f"{v}{p}", make_tool_call("volume", {"command": "set", "value": val}), ["volume"]))
+        else:
+            for p in en_phrases:
+                for v in ["set volume to ", "volume to ", "make volume ", "sound to "]:
+                    samples.append((f"{v}{p}", make_tool_call("volume", {"command": "set", "value": val}), ["volume"]))
 
-    for lang, q, tool, res, ans in base_cases:
-        sys_p = sys_ru if lang == "ru" else sys_en
-        msgs = [
-            {"role": "system", "content": sys_p},
-            {"role": "user", "content": q},
-            {"role": "tool", "name": tool, "content": json.dumps(res, ensure_ascii=False)},
-            {"role": "assistant", "content": ans}
-        ]
-        examples.append({"messages": msgs})
+    for val, en_phrases, ru_phrases in deltas:
+        if is_ru:
+            for p in ru_phrases:
+                samples.append((f"сделай погромче {p}", make_tool_call("volume", {"command": "up", "value": val}), ["volume"]))
+                samples.append((f"прибавь звук {p}", make_tool_call("volume", {"command": "up", "value": val}), ["volume"]))
+                samples.append((f"сделай потише {p}", make_tool_call("volume", {"command": "down", "value": val}), ["volume"]))
+                samples.append((f"убавь звук {p}", make_tool_call("volume", {"command": "down", "value": val}), ["volume"]))
+        else:
+            for p in en_phrases:
+                samples.append((f"make it louder {p}", make_tool_call("volume", {"command": "up", "value": val}), ["volume"]))
+                samples.append((f"turn up sound {p}", make_tool_call("volume", {"command": "up", "value": val}), ["volume"]))
+                samples.append((f"make it quieter {p}", make_tool_call("volume", {"command": "down", "value": val}), ["volume"]))
+                samples.append((f"lower the volume {p}", make_tool_call("volume", {"command": "down", "value": val}), ["volume"]))
 
-    # Augment with phrasing variations & polite butler variations
-    augmented = []
-    polite_fillers_en = ["", "Stewart, ", "Please, ", "Could you ", "Hey Stewart, "]
-    polite_fillers_ru = ["", "Стюарт, ", "Пожалуйста, ", "Будь добр, ", "Эй Стюарт, "]
+    # Mute / Unmute
+    if is_ru:
+        for p in ["выключи звук", "заглуши", "без звука", "выруби звук", "отключи аудио"]:
+            samples.append((p, make_tool_call("volume", {"command": "mute"}), ["volume"]))
+        for p in ["включи звук обратно", "разглуши", "верни звук", "включи звук"]:
+            samples.append((p, make_tool_call("volume", {"command": "unmute"}), ["volume"]))
+    else:
+        for p in ["mute", "mute sound", "silence audio", "shut up", "turn off volume"]:
+            samples.append((p, make_tool_call("volume", {"command": "mute"}), ["volume"]))
+        for p in ["unmute", "unmute sound", "restore sound", "bring back sound"]:
+            samples.append((p, make_tool_call("volume", {"command": "unmute"}), ["volume"]))
 
-    for ex in examples:
-        augmented.append(ex)
-        m = ex["messages"]
-        is_ru = any(ord(c) > 127 for c in m[1]["content"])
-        fillers = polite_fillers_ru if is_ru else polite_fillers_en
-        for f in fillers[1:4]:
-            new_msgs = [
-                m[0],
-                {"role": "user", "content": f"{f}{m[1]['content']}"},
-                m[2],
-                m[3]
+    return samples
+
+
+def gen_web_and_app_samples(is_ru: bool) -> List[Tuple[str, str, List[str]]]:
+    samples = []
+    # Semantic web mappings
+    web_targets = [
+        ("https://wikipedia.org", ["wikipedia", "open wikipedia"], ["википедию", "открой википедию"]),
+        ("https://youtube.com", ["youtube", "open youtube"], ["ютуб", "открой ютуб"]),
+        ("https://github.com", ["github", "open github"], ["гитхаб", "открой гитхаб"]),
+        ("https://reddit.com", ["reddit", "open reddit"], ["реддит", "открой реддит"]),
+        ("https://google.com", ["google", "open google"], ["гугл", "открой гугл"]),
+        ("https://chatgpt.com", ["chatgpt", "open chatgpt"], ["чат гпт", "открой chatgpt"]),
+        ("https://mail.google.com", ["webmail", "gmail in browser"], ["почту в браузере", "открой gmail веб"]),
+        ("https://twitch.tv", ["twitch", "open twitch"], ["твич", "открой twitch"])
+    ]
+
+    for url, en_list, ru_list in web_targets:
+        if is_ru:
+            for p in ru_list:
+                for prefix in ["", "пожалуйста ", "стюарт "]:
+                    samples.append((f"{prefix}{p}", make_tool_call("web", {"action": "open", "url": url}), ["web"]))
+        else:
+            for p in en_list:
+                for prefix in ["", "please ", "stewart "]:
+                    samples.append((f"{prefix}{p}", make_tool_call("web", {"action": "open", "url": url}), ["web"]))
+
+    # Web search
+    searches = [
+        ("how to install nixos on thinkpad", ["search google for how to install nixos on thinkpad", "google how to install nixos on thinkpad"], ["найди в гугле как установить nixos на thinkpad", "поищи как установить nixos на thinkpad"]),
+        ("weather in tokyo next week", ["google weather in tokyo next week", "search web for weather in tokyo next week"], ["поищи в интернете погода в токио на следующей неделе", "найди погоду в токио"]),
+        ("python async await tutorial", ["search web for python async await tutorial"], ["найди руководство по python async await"]),
+        ("hyprland config examples", ["google hyprland config examples"], ["поищи примеры конфига hyprland"])
+    ]
+    for q, en_list, ru_list in searches:
+        if is_ru:
+            for p in ru_list:
+                samples.append((p, make_tool_call("web", {"action": "search", "query": q}), ["web"]))
+        else:
+            for p in en_list:
+                samples.append((p, make_tool_call("web", {"action": "search", "query": q}), ["web"]))
+
+    # Apps
+    apps = [
+        ("terminal", ["open terminal", "launch console", "open kitty", "start terminal"], ["открой терминал", "запусти консоль", "открой китти"]),
+        ("telegram", ["launch telegram", "open telegram"], ["открой телеграм", "запусти телеграм"]),
+        ("files", ["open file manager", "open files", "launch nautilus"], ["открой файловый менеджер", "открой файлы", "запусти наутилус"]),
+        ("code", ["open vs code", "launch code editor", "start vscode"], ["открой visual studio code", "запусти редактор кода", "открой вскод"]),
+        ("spotify", ["launch spotify", "open spotify"], ["запусти спотифай", "открой спотифай"]),
+        ("browser", ["open browser", "launch chrome", "open brave"], ["открой браузер", "запусти хром"]),
+        ("discord", ["launch discord", "open discord"], ["открой дискорд", "запусти дискорд"]),
+        ("settings", ["open system settings", "launch settings"], ["открой настройки", "запусти параметры"])
+    ]
+    for app_name, en_list, ru_list in apps:
+        if is_ru:
+            for p in ru_list:
+                for prefix in ["", "пожалуйста ", "стюарт "]:
+                    samples.append((f"{prefix}{p}", make_tool_call("app", {"action": "launch", "name": app_name}), ["app"]))
+        else:
+            for p in en_list:
+                for prefix in ["", "please ", "stewart "]:
+                    samples.append((f"{prefix}{p}", make_tool_call("app", {"action": "launch", "name": app_name}), ["app"]))
+
+    # App close & switch
+    if is_ru:
+        for p in ["закрой окно", "закрой эту программу", "закрой активное окно", "закрой приложение"]:
+            samples.append((p, make_tool_call("app", {"action": "close"}), ["app"]))
+        for p in ["переключись на браузер", "перейди в браузер"]:
+            samples.append((p, make_tool_call("app", {"action": "switch", "name": "browser"}), ["app"]))
+        for p in ["переключись на терминал", "перейди в консоль"]:
+            samples.append((p, make_tool_call("app", {"action": "switch", "name": "terminal"}), ["app"]))
+    else:
+        for p in ["close window", "close this application", "close active window", "exit app"]:
+            samples.append((p, make_tool_call("app", {"action": "close"}), ["app"]))
+        for p in ["switch to browser", "focus browser"]:
+            samples.append((p, make_tool_call("app", {"action": "switch", "name": "browser"}), ["app"]))
+        for p in ["switch to terminal", "focus terminal"]:
+            samples.append((p, make_tool_call("app", {"action": "switch", "name": "terminal"}), ["app"]))
+
+    return samples
+
+
+def gen_file_samples(is_ru: bool) -> List[Tuple[str, str, List[str]]]:
+    samples = []
+    file_open = [
+        ("~/Downloads", ["open downloads", "open my downloads folder"], ["открой папку загрузки", "открой загрузки", "покажи загрузки"]),
+        ("~/Documents", ["open documents", "open documents directory"], ["открой документы", "открой папку документы"]),
+        ("~/Pictures", ["open pictures", "open screenshots folder"], ["открой картинки", "открой изображения"]),
+        ("~/Projects", ["open projects folder", "open my code folder"], ["открой папку с проектами", "открой проекты"]),
+        ("report.pdf", ["open report.pdf", "open the report document"], ["открой report.pdf", "открой отчет"]),
+        ("physics_notes.txt", ["open physics_notes.txt", "open notes"], ["открой конспект по физике", "открой physics_notes.txt"]),
+        ("presentation.pptx", ["open presentation.pptx", "open the slides"], ["открой презентацию", "открой presentation.pptx"])
+    ]
+    for path, en_list, ru_list in file_open:
+        if is_ru:
+            for p in ru_list:
+                samples.append((p, make_tool_call("file", {"action": "open", "path": path}), ["file"]))
+        else:
+            for p in en_list:
+                samples.append((p, make_tool_call("file", {"action": "open", "path": path}), ["file"]))
+
+    # Renames
+    if is_ru:
+        samples.append(("переименуй draft.txt в final.txt", make_tool_call("file", {"action": "rename", "new_name": "final.txt", "path": "draft.txt"}), ["file"]))
+        samples.append(("переименуй photo.jpg в avatar.jpg", make_tool_call("file", {"action": "rename", "new_name": "avatar.jpg", "path": "photo.jpg"}), ["file"]))
+        samples.append(("переименуй old_notes.md в notes.md", make_tool_call("file", {"action": "rename", "new_name": "notes.md", "path": "old_notes.md"}), ["file"]))
+    else:
+        samples.append(("rename draft.txt to final.txt", make_tool_call("file", {"action": "rename", "new_name": "final.txt", "path": "draft.txt"}), ["file"]))
+        samples.append(("rename photo.jpg to avatar.jpg", make_tool_call("file", {"action": "rename", "new_name": "avatar.jpg", "path": "photo.jpg"}), ["file"]))
+        samples.append(("rename old_notes.md to notes.md", make_tool_call("file", {"action": "rename", "new_name": "notes.md", "path": "old_notes.md"}), ["file"]))
+
+    return samples
+
+
+def gen_music_and_hotkey_samples(is_ru: bool) -> List[Tuple[str, str, List[str]]]:
+    samples = []
+    # Music actions
+    if is_ru:
+        for p in ["поставь на паузу", "пауза", "останови музыку", "пауза в треке", "музыку на паузу"]:
+            samples.append((p, make_tool_call("music", {"action": "pause"}), ["music"]))
+        for p in ["продолжи музыку", "сними с паузы", "возобнови трек", "играй дальше"]:
+            samples.append((p, make_tool_call("music", {"action": "resume"}), ["music"]))
+        for p in ["следующий трек", "переключи песню", "следующая песня", "скипни трек"]:
+            samples.append((p, make_tool_call("music", {"action": "next"}), ["music"]))
+        for p in ["предыдущий трек", "верни песню", "прошлый трек"]:
+            samples.append((p, make_tool_call("music", {"action": "previous"}), ["music"]))
+        for p in ["останови воспроизведение", "выключи музыку", "стоп музыка"]:
+            samples.append((p, make_tool_call("music", {"action": "stop"}), ["music"]))
+        for track in ["queen bohemian rhapsody", "daft punk get lucky", "lo-fi beats", "hans zimmer interstellar"]:
+            samples.append((f"включи {track}", make_tool_call("music", {"action": "play", "track": track}), ["music"]))
+            samples.append((f"поставь песню {track}", make_tool_call("music", {"action": "play", "track": track}), ["music"]))
+    else:
+        for p in ["pause music", "pause playback", "stop track", "pause the song", "music pause"]:
+            samples.append((p, make_tool_call("music", {"action": "pause"}), ["music"]))
+        for p in ["resume music", "continue playback", "unpause", "play music again"]:
+            samples.append((p, make_tool_call("music", {"action": "resume"}), ["music"]))
+        for p in ["next song", "skip track", "next track", "skip this song"]:
+            samples.append((p, make_tool_call("music", {"action": "next"}), ["music"]))
+        for p in ["previous song", "last track", "previous track", "go back a track"]:
+            samples.append((p, make_tool_call("music", {"action": "previous"}), ["music"]))
+        for p in ["stop music", "halt playback", "stop audio"]:
+            samples.append((p, make_tool_call("music", {"action": "stop"}), ["music"]))
+        for track in ["queen bohemian rhapsody", "daft punk get lucky", "lofi hip hop radio", "interstellar theme"]:
+            samples.append((f"play {track}", make_tool_call("music", {"action": "play", "track": track}), ["music"]))
+            samples.append((f"put on {track}", make_tool_call("music", {"action": "play", "track": track}), ["music"]))
+
+    # Hotkeys
+    hotkey_pairs = [
+        (["ctrl", "w"], ["close tab", "close this tab"], ["закрой вкладку", "закрой эту вкладку"]),
+        (["ctrl", "t"], ["new tab", "open a new tab"], ["новая вкладка", "открой новую вкладку"]),
+        (["ctrl", "c"], ["copy this", "copy selection"], ["скопируй", "скопируй выделенное"]),
+        (["ctrl", "v"], ["paste clipboard", "paste here"], ["вставь", "вставь из буфера"]),
+        (["ctrl", "s"], ["save file", "save document"], ["сохрани файл", "сохрани документ"]),
+        (["ctrl", "f"], ["search in page", "find text"], ["поиск по странице", "найди на странице"]),
+        (["ctrl", "z"], ["undo that", "undo last change"], ["отмени действие", "откат назад"]),
+        (["ctrl", "shift", "z"], ["redo that", "redo"], ["повтори действие", "верни вперед"]),
+        (["alt", "tab"], ["switch window", "next window"], ["переключи окно", "следующее окно"]),
+        (["ctrl", "l"], ["focus address bar", "clear screen"], ["очисти экран", "перейди в адресную строку"])
+    ]
+    for keys, en_list, ru_list in hotkey_pairs:
+        if is_ru:
+            for p in ru_list:
+                samples.append((p, make_tool_call("hotkey", {"action": "press", "keys": keys}), ["hotkey"]))
+        else:
+            for p in en_list:
+                samples.append((p, make_tool_call("hotkey", {"action": "press", "keys": keys}), ["hotkey"]))
+
+    return samples
+
+
+def gen_system_and_timer_samples(is_ru: bool) -> List[Tuple[str, str, List[str]]]:
+    samples = []
+    # Timer
+    durations = [
+        ("1 minute", ["1 minute", "one minute"], ["1 минуту", "одну минуту"]),
+        ("5 minutes", ["5 minutes", "five minutes"], ["5 минут", "пять минут"]),
+        ("10 minutes", ["10 minutes", "ten minutes"], ["10 минут", "десять минут"]),
+        ("15 minutes", ["15 minutes", "fifteen minutes"], ["15 минут", "пятнадцать минут"]),
+        ("25 minutes", ["25 minutes", "pomodoro timer"], ["25 минут", "помидор"]),
+        ("30 seconds", ["30 seconds", "half a minute"], ["30 секунд", "полминуты"]),
+        ("1 hour", ["1 hour", "one hour"], ["1 час", "один час"])
+    ]
+    for dur, en_list, ru_list in durations:
+        if is_ru:
+            for p in ru_list:
+                samples.append((f"поставь таймер на {p}", make_tool_call("timer", {"action": "set", "duration": dur}), ["timer"]))
+                samples.append((f"засеки {p}", make_tool_call("timer", {"action": "set", "duration": dur}), ["timer"]))
+        else:
+            for p in en_list:
+                samples.append((f"set timer for {p}", make_tool_call("timer", {"action": "set", "duration": dur}), ["timer"]))
+                samples.append((f"start a {p} timer", make_tool_call("timer", {"action": "set", "duration": dur}), ["timer"]))
+
+    if is_ru:
+        for p in ["отмени таймер", "сбрось таймер", "выключи таймер"]:
+            samples.append((p, make_tool_call("timer", {"action": "cancel"}), ["timer"]))
+        for p in ["сколько осталось на таймере", "статус таймера", "покажи таймер"]:
+            samples.append((p, make_tool_call("timer", {"action": "status"}), ["timer"]))
+    else:
+        for p in ["cancel timer", "stop timer", "reset the timer"]:
+            samples.append((p, make_tool_call("timer", {"action": "cancel"}), ["timer"]))
+        for p in ["how much time left on timer", "timer status", "check timer"]:
+            samples.append((p, make_tool_call("timer", {"action": "status"}), ["timer"]))
+
+    # System operations
+    if is_ru:
+        for p in ["заблокируй экран", "заблокируй сессию", "залочь компьютер", "заблокируй систему"]:
+            samples.append((p, make_tool_call("system", {"action": "lock"}), ["system"]))
+        for p in ["сколько батареи", "проверь заряд аккумулятора", "какой заряд батареи", "уровень заряда"]:
+            samples.append((p, make_tool_call("system", {"action": "battery"}), ["system"]))
+        for p in ["который час", "сколько сейчас времени", "скажи время", "текущее время"]:
+            samples.append((p, make_tool_call("system", {"action": "time"}), ["system"]))
+        for p in ["какая сейчас погода", "скажи погоду", "погода на улице"]:
+            samples.append((p, make_tool_call("system", {"action": "weather"}), ["system"]))
+        for p in ["сделай скриншот", "сделай снимок экрана", "сфоткай экран"]:
+            samples.append((p, make_tool_call("system", {"action": "screenshot"}), ["system"]))
+        for ws in ["1", "2", "3", "4", "5"]:
+            samples.append((f"переключись на воркспейс {ws}", make_tool_call("system", {"action": "workspace", "target": ws}), ["system"]))
+            samples.append((f"перейди на рабочий стол {ws}", make_tool_call("system", {"action": "workspace", "target": ws}), ["system"]))
+    else:
+        for p in ["lock screen", "lock computer", "lock session", "lock my desktop"]:
+            samples.append((p, make_tool_call("system", {"action": "lock"}), ["system"]))
+        for p in ["check battery", "how much battery is left", "battery status", "what is battery percentage"]:
+            samples.append((p, make_tool_call("system", {"action": "battery"}), ["system"]))
+        for p in ["what time is it", "tell me the time", "current time", "what's the time"]:
+            samples.append((p, make_tool_call("system", {"action": "time"}), ["system"]))
+        for p in ["what's the weather", "tell weather forecast", "weather outside"]:
+            samples.append((p, make_tool_call("system", {"action": "weather"}), ["system"]))
+        for p in ["take a screenshot", "capture screen", "screenshot"]:
+            samples.append((p, make_tool_call("system", {"action": "screenshot"}), ["system"]))
+        for ws in ["1", "2", "3", "4", "5"]:
+            samples.append((f"switch to workspace {ws}", make_tool_call("system", {"action": "workspace", "target": ws}), ["system"]))
+            samples.append((f"go to workspace {ws}", make_tool_call("system", {"action": "workspace", "target": ws}), ["system"]))
+
+    return samples
+
+
+def gen_mcp_samples(is_ru: bool) -> List[Tuple[str, str, List[str]]]:
+    samples = []
+    # Studieplus
+    days = [("today", "сегодня"), ("tomorrow", "завтра"), ("monday", "понедельник"), ("next week", "следующую неделю")]
+    for en_d, ru_d in days:
+        if is_ru:
+            samples.append((f"расписание на {ru_d}", make_tool_call("studieplus_get_schedule", {"day": en_d}), ["studieplus_get_schedule"]))
+            samples.append((f"покажи уроки на {ru_d}", make_tool_call("studieplus_get_schedule", {"day": en_d}), ["studieplus_get_schedule"]))
+        else:
+            samples.append((f"schedule for {en_d}", make_tool_call("studieplus_get_schedule", {"day": en_d}), ["studieplus_get_schedule"]))
+            samples.append((f"timetable for {en_d}", make_tool_call("studieplus_get_schedule", {"day": en_d}), ["studieplus_get_schedule"]))
+
+    if is_ru:
+        samples.append(("какие у меня домашние задания", make_tool_call("studieplus_get_assignments", {"status": "pending"}), ["studieplus_get_assignments"]))
+        samples.append(("домашнее задание по физике", make_tool_call("studieplus_get_assignments", {"status": "all", "subject": "Physics"}), ["studieplus_get_assignments"]))
+        samples.append(("сообщения от учителей", make_tool_call("studieplus_get_conversations", {}), ["studieplus_get_conversations"]))
+        samples.append(("проверь сессию studieplus", make_tool_call("studieplus_check_session", {}), ["studieplus_check_session"]))
+    else:
+        samples.append(("check pending assignments", make_tool_call("studieplus_get_assignments", {"status": "pending"}), ["studieplus_get_assignments"]))
+        samples.append(("homework for physics", make_tool_call("studieplus_get_assignments", {"status": "all", "subject": "Physics"}), ["studieplus_get_assignments"]))
+        samples.append(("check teacher messages", make_tool_call("studieplus_get_conversations", {}), ["studieplus_get_conversations"]))
+        samples.append(("is studieplus session active", make_tool_call("studieplus_check_session", {}), ["studieplus_check_session"]))
+
+    # IB Study
+    if is_ru:
+        samples.append(("материалы по ib physics past papers", make_tool_call("study_get_ib_resources", {"resource_type": "past_papers", "subject": "Physics HL"}), ["study_get_ib_resources"]))
+        samples.append(("вопросы для теста по calculus", make_tool_call("study_prepare_test", {"difficulty": "standard", "topic": "Calculus Derivatives"}), ["study_prepare_test"]))
+    else:
+        samples.append(("get ib past papers for physics hl", make_tool_call("study_get_ib_resources", {"resource_type": "past_papers", "subject": "Physics HL"}), ["study_get_ib_resources"]))
+        samples.append(("prepare practice test for calculus derivatives", make_tool_call("study_prepare_test", {"difficulty": "standard", "topic": "Calculus Derivatives"}), ["study_prepare_test"]))
+
+    # Gmail
+    if is_ru:
+        samples.append(("проверь непрочитанные письма", make_tool_call("gmail_check_status", {}), ["gmail_check_status"]))
+        samples.append(("найди письмо от google", make_tool_call("gmail_search_emails", {"max_results": 5, "query": "from:Google"}), ["gmail_search_emails"]))
+        samples.append(("найди письма со словом счет", make_tool_call("gmail_search_emails", {"max_results": 5, "query": "счет"}), ["gmail_search_emails"]))
+        samples.append(("отправь письмо teacher@school.com с темой Отчет и текстом Готово", make_tool_call("gmail_send_email", {"body": "Готово", "subject": "Отчет", "to": "teacher@school.com"}), ["gmail_send_email"]))
+    else:
+        samples.append(("check unread emails in gmail", make_tool_call("gmail_check_status", {}), ["gmail_check_status"]))
+        samples.append(("search emails from google", make_tool_call("gmail_search_emails", {"max_results": 5, "query": "from:Google"}), ["gmail_search_emails"]))
+        samples.append(("find invoice emails", make_tool_call("gmail_search_emails", {"max_results": 5, "query": "invoice"}), ["gmail_search_emails"]))
+        samples.append(("send email to teacher@school.com subject Homework body Here is my submission", make_tool_call("gmail_send_email", {"body": "Here is my submission", "subject": "Homework", "to": "teacher@school.com"}), ["gmail_send_email"]))
+
+    # Synthetic Future MCP
+    if is_ru:
+        samples.append(("создай встречу Встреча с куратором на завтра в 15:00", make_tool_call("calendar_create_event", {"date": "tomorrow", "time": "15:00", "title": "Встреча с куратором"}), ["calendar_create_event"]))
+        samples.append(("сохрани заметку Идеи с текстом Купить книгу", make_tool_call("notes_create_note", {"content": "Купить книгу", "title": "Идеи"}), ["notes_create_note"]))
+        samples.append(("включи настольную лампу", make_tool_call("home_toggle_device", {"device": "настольная лампа", "state": "on"}), ["home_toggle_device"]))
+    else:
+        samples.append(("create calendar event Meeting with tutor tomorrow at 15:00", make_tool_call("calendar_create_event", {"date": "tomorrow", "time": "15:00", "title": "Meeting with tutor"}), ["calendar_create_event"]))
+        samples.append(("save note Ideas with content Buy textbook", make_tool_call("notes_create_note", {"content": "Buy textbook", "title": "Ideas"}), ["notes_create_note"]))
+        samples.append(("turn on desk lamp", make_tool_call("home_toggle_device", {"device": "desk lamp", "state": "on"}), ["home_toggle_device"]))
+
+    return samples
+
+
+def gen_multiturn_samples(is_ru: bool) -> List[Dict[str, Any]]:
+    conversations = []
+    # Pattern 1: YouTube context -> Follow-ups
+    if is_ru:
+        conversations.append({
+            "tools": ["web", "hotkey", "music", "app"],
+            "dialog": [
+                ("открой ютуб", make_tool_call("web", {"action": "open", "url": "https://youtube.com"})),
+                ("включи поиск", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "f"]})),
+                ("сделай на весь экран", make_tool_call("hotkey", {"action": "press", "keys": ["f"]})),
+                ("поставь на паузу", make_tool_call("music", {"action": "pause"}))
             ]
-            augmented.append({"messages": new_msgs})
-
-    # Add conversational turns without tools
-    dialogue_pairs = [
-        ("en", "Good morning Stewart.", "Good morning, sir. Systems are online and ready for your instruction."),
-        ("en", "How are you doing today?", "Functioning at peak efficiency, sir. Ready to assist whenever needed."),
-        ("en", "Thank you for the help Stewart.", "A pleasure as always, Illia. Do call if you require anything further."),
-        ("ru", "Доброе утро, Стюарт.", "Доброе утро, сэр. Все системы активны и готовы к работе."),
-        ("ru", "Как твои дела?", "Функционирую безупречно, сэр. Готов выполнять любые распоряжения."),
-        ("ru", "Спасибо за помощь.", "Всегда к вашим услугам, Илья. Обращайтесь в любое время.")
-    ]
-    for lang, q, ans in dialogue_pairs:
-        sys_p = sys_ru if lang == "ru" else sys_en
-        augmented.append({
-            "messages": [
-                {"role": "system", "content": sys_p},
-                {"role": "user", "content": q},
-                {"role": "assistant", "content": ans}
+        })
+        conversations.append({
+            "tools": ["app", "hotkey"],
+            "dialog": [
+                ("открой терминал", make_tool_call("app", {"action": "launch", "name": "terminal"})),
+                ("найди команду", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "r"]})),
+                ("очисти экран", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "l"]})),
+                ("закрой консоль", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "d"]}))
+            ]
+        })
+        conversations.append({
+            "tools": ["file", "hotkey"],
+            "dialog": [
+                ("открой папку загрузки", make_tool_call("file", {"action": "open", "path": "~/Downloads"})),
+                ("найди файл", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "f"]})),
+                ("закрой окно", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "w"]}))
+            ]
+        })
+        conversations.append({
+            "tools": ["app", "hotkey"],
+            "dialog": [
+                ("запусти редактор кода", make_tool_call("app", {"action": "launch", "name": "code"})),
+                ("сохрани файл", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "s"]})),
+                ("закрой вкладку", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "w"]}))
+            ]
+        })
+    else:
+        conversations.append({
+            "tools": ["web", "hotkey", "music", "app"],
+            "dialog": [
+                ("open youtube", make_tool_call("web", {"action": "open", "url": "https://youtube.com"})),
+                ("open search", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "f"]})),
+                ("full screen", make_tool_call("hotkey", {"action": "press", "keys": ["f"]})),
+                ("pause playback", make_tool_call("music", {"action": "pause"}))
+            ]
+        })
+        conversations.append({
+            "tools": ["app", "hotkey"],
+            "dialog": [
+                ("launch terminal", make_tool_call("app", {"action": "launch", "name": "terminal"})),
+                ("search history", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "r"]})),
+                ("clear screen", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "l"]})),
+                ("exit terminal", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "d"]}))
+            ]
+        })
+        conversations.append({
+            "tools": ["file", "hotkey"],
+            "dialog": [
+                ("open my downloads folder", make_tool_call("file", {"action": "open", "path": "~/Downloads"})),
+                ("find file", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "f"]})),
+                ("close it", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "w"]}))
+            ]
+        })
+        conversations.append({
+            "tools": ["app", "hotkey"],
+            "dialog": [
+                ("launch vs code", make_tool_call("app", {"action": "launch", "name": "code"})),
+                ("save file", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "s"]})),
+                ("close tab", make_tool_call("hotkey", {"action": "press", "keys": ["ctrl", "w"]}))
             ]
         })
 
-    random.seed(42)
-    random.shuffle(augmented)
-    return augmented
+    samples = []
+    # Build incremental dialog states
+    for conv in conversations:
+        dialog = conv["dialog"]
+        tool_names = conv["tools"]
+        cand_tools = pick_candidate_tools(tool_names)
+        sys_prompt = format_tool_schema(cand_tools)
+
+        messages = [{"role": "system", "content": sys_prompt}]
+        for u_text, a_resp in dialog:
+            messages.append({"role": "user", "content": u_text})
+            samples.append({"messages": list(messages + [{"role": "assistant", "content": a_resp}])})
+            messages.append({"role": "assistant", "content": a_resp})
+
+    return samples
+
+
+def gen_chitchat_samples(is_ru: bool) -> List[Tuple[str, str, List[str]]]:
+    samples = []
+    if is_ru:
+        pairs = [
+            ("привет", "Здравствуйте! Чем могу помочь вам сегодня?"),
+            ("доброе утро", "Доброе утро! Готов к вашим распоряжениям."),
+            ("как твои дела", "Все системы функционируют в штатном режиме, спасибо."),
+            ("кто тебя создал", "Я Стюарт, персональный голосовой ассистент на Linux под управлением Hyprland."),
+            ("что такое квантовая запутанность", "Квантовая запутанность — это физическое явление, при котором квантовые состояния двух или более объектов оказываются взаимозависимыми."),
+            ("сколько будет 25 умножить на 4", "25 умножить на 4 будет 100."),
+            ("расскажи шутку", "Почему программисты путают Хэллоуин и Рождество? Потому что 31 Oct равно 25 Dec."),
+            ("спасибо за помощь", "Всегда рад служить! Обращайтесь в любое время."),
+            ("что ты умеешь", "Я умею управлять рабочим столом Hyprland, настраивать громкость и яркость, запускать приложения, открывать веб-сайты, проверять расписание в Studieplus и почту Gmail.")
+        ]
+    else:
+        pairs = [
+            ("hello", "Good day, sir! How may I assist you today?"),
+            ("good morning", "Good morning! All systems are operational and standing by."),
+            ("how are you doing", "Operating at peak efficiency, thank you."),
+            ("who created you", "I am Stewart, your personal AI voice assistant running on NixOS and Hyprland."),
+            ("what is entropy", "Entropy is a measure of the degree of randomness or disorder in a closed thermodynamic system."),
+            ("what is 15 times 6", "15 multiplied by 6 is 90."),
+            ("tell me a joke", "There are only 10 types of people in the world: those who understand binary, and those who don't."),
+            ("thank you for your help", "My pleasure, sir. Always at your service."),
+            ("what can you do", "I can manage your Hyprland desktop, adjust audio and display brightness, launch applications, browse websites, check Studieplus school timetable, and search Gmail.")
+        ]
+
+    for q, ans in pairs:
+        for prefix in ["", "hey stewart ", "please ", "эй стюарт ", "пожалуйста "]:
+            if is_ru and any(c in prefix for c in ["hey", "please"]):
+                continue
+            if not is_ru and any(c in prefix for c in ["эй", "пожалуйста"]):
+                continue
+            samples.append((f"{prefix}{q}", ans, []))
+
+    return samples
+
+
+# =========================================================================
+# Main Synthesis & Amplification Engine (Aim: ~7,000 EN + ~7,000 RU)
+# =========================================================================
+
+EN_PREFIXES = ["", "please ", "stewart ", "hey stewart ", "could you ", "can you ", "go ahead and ", "just "]
+RU_PREFIXES = ["", "пожалуйста ", "стюарт ", "эй стюарт ", "можешь ", "сделай ", "просто "]
+
+
+def build_augmented_dataset(is_ru: bool, target_count: int = 7000) -> List[Dict[str, Any]]:
+    raw_triplets: List[Tuple[str, str, List[str]]] = []
+
+    raw_triplets.extend(gen_brightness_samples(is_ru))
+    raw_triplets.extend(gen_volume_samples(is_ru))
+    raw_triplets.extend(gen_web_and_app_samples(is_ru))
+    raw_triplets.extend(gen_file_samples(is_ru))
+    raw_triplets.extend(gen_music_and_hotkey_samples(is_ru))
+    raw_triplets.extend(gen_system_and_timer_samples(is_ru))
+    raw_triplets.extend(gen_mcp_samples(is_ru))
+    raw_triplets.extend(gen_chitchat_samples(is_ru))
+
+    prefixes = RU_PREFIXES if is_ru else EN_PREFIXES
+
+    final_examples = []
+
+    # 1. Multi-turn samples directly injected
+    multiturn_samples = gen_multiturn_samples(is_ru)
+    # Multiply multiturn samples to ensure strong presence (~1,500 samples)
+    for _ in range(35):
+        for ms in multiturn_samples:
+            final_examples.append(ms)
+
+    # 2. Augment and package raw triplets
+    while len(final_examples) < target_count:
+        triplet = random.choice(raw_triplets)
+        query, response, needed_tools = triplet
+        prefix = random.choice(prefixes)
+        augmented_query = f"{prefix}{query}".strip()
+
+        # Build dynamic candidate tool list
+        cand_tools = pick_candidate_tools(needed_tools, max_candidates=random.randint(6, 12))
+        sys_prompt = format_tool_schema(cand_tools)
+
+        example = {
+            "messages": [
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": augmented_query},
+                {"role": "assistant", "content": response}
+            ]
+        }
+        final_examples.append(example)
+
+    random.shuffle(final_examples)
+    return final_examples[:target_count]
 
 
 def main():
-    out_dir = Path(__file__).resolve().parent.parent / "data/dataset"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    print("=== Generating Stewart 14,000 Curated Bilingual Dataset ===")
+    dataset_dir = Path("data/dataset")
+    dataset_dir.mkdir(parents=True, exist_ok=True)
 
-    print("Generating enhanced 1.5B tool calling samples...")
-    raw_samples = generate_all_samples()
-    print(f"Generated {len(raw_samples)} unique tool calling samples.")
+    print("Generating English dataset (~7,000 samples)...")
+    en_samples = build_augmented_dataset(is_ru=False, target_count=7000)
+    val_split_en = int(len(en_samples) * 0.10)
+    train_en = en_samples[val_split_en:]
+    val_en = en_samples[:val_split_en]
 
-    tool_conversations = []
-    for s in raw_samples:
-        q = s["query"]
-        tool_name = s.get("tool")
-        tool_args = s.get("args")
+    with open(dataset_dir / "train_en.jsonl", "w", encoding="utf-8") as f:
+        for ex in train_en:
+            f.write(json.dumps(ex, ensure_ascii=False) + "\n")
+    with open(dataset_dir / "val_en.jsonl", "w", encoding="utf-8") as f:
+        for ex in val_en:
+            f.write(json.dumps(ex, ensure_ascii=False) + "\n")
+    print(f"English: Train={len(train_en)}, Val={len(val_en)}")
 
-        # Build compact candidate tool system prompt
-        sys_prompt = build_compact_tool_prompt(tool_name, ALL_TOOLS)
+    print("Generating Russian dataset (~7,000 samples)...")
+    ru_samples = build_augmented_dataset(is_ru=True, target_count=7000)
+    val_split_ru = int(len(ru_samples) * 0.10)
+    train_ru = ru_samples[val_split_ru:]
+    val_ru = ru_samples[:val_split_ru]
 
-        if tool_name is not None and tool_args is not None:
-            tool_call_str = f"<tool_call>\n{json.dumps({'name': tool_name, 'arguments': tool_args}, ensure_ascii=False)}\n</tool_call>"
-            msgs = [
-                {"role": "system", "content": sys_prompt},
-                {"role": "user", "content": q},
-                {"role": "assistant", "content": tool_call_str}
-            ]
-        else:
-            resp = s.get("response", "I am at your service, sir.")
-            msgs = [
-                {"role": "system", "content": sys_prompt},
-                {"role": "user", "content": q},
-                {"role": "assistant", "content": resp}
-            ]
-        tool_conversations.append({"messages": msgs})
+    with open(dataset_dir / "train_ru.jsonl", "w", encoding="utf-8") as f:
+        for ex in train_ru:
+            f.write(json.dumps(ex, ensure_ascii=False) + "\n")
+    with open(dataset_dir / "val_ru.jsonl", "w", encoding="utf-8") as f:
+        for ex in val_ru:
+            f.write(json.dumps(ex, ensure_ascii=False) + "\n")
+    print(f"Russian: Train={len(train_ru)}, Val={len(val_ru)}")
 
-    random.seed(42)
-    random.shuffle(tool_conversations)
+    # Combined 14k dataset for unified training & benchmark
+    combined_train = train_en + train_ru
+    combined_val = val_en + val_ru
+    random.shuffle(combined_train)
+    random.shuffle(combined_val)
 
-    split = int(len(tool_conversations) * 0.9)
-    train_tool = tool_conversations[:split]
-    val_tool = tool_conversations[split:]
-
-    train_tool_file = out_dir / "train_1.5b.jsonl"
-    val_tool_file = out_dir / "val_1.5b.jsonl"
-
-    with open(train_tool_file, "w", encoding="utf-8") as f:
-        for ex in train_tool:
+    with open(dataset_dir / "train_1.5b.jsonl", "w", encoding="utf-8") as f:
+        for ex in combined_train:
+            f.write(json.dumps(ex, ensure_ascii=False) + "\n")
+    with open(dataset_dir / "val_1.5b.jsonl", "w", encoding="utf-8") as f:
+        for ex in combined_val:
             f.write(json.dumps(ex, ensure_ascii=False) + "\n")
 
-    with open(val_tool_file, "w", encoding="utf-8") as f:
-        for ex in val_tool:
-            f.write(json.dumps(ex, ensure_ascii=False) + "\n")
-
-    print(f"Wrote {len(train_tool)} tool training samples to {train_tool_file}")
-    print(f"Wrote {len(val_tool)} tool validation samples to {val_tool_file}")
-
-    # Generate Persona Dataset
-    print("\nGenerating enhanced 1.5B persona samples...")
-    persona_samples = generate_persona_samples()
-    p_split = int(len(persona_samples) * 0.9)
-    p_train = persona_samples[:p_split]
-    p_val = persona_samples[p_split:]
-
-    p_train_file = out_dir / "persona_train_1.5b.jsonl"
-    p_val_file = out_dir / "persona_val_1.5b.jsonl"
-
-    with open(p_train_file, "w", encoding="utf-8") as f:
-        for ex in p_train:
-            f.write(json.dumps(ex, ensure_ascii=False) + "\n")
-
-    with open(p_val_file, "w", encoding="utf-8") as f:
-        for ex in p_val:
-            f.write(json.dumps(ex, ensure_ascii=False) + "\n")
-
-    print(f"Wrote {len(p_train)} persona training samples to {p_train_file}")
-    print(f"Wrote {len(p_val)} persona validation samples to {p_val_file}")
-
-    # Update stewart_tools.json with all 24 tools
-    tools_file = out_dir / "stewart_tools.json"
-    tools_bak = out_dir / "stewart_tools_0.5b.json"
-    if tools_file.exists() and not tools_bak.exists():
-        import shutil
-        shutil.copyfile(tools_file, tools_bak)
-        print(f"Backed up 0.5B tools schema to {tools_bak}")
-
-    with open(tools_file, "w", encoding="utf-8") as f:
-        json.dump(ALL_TOOLS, f, ensure_ascii=False, indent=2)
-    print(f"Updated {tools_file} with {len(ALL_TOOLS)} full tools.")
+    print(f"Combined 14k Dataset: Train={len(combined_train)}, Val={len(combined_val)}")
+    print("=== Dataset Generation Complete ===")
 
 
 if __name__ == "__main__":

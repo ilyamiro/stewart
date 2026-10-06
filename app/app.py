@@ -163,16 +163,22 @@ class App:
                     first_clause = (parts[0] + parts[1]).strip()
                     first_clause = re.sub(r"<tool_call>.*?</tool_call>", "", first_clause, flags=re.DOTALL)
                     first_clause = re.sub(r"<tool_response>.*?</tool_response>", "", first_clause, flags=re.DOTALL).strip(' "`\'')
-                    if first_clause:
+                    # Strip leading numbered list markers (e.g. "1. ", "2) ")
+                    first_clause = re.sub(r"^\d+[\.)]\s*", "", first_clause).strip()
+                    if first_clause and any(c.isalpha() for c in first_clause):
                         log.debug(f"Persona first-clause streamed to TTS: '{first_clause}'")
                         self.api.say(first_clause)
                         dispatched_count += 1
-                    buffer = "".join(parts[2:])
+                        buffer = "".join(parts[2:])
+                    elif len(parts) > 3:
+                        # Skip past non-alphabetic fragments (like standalone digits or punctuation)
+                        buffer = "".join(parts[2:])
 
             remaining = buffer.strip()
             remaining = re.sub(r"<tool_call>.*?</tool_call>", "", remaining, flags=re.DOTALL)
             remaining = re.sub(r"<tool_response>.*?</tool_response>", "", remaining, flags=re.DOTALL).strip(' "`\'')
-            if remaining:
+            remaining = re.sub(r"^\d+[\.)]\s*", "", remaining).strip()
+            if remaining and any(c.isalpha() for c in remaining):
                 log.debug(f"Persona trailing clause streamed to TTS: '{remaining}'")
                 self.api.say(remaining)
                 dispatched_count += 1
@@ -215,6 +221,20 @@ class App:
         while getattr(self.api, "is_speaking", False):
             time.sleep(0.05)
 
+        # Play audio chime to cue the user that listening is active
+        chime_file = None
+        try:
+            from data.constants import DEFAULT_DATA_DIR
+            for cand in [Path(__file__).resolve().parent.parent / "data/sounds/beep.wav", DEFAULT_DATA_DIR / "sounds/beep.wav"]:
+                if cand.exists():
+                    chime_file = str(cand)
+                    break
+            if chime_file:
+                from audio.tts.synthesis import play_audio
+                play_audio(chime_file)
+        except Exception:
+            pass
+
         is_text_mode = getattr(self.config.get("settings", {}), "text-mode", False) if isinstance(self.config.get("settings"), dict) else False
         if is_text_mode or not hasattr(self, "stt") or not self.stt:
             try:
@@ -240,6 +260,11 @@ class App:
                     words = set(clean_phrase.split())
                     if words.intersection(affirmatives):
                         log.info("Voice confirmation: GRANTED")
+                        if chime_file:
+                            try:
+                                play_audio(chime_file)
+                            except Exception:
+                                pass
                         return True
                     if words.intersection(negatives):
                         log.info("Voice confirmation: DENIED")

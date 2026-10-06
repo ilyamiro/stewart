@@ -413,10 +413,80 @@ class DesktopService:
                 sp.run(["systemctl", "reboot"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
         return True
 
-    def cancel_power_action(self) -> bool:
-        """Cancels any scheduled shutdown or reboot."""
-        if shutil.which("shutdown"):
-            sp.run(["shutdown", "-c"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+    def get_active_window(self) -> Dict[str, Any]:
+        """Returns JSON info of currently focused window via hyprctl."""
+        if shutil.which("hyprctl"):
+            try:
+                res = sp.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True, timeout=1.0)
+                if res.returncode == 0 and res.stdout.strip():
+                    import json
+                    return json.loads(res.stdout)
+            except Exception:
+                pass
+        return {}
+
+    def focus_window(self, name: str) -> bool:
+        """Focuses window matching name/class."""
+        if shutil.which("hyprctl"):
+            res = sp.run(["hyprctl", "dispatch", "focuswindow", name], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            return res.returncode == 0
+        return False
+
+    def open_file(self, path: str) -> bool:
+        """Opens file with default handler via xdg-open."""
+        expanded = os.path.expanduser(os.path.expandvars(path))
+        if shutil.which("xdg-open"):
+            sp.Popen(["xdg-open", expanded], stdout=sp.DEVNULL, stderr=sp.DEVNULL, start_new_session=True)
+            return True
+        return False
+
+    def set_brightness(self, command: str = "set", value: Optional[str] = None) -> bool:
+        """Adjusts brightness via brightnessctl or serpantinum."""
+        val = value or "50%"
+        if not val.endswith("%") and not val.endswith("-") and not val.startswith("+"):
+            val = f"{val}%"
+        if shutil.which("brightnessctl"):
+            if command == "set":
+                arg = val
+            elif command == "up":
+                arg = f"+{val}" if not val.startswith("+") else val
+            elif command == "down":
+                clean = val.replace("%", "").replace("-", "")
+                arg = f"{clean}%-"
+            else:
+                arg = val
+            sp.run(["brightnessctl", "set", arg], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            return True
+        return False
+
+    def set_volume(self, command: str = "set", value: Optional[str] = None) -> bool:
+        """Adjusts volume via wpctl (PipeWire) or pactl (PulseAudio)."""
+        val = value or "50%"
+        clean_num = "".join(c for c in val if c.isdigit())
+        num = int(clean_num) if clean_num else 50
+        if shutil.which("wpctl"):
+            if command == "mute":
+                sp.run(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "1"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif command == "unmute":
+                sp.run(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "0"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif command == "up":
+                sp.run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{num}%+"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif command == "down":
+                sp.run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{num}%-"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif command == "set":
+                sp.run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{num}%"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            return True
+        elif shutil.which("pactl"):
+            if command == "mute":
+                sp.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "1"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif command == "unmute":
+                sp.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "0"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif command == "up":
+                sp.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"+{num}%"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif command == "down":
+                sp.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"-{num}%"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            elif command == "set":
+                sp.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{num}%"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
             return True
         return False
 

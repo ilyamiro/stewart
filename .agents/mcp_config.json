@@ -1,5 +1,9 @@
 {
   "mcpServers": {
+    "life": {
+      "command": "/home/ilyamiro/Projects/life/bin/life-mcp",
+      "args": []
+    },
     "studieplus": {
       "command": "/home/ilyamiro/Projects/life/bin/studieplus-mcp",
       "args": []

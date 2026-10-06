@@ -44,21 +44,41 @@ log = logging.getLogger("TrainQwen1.5B-Tool")
 def parse_args():
     parser = argparse.ArgumentParser(description="Fine-tune Qwen2.5-1.5B on Stewart Tool Calling")
     parser.add_argument("--model_name_or_path", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
-    parser.add_argument("--train_file", type=str, default="data/dataset/train_1.5b.jsonl")
-    parser.add_argument("--val_file", type=str, default="data/dataset/val_1.5b.jsonl")
-    parser.add_argument("--output_dir", type=str, default="data/models/qwen2.5-1.5b-stewart-lora")
+    parser.add_argument("--lang", type=str, choices=["all", "en", "ru"], default="all",
+                        help="Language specialization: 'all' (14k bilingual), 'en' (7k), or 'ru' (7k)")
+    parser.add_argument("--train_file", type=str, default=None)
+    parser.add_argument("--val_file", type=str, default=None)
+    parser.add_argument("--output_dir", type=str, default=None)
     parser.add_argument("--epochs", type=int, default=2)
-    parser.add_argument("--batch_size", type=int, default=1)
-    parser.add_argument("--grad_accum", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=2)
+    parser.add_argument("--grad_accum", type=int, default=4)
     parser.add_argument("--lr", type=float, default=2e-4)
-    parser.add_argument("--max_length", type=int, default=200)
-    return parser.parse_args()
+    parser.add_argument("--max_length", type=int, default=256)
+    parser.add_argument("--lora_r", type=int, default=32)
+    parser.add_argument("--lora_alpha", type=int, default=64)
+    args = parser.parse_args()
+
+    # Dynamic defaults based on language
+    if args.lang == "en":
+        args.train_file = args.train_file or "data/dataset/train_en.jsonl"
+        args.val_file = args.val_file or "data/dataset/val_en.jsonl"
+        args.output_dir = args.output_dir or "data/models/qwen2.5-1.5b-tool-en-lora"
+    elif args.lang == "ru":
+        args.train_file = args.train_file or "data/dataset/train_ru.jsonl"
+        args.val_file = args.val_file or "data/dataset/val_ru.jsonl"
+        args.output_dir = args.output_dir or "data/models/qwen2.5-1.5b-tool-ru-lora"
+    else:
+        args.train_file = args.train_file or "data/dataset/train_1.5b.jsonl"
+        args.val_file = args.val_file or "data/dataset/val_1.5b.jsonl"
+        args.output_dir = args.output_dir or "data/models/qwen2.5-1.5b-stewart-lora"
+
+    return args
 
 
 def main():
     args = parse_args()
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    log.info(f"Using device: {device}")
+    log.info(f"Using device: {device} | Lang: {args.lang}")
     if device == "cuda":
         vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
         log.info(f"GPU: {torch.cuda.get_device_name(0)}, Total VRAM: {vram_gb:.2f} GB")
@@ -78,11 +98,12 @@ def main():
         bnb_4bit_compute_dtype=torch.float16
     )
 
-    log.info(f"Loading base model '{args.model_name_or_path}'...")
+    log.info(f"Loading base model '{args.model_name_or_path}' with SDPA attention...")
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name_or_path,
         quantization_config=bnb_config,
         torch_dtype=torch.float16,
+        attn_implementation="sdpa",
         device_map="auto" if device == "cuda" else None,
         trust_remote_code=True
     )
@@ -90,10 +111,11 @@ def main():
     model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
     model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
 
-    log.info("Attaching LoRA adapters to attention and MLP projection layers...")
+    log.info(f"Attaching RSLoRA adapters (r={args.lora_r}, alpha={args.lora_alpha})...")
     lora_config = LoraConfig(
-        r=16,
-        lora_alpha=32,
+        r=args.lora_r,
+        lora_alpha=args.lora_alpha,
+        use_rslora=True,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         lora_dropout=0.05,
         bias="none",
@@ -148,6 +170,10 @@ def main():
         label_pad_token_id=-100
     )
 
+    # Slice evaluation dataset for fast zero-pause evaluation during training
+    val_sample_size = min(500, len(tokenized_datasets["validation"]))
+    eval_slice = tokenized_datasets["validation"].select(range(val_sample_size))
+
     training_args = TrainingArguments(
         output_dir=args.output_dir,
         per_device_train_batch_size=args.batch_size,
@@ -161,12 +187,13 @@ def main():
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
         dataloader_pin_memory=False,
+        dataloader_num_workers=2,
         optim="paged_adamw_8bit" if device == "cuda" else "adamw_torch",
         logging_steps=20,
         eval_strategy="steps",
-        eval_steps=60,
+        eval_steps=100,
         save_strategy="steps",
-        save_steps=60,
+        save_steps=100,
         save_total_limit=2,
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
@@ -177,7 +204,7 @@ def main():
         model=model,
         args=training_args,
         train_dataset=tokenized_datasets["train"],
-        eval_dataset=tokenized_datasets["validation"],
+        eval_dataset=eval_slice,
         data_collator=data_collator,
     )
 
