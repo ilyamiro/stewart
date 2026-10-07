@@ -137,6 +137,11 @@ class App:
         if is_text_mode or not hasattr(self, "stt") or not self.stt:
             try:
                 ans = input(f"[Voice Confirmation] {prompt} [yes/no]: ").strip().lower()
+                try:
+                    from gui.animation import set_user_text
+                    set_user_text(ans)
+                except Exception:
+                    pass
                 return ans in ("y", "yes", "sure", "proceed", "do it", "confirm", "yeah", "yep", "да", "давай", "подтверждаю")
             except Exception:
                 return False
@@ -155,6 +160,11 @@ class App:
                     clean_phrase = phrase.strip().lower()
                     words = set(clean_phrase.split())
                     if words.intersection(affirmatives):
+                        try:
+                            from gui.animation import set_user_text
+                            set_user_text(phrase.strip())
+                        except Exception:
+                            pass
                         if chime_file:
                             try:
                                 play_audio(chime_file)
@@ -162,6 +172,11 @@ class App:
                                 pass
                         return True
                     if words.intersection(negatives):
+                        try:
+                            from gui.animation import set_user_text
+                            set_user_text(phrase.strip())
+                        except Exception:
+                            pass
                         return False
             except Exception:
                 break
@@ -173,6 +188,12 @@ class App:
             if self.config["settings"]["trigger"]["trigger-mode"] != "disabled":
                 self.api.__no_command_default__(context=None, history=None)
             return
+
+        try:
+            from gui.animation import set_user_text
+            set_user_text(request.strip())
+        except Exception:
+            pass
 
         self.api.eventLogger.record(self.api.Event(
             "user_request",
@@ -266,18 +287,38 @@ class App:
         if self.trigger_timed_needed:
             trigger, result = self.remove_trigger_word(request)
             if result != "blank":
+                try:
+                    from gui.animation import set_user_text
+                    set_user_text(request.strip() if request.strip() else trigger)
+                except Exception:
+                    pass
                 if self.config["settings"]["trigger"]["trigger-mode"] == "timed":
                     self.trigger_timed_needed = False
                     self.trigger_counter(int(self.config["settings"]["trigger"]["trigger-time"]))
                 self.handle(result)
         else:
+            try:
+                from gui.animation import set_user_text
+                set_user_text(request.strip())
+            except Exception:
+                pass
             self.handle(request)
 
     def process_trigger_no_voice(self, request):
         trigger, result = self.remove_trigger_word(request)
         if result != "blank":
+            try:
+                from gui.animation import set_user_text
+                set_user_text(request.strip() if request.strip() else trigger)
+            except Exception:
+                pass
             self.handle(result)
         else:
+            try:
+                from gui.animation import set_user_text
+                set_user_text(request.strip())
+            except Exception:
+                pass
             self.handle(request)
 
     def remove_trigger_word(self, request):

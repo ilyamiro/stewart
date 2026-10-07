@@ -358,13 +358,21 @@ class AppAPI:
 
     def say_sync(self, text: str, no_audio=False, prosody=94, speaker=None):
         """Synchronously synthesizes and plays audio, waiting for playback to finish."""
-        if not text or not self.tts.active:
-            if not text:
-                return
+        if not text:
+            return
+
+        parsed_text = self.tts.parse_config_answers(text) if hasattr(self.tts, "parse_config_answers") else text
+        try:
+            from gui.animation import set_assistant_text
+            set_assistant_text(parsed_text)
+        except Exception:
+            pass
+
+        if not self.tts.active:
             log.debug(f"No sound: {text}")
             return
 
-        text = self.tts.parse_config_answers(text)
+        text = parsed_text
         self.is_speaking = True
         try:
             cached_file = self.get_cached_audio_path(text, prosody=prosody, speaker=speaker)
@@ -392,11 +400,18 @@ class AppAPI:
         if not text:
             return
 
+        parsed_text = self.tts.parse_config_answers(text) if hasattr(self.tts, "parse_config_answers") else text
+        try:
+            from gui.animation import set_assistant_text
+            set_assistant_text(parsed_text)
+        except Exception:
+            pass
+
         if not self.tts.active:
             log.debug(f"No sound: {text}")
             return
 
-        text = self.tts.parse_config_answers(text)
+        text = parsed_text
 
         def call_tts_in_thread(**kwargs):
             with self._tts_lock:
