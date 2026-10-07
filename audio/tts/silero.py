@@ -62,22 +62,22 @@ def num_to_ru(n: int) -> str:
     return str(n)
 
 def clean_for_silero(text: str) -> str:
-    if not text or not isinstance(text, str):
-        return ""
-    text = text.lower()
-    for w, r in COMMON_WORDS_RU.items():
-        text = re.sub(r'\b' + re.escape(w) + r'\b', r, text)
-    for eng, ru in TRANSLIT_PAIRS:
-        text = text.replace(eng, ru)
-    # Expand 1-3 digit numbers to Russian words
-    text = re.sub(r'\b(\d{1,3})\b', lambda m: num_to_ru(int(m.group(1))), text)
-    # Normalize dashes and punctuation
-    text = text.replace('—', '–').replace('"', '').replace("'", "")
-    # Allowed symbols in Silero v5 ru
-    allowed = set('_~|!+,-.:;?абвгдежзийклмнопрстуфхцчшщъыьэюяё–… ')
-    text = ''.join(c for c in text if c in allowed)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+    try:
+        from api.commands.agy_caller import clean_for_russian_tts
+        return clean_for_russian_tts(text)
+    except Exception:
+        if not text or not isinstance(text, str):
+            return ""
+        text = text.lower()
+        for w, r in COMMON_WORDS_RU.items():
+            text = re.sub(r'\b' + re.escape(w) + r'\b', r, text)
+        for eng, ru in TRANSLIT_PAIRS:
+            text = text.replace(eng, ru)
+        text = re.sub(r'\b(\d{1,6})\b', lambda m: num_to_ru(int(m.group(1))), text)
+        text = text.replace('—', '–').replace('"', '').replace("'", "")
+        allowed = set('_~|!+,-.:;?абвгдежзийклмнопрстуфхцчшщъыьэюяё–… ')
+        text = ''.join(c for c in text if c in allowed)
+        return re.sub(r'\s+', ' ', text).strip()
 
 SILERO_V5_RU_URL = "https://models.silero.ai/models/tts/ru/v5_ru.pt"
 AVAILABLE_SPEAKERS = ["aidar", "baya", "kseniya", "xenia", "eugene"]
@@ -122,7 +122,6 @@ class SileroTTS:
         self._init_thread = None
 
         if self.enabled:
-            # Pre-warm Silero model in background thread
             self._init_thread = threading.Thread(
                 target=self._init_pipeline, daemon=True, name="Silero-Init"
             )
@@ -155,7 +154,6 @@ class SileroTTS:
             if candidate.exists() and candidate.stat().st_size > 1024 * 1024:
                 return candidate
 
-        # Download to user cache
         target = USER_CACHE_DIR / "models/v5_ru.pt"
         target.parent.mkdir(parents=True, exist_ok=True)
         log.info(f"Downloading Silero TTS v5 Russian model from {SILERO_V5_RU_URL}...")
@@ -176,7 +174,6 @@ class SileroTTS:
             if self._model is not None:
                 return
 
-            # Check if ONNX model is configured and available
             if self.onnx_model_path and os.path.exists(self.onnx_model_path):
                 try:
                     import onnxruntime as ort
@@ -230,7 +227,6 @@ class SileroTTS:
 
         if backend == "torch":
             try:
-                # Apply TTS inference
                 audio_tensor = model.apply_tts(
                     text=clean_text,
                     speaker=speaker,
@@ -242,7 +238,6 @@ class SileroTTS:
         elif backend == "onnx":
             raise NotImplementedError("ONNX session inference without pre-processing not configured.")
 
-        # Save to wav file
         saved = False
         try:
             import soundfile as sf

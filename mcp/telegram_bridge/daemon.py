@@ -14,12 +14,18 @@ from collections import defaultdict
 import fcntl
 import sqlite3
 import tempfile
-import shutil
-from telethon import TelegramClient, events
+MCP_DIR = Path(__file__).resolve().parent.parent
+STEWART_ROOT = MCP_DIR.parent
+if str(MCP_DIR) not in sys.path:
+    sys.path.insert(0, str(MCP_DIR))
+if str(STEWART_ROOT) not in sys.path:
+    sys.path.insert(0, str(STEWART_ROOT))
 
+from telethon import TelegramClient, events
 from telegram_bridge.formatter import format_for_telegram, chunk_telegram_text
 from telegram_bridge.transcriber import VoiceTranscriber
 from telegram.client import execute_action, get_ipc_socket_path
+from api.commands.agy_caller import clean_for_russian_tts
 
 logging.basicConfig(
     level=logging.INFO,
@@ -423,7 +429,7 @@ def build_live_status(
 
 
 class TelegramBridge:
-    def __init__(self):
+    def __init__(self, stewart_app=None):
         session_str = str(SESSION_PATH)
         if session_str.endswith(".session"):
             session_str = session_str[:-8]
@@ -439,6 +445,15 @@ class TelegramBridge:
         self.transcriber = VoiceTranscriber()
         self.voice_messages_sent = 0
         self.sent_voice_chats = defaultdict(int)
+        self.stewart_app = stewart_app
+        if self.stewart_app is None:
+            try:
+                from api.app import app as api_app
+                from app.app import App
+                self.stewart_app = App(api_app)
+                self.stewart_app.tree_init()
+            except Exception as e:
+                logger.warning(f"Could not initialize Stewart App: {e}")
 
     async def start_ipc_server(self):
         """Start local Unix Domain Socket server to handle tool calls from other processes."""
@@ -638,6 +653,54 @@ class TelegramBridge:
             await event.reply("⏳ I'm still processing your previous request. Just a moment...")
             return
 
+        if self.stewart_app and hasattr(self.stewart_app, "api") and not text.startswith("/"):
+            try:
+                algorithmic_cmds = self.stewart_app.api.manager.find(text)
+            except Exception as e:
+                logger.warning(f"Error checking algorithmic match: {e}")
+                algorithmic_cmds = []
+
+            if algorithmic_cmds:
+                logger.info(f"Algorithmic match detected for '{text}': {algorithmic_cmds}")
+                executed = []
+                for cmd_pair in algorithmic_cmds:
+                    cmd_obj = cmd_pair[0]
+                    executed.append(f"{cmd_obj.action} ({' '.join(cmd_obj.keywords)})")
+                    try:
+                        self.stewart_app.do(cmd_pair, request=text)
+                    except Exception as dex:
+                        logger.error(f"Error executing action {cmd_obj.action}: {dex}")
+
+                cmd_obj = algorithmic_cmds[0][0]
+                if cmd_obj.responses and not cmd_obj.tts:
+                    import random
+                    answer = random.choice(cmd_obj.responses)
+                else:
+                    import random
+                    answers_list = self.stewart_app.config.get("answers", {}).get("multi", ["Done, Sir."])
+                    answer = random.choice(answers_list)
+
+                exec_str = ", ".join(executed)
+                print(f"✓ ⚡ Executing: {exec_str}")
+                print(f'Stewart: "{answer}"')
+
+                reply_msg = f"✓ ⚡ *Executing:* `{exec_str}`\n\nStewart: {answer}"
+                await event.reply(reply_msg)
+
+                if is_voice:
+                    try:
+                        is_ru = (getattr(self.stewart_app.api, "lang", "en") == "ru") or bool(re.search(r"[\u0400-\u04FF]", answer))
+                        tts_text = clean_for_russian_tts(answer) if is_ru else answer
+                        await asyncio.to_thread(
+                            execute_action,
+                            "send_voice_message",
+                            {"chat_id": event.chat_id, "text": tts_text, "lang": "ru" if is_ru else "en"},
+                            str(SESSION_PATH)
+                        )
+                    except Exception as vx:
+                        logger.warning(f"Voice reply error: {vx}")
+                return
+
         prompt_body = text
         if image_path:
             prompt_body = f"[User attached an image file: {image_path}]\n{prompt_body}"
@@ -646,13 +709,22 @@ class TelegramBridge:
         chat_title = getattr(getattr(event, "chat", None), "title", "Life") or "Life"
         context_note = build_system_safety_instruction(chat_id, chat_title)
 
+        is_ru = (getattr(getattr(self.stewart_app, "api", None), "lang", "en") == "ru") or bool(re.search(r"[\u0400-\u04FF]", prompt_body))
+        if is_ru:
+            context_note += (
+                "[CRITICAL RUSSIAN DIRECTIVE: All output MUST be 100% in Russian Cyrillic characters only. "
+                "Turn ALL numbers and times into Russian spoken words (e.g. 4 -> четыре, 10:00 – 12:30 -> с десяти до двенадцати тридцати). "
+                "Transliterate/translate all Latin names, subjects, foreign terms, and room codes into Russian Cyrillic (e.g. Physics HL -> физика эйч эл, KG108 -> ауд. КГ сто восемь). "
+                "Strictly NO digits, NO Latin characters anywhere. Speak in natural connected Russian sentences.]\n\n"
+            )
+
         if prompt_body.startswith("/"):
             parts = prompt_body.split(maxsplit=1)
             slash_cmd = parts[0]
             rest = parts[1] if len(parts) > 1 else ""
             full_prompt = f"{slash_cmd} {context_note}{rest}"
         else:
-            full_prompt = f"/life {context_note}{prompt_body}"
+            full_prompt = f"/stewart-voice {context_note}{prompt_body}"
         asyncio.create_task(self.process_agent_turn(
             event,
             full_prompt,
@@ -903,6 +975,24 @@ class TelegramBridge:
                         for ch in chunks:
                             await self.client.send_message(chat_id, ch)
 
+                    final_clean = final_response.strip()
+                    is_ru = (getattr(getattr(self.stewart_app, "api", None), "lang", "en") == "ru") or bool(re.search(r"[\u0400-\u04FF]", final_clean))
+                    if is_ru:
+                        final_clean = clean_for_russian_tts(final_clean)
+                    print(f'Stewart: "{final_clean}"')
+
+                    if voice_text and initial_chat_voice_count == self.sent_voice_chats[chat_id_str] and final_response:
+                        try:
+                            tts_text = final_clean if is_ru else final_response
+                            await asyncio.to_thread(
+                                execute_action,
+                                "send_voice_message",
+                                {"chat_id": chat_id, "text": tts_text, "lang": "ru" if is_ru else "en"},
+                                str(SESSION_PATH)
+                            )
+                        except Exception as vx:
+                            logger.warning(f"Voice reply error: {vx}")
+
                 else:
                     stderr_data = await proc.stderr.read()
                     err = stderr_data.decode("utf-8", errors="ignore").strip()
@@ -942,6 +1032,30 @@ def sig_handler(sig, frame):
     remove_pid()
     release_instance_lock()
     os._exit(0)
+
+
+def start_daemon_in_thread(stewart_app=None):
+    import threading
+    def _run():
+        if not acquire_instance_lock():
+            logger.info("Telegram daemon is already running in another process.")
+            return
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        bridge = TelegramBridge(stewart_app=stewart_app)
+        try:
+            loop.run_until_complete(bridge.start())
+        except Exception as e:
+            logger.warning(f"Telegram daemon thread stopped: {e}")
+        finally:
+            remove_socket()
+            remove_pid()
+            release_instance_lock()
+            loop.close()
+
+    t = threading.Thread(target=_run, daemon=True, name="Stewart-TelegramBridge")
+    t.start()
+    return t
 
 
 def main():

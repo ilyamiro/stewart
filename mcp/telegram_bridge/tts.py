@@ -217,12 +217,28 @@ def clean_for_silero_ru(text: str) -> str:
     if not text or not isinstance(text, str):
         return ""
 
+    try:
+        from api.commands.agy_caller import clean_for_russian_tts
+        return clean_for_russian_tts(text)
+    except Exception:
+        pass
+
     text = strip_markdown_and_links(text)
     text = text.lower()
+    text = re.sub(r'([a-zA-Zа-яА-ЯёЁ]+)(\d+)', r'\1 \2', text)
+    text = re.sub(r'(\d+)([a-zA-Zа-яА-ЯёЁ]+)', r'\1 \2', text)
+    text = text.replace('/', ' ')
+
+    def time_range_repl(m):
+        h1, m1, h2, m2 = int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4))
+        t1 = f"{num_to_ru(h1)} {num_to_ru(m1)}" if m1 else f"{num_to_ru(h1)}"
+        t2 = f"{num_to_ru(h2)} {num_to_ru(m2)}" if m2 else f"{num_to_ru(h2)}"
+        return f"с {t1} до {t2}"
+    text = re.sub(r'\b(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})\b', time_range_repl, text)
 
     def time_repl(m):
         h, mn = int(m.group(1)), int(m.group(2))
-        return f"{num_to_ru(h)} {num_to_ru(mn)}"
+        return f"{num_to_ru(h)} {num_to_ru(mn)}" if mn else f"{num_to_ru(h)} ноль ноль"
     text = re.sub(r'\b(\d{1,2}):(\d{2})\b', time_repl, text)
 
     text = re.sub(r'\b(\d{1,6})\b', lambda m: num_to_ru(int(m.group(1))), text)

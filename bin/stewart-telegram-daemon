@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PYTHONPATH="$SCRIPT_DIR/mcp:$SCRIPT_DIR:$PYTHONPATH"
+PIDFILE="/tmp/life-telegram-daemon.pid"
+LOCKFILE="/tmp/life-telegram-daemon.lock"
+SOCKFILE="/tmp/life-tg-$(id -u).sock"
+
+ACTION="${1:-start}"
+
+case "$ACTION" in
+    stop)
+        if [ -f "$PIDFILE" ]; then
+            p=$(cat "$PIDFILE" 2>/dev/null || true)
+            if [ -n "$p" ]; then
+                kill "$p" 2>/dev/null || true
+            fi
+            rm -f "$PIDFILE" "$LOCKFILE" "$SOCKFILE"
+        fi
+        echo "Telegram daemon stopped."
+        exit 0
+        ;;
+    status)
+        if [ -f "$PIDFILE" ]; then
+            p=$(cat "$PIDFILE" 2>/dev/null || true)
+            if [ -n "$p" ] && kill -0 "$p" 2>/dev/null; then
+                echo "Telegram daemon is running (PID: $p)."
+                exit 0
+            fi
+        fi
+        echo "Telegram daemon is not running."
+        exit 1
+        ;;
+    restart)
+        "$0" stop
+        sleep 0.5
+        ;;
+esac
+
+if python3 -c "import telethon; import faster_whisper" >/dev/null 2>&1; then
+    exec python3 -m telegram_bridge.daemon "$@"
+else
+    exec nix-shell "$SCRIPT_DIR/default.nix" --run "python3 -m telegram_bridge.daemon" "$@"
+fi

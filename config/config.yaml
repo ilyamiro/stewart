@@ -71,6 +71,9 @@ router:
     provider: agy
     skill_name: stewart-voice
 
+telegram:
+  enabled: true
+
 mcp:
   enabled: true
   servers:

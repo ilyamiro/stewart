@@ -38,6 +38,16 @@ class App:
     def start(self, start_time):
         self.trigger_timed_needed = self.config["settings"]["trigger"]["trigger-mode"] != "disabled"
         self.tree_init()
+        self.start_telegram_server()
+
+    def start_telegram_server(self):
+        if not self.config.get("telegram", {}).get("enabled", True):
+            return
+        try:
+            from mcp.telegram_bridge.daemon import start_daemon_in_thread
+            start_daemon_in_thread(self)
+        except Exception as e:
+            log.warning(f"Could not start Telegram server: {e}")
 
     def run(self, stt=None, last_time=None):
         self.running = True

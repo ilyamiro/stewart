@@ -186,6 +186,131 @@ def format_tool_activity(tool_name: str, params: dict, state: str) -> tuple[str,
     return (emoji, act)
 
 
+ONES_RU = {
+    0: "ноль", 1: "один", 2: "два", 3: "три", 4: "четыре", 5: "пять",
+    6: "шесть", 7: "семь", 8: "восемь", 9: "девять"
+}
+TEENS_RU = {
+    10: "десять", 11: "одиннадцать", 12: "двенадцать", 13: "тринадцать", 14: "четырнадцать",
+    15: "пятнадцать", 16: "шестнадцать", 17: "семнадцать", 18: "восемнадцать", 19: "девятнадцать"
+}
+TENS_RU = {
+    20: "двадцать", 30: "тридцать", 40: "сорок", 50: "пятьдесят",
+    60: "шестьдесят", 70: "семьдесят", 80: "восемьдесят", 90: "девяносто"
+}
+HUNDREDS_RU = {
+    100: "сто", 200: "двести", 300: "триста", 400: "четыреста", 500: "пятьсот",
+    600: "шестьсот", 700: "семьсот", 800: "восемьсот", 900: "девятьсот"
+}
+
+def num_to_ru(n: int) -> str:
+    if n < 0:
+        return f"минус {num_to_ru(abs(n))}"
+    if n in ONES_RU:
+        return ONES_RU[n]
+    if n in TEENS_RU:
+        return TEENS_RU[n]
+    if n in TENS_RU:
+        return TENS_RU[n]
+    if n in HUNDREDS_RU:
+        return HUNDREDS_RU[n]
+    if 21 <= n <= 99:
+        return f"{TENS_RU[(n // 10) * 10]} {ONES_RU[n % 10]}"
+    if 101 <= n <= 999:
+        rem = n % 100
+        h_str = HUNDREDS_RU[(n // 100) * 100]
+        return h_str if rem == 0 else f"{h_str} {num_to_ru(rem)}"
+    if 1000 <= n <= 999999:
+        th = n // 1000
+        rem = n % 1000
+        t_word = "тысяч"
+        if th % 10 == 1 and th % 100 != 11:
+            t_word = "тысяча"
+        elif th % 10 in (2, 3, 4) and th % 100 not in (12, 13, 14):
+            t_word = "тысячи"
+        th_str = num_to_ru(th)
+        if th_str.endswith("один"):
+            th_str = th_str[:-4] + "одна"
+        elif th_str.endswith("два"):
+            th_str = th_str[:-3] + "две"
+        res = f"{th_str} {t_word}"
+        return res if rem == 0 else f"{res} {num_to_ru(rem)}"
+    return str(n)
+
+COMMON_WORDS_RU = {
+    "google": "гугл", "youtube": "ютуб", "gmail": "джимейл", "github": "гитхаб",
+    "linux": "линукс", "python": "пайтон", "telegram": "телеграм",
+    "studieplus": "студие плюс", "studie+": "студие плюс", "studie": "студие",
+    "stewart": "стюарт", "antigravity": "антигравити", "silero": "силеро",
+    "whisper": "виcпер", "wifi": "вай-фай", "wi-fi": "вай-фай", "bluetooth": "блютуз",
+    "ok": "окей", "stop": "стоп", "maths": "математика", "math": "математика",
+    "physics": "физика", "chemistry": "химия", "economics": "экономика",
+    "history": "история", "english": "инглиш", "danish": "датский",
+    "biology": "биология", "geography": "география",
+    "hl": "эйч эл", "sl": "эс эл", "aa": "эй эй", "ai": "эй ай", "ib": "ай би",
+    "mcp": "эм си пи", "cli": "си эл ай", "api": "апи", "pdf": "пэ дэ эф",
+    "elevmøde": "элевмёде", "elevmode": "элевмёде",
+    "lektiecafe": "лектиекафе", "aros": "арос",
+    "ambassador": "амбассадор", "intro": "интро", "student": "студент",
+    "revision": "повторение", "electric": "электрических", "currents": "токов",
+    "fields": "полей", "michael": "майкл", "faester": "фестер", "fæster": "фестер",
+    "yevhen": "евген", "miroshnychenko": "мирошниченко",
+    "kim": "ким", "sonderborg": "сëндерборг", "sønderborg": "сëндерборг",
+    "frihedens": "фрихеденс", "fald": "фалд",
+    "kg": "кэ гэ", "kc": "ка цэ", "kb": "ка бэ", "sl/hl": "эс эл эйч эл",
+    "of": "по", "and": "и", "in": "в", "at": "в"
+}
+
+LATIN_TO_CYRILLIC_MULTI = [
+    ("shch", "щ"), ("yo", "ё"), ("zh", "ж"), ("ch", "ч"), ("sh", "ш"),
+    ("yu", "ю"), ("ya", "я"), ("th", "с"), ("ph", "ф"), ("ck", "к"),
+    ("kh", "х"), ("ts", "ц"), ("ee", "и"), ("oo", "у"), ("qu", "кв"),
+]
+
+LATIN_TO_CYRILLIC_SINGLE = {
+    "a": "а", "b": "б", "c": "к", "d": "д", "e": "е",
+    "f": "ф", "g": "г", "h": "х", "i": "и", "j": "дж",
+    "k": "к", "l": "л", "m": "м", "n": "н", "o": "о",
+    "p": "п", "q": "к", "r": "р", "s": "с", "t": "т",
+    "u": "у", "v": "в", "w": "в", "x": "кс", "y": "и", "z": "з",
+    "ø": "ё", "æ": "э", "å": "о"
+}
+
+def clean_for_russian_tts(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"([a-zA-Zа-яА-ЯёЁ]+)(\d+)", r"\1 \2", text)
+    text = re.sub(r"(\d+)([a-zA-Zа-яА-ЯёЁ]+)", r"\1 \2", text)
+    text = text.replace("/", " ")
+
+    def time_range_repl(m):
+        h1, m1, h2, m2 = int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4))
+        t1 = f"{num_to_ru(h1)} {num_to_ru(m1)}" if m1 else f"{num_to_ru(h1)}"
+        t2 = f"{num_to_ru(h2)} {num_to_ru(m2)}" if m2 else f"{num_to_ru(h2)}"
+        return f"с {t1} до {t2}"
+    text = re.sub(r"\b(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})\b", time_range_repl, text)
+
+    def time_repl(m):
+        h, mn = int(m.group(1)), int(m.group(2))
+        return f"{num_to_ru(h)} {num_to_ru(mn)}" if mn else f"{num_to_ru(h)} ноль ноль"
+    text = re.sub(r"\b(\d{1,2}):(\d{2})\b", time_repl, text)
+
+    text = re.sub(r"\b(\d{1,6})\b", lambda m: num_to_ru(int(m.group(1))), text)
+
+    for w, r in COMMON_WORDS_RU.items():
+        text = re.sub(r"\b" + re.escape(w) + r"\b", r, text)
+
+    for eng, ru in LATIN_TO_CYRILLIC_MULTI:
+        text = text.replace(eng, ru)
+
+    chars = [LATIN_TO_CYRILLIC_SINGLE.get(c, c) for c in text]
+    text = "".join(chars)
+
+    text = text.replace("—", "–").replace("\"", "").replace("'", "")
+    allowed = set("_~|!+,-.:;?абвгдежзийклмнопрстуфхцчшщъыьэюяё–… ")
+    text = "".join(c for c in text if c in allowed)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 class AgyCaller:
     def __init__(self,
                  command: str = "agy",
@@ -194,7 +319,8 @@ class AgyCaller:
                  timeout: float = 60.0,
                  dangerously_skip_permissions: bool = True,
                  skill_name: Optional[str] = "stewart-voice",
-                 cwd: Optional[str] = None):
+                 cwd: Optional[str] = None,
+                 lang: Optional[str] = "en"):
         self.command = command
         self.model = model
         self.effort = effort
@@ -202,6 +328,7 @@ class AgyCaller:
         self.dangerously_skip_permissions = dangerously_skip_permissions
         self.skill_name = skill_name
         self.cwd = cwd or str(Path(__file__).resolve().parent.parent.parent)
+        self.lang = lang or "en"
 
     def is_available(self) -> bool:
         try:
@@ -210,7 +337,7 @@ class AgyCaller:
         except Exception:
             return False
 
-    def clean_text_for_tts(self, text: str) -> str:
+    def clean_text_for_tts(self, text: str, lang: Optional[str] = None) -> str:
         if not text:
             return ""
 
@@ -246,7 +373,14 @@ class AgyCaller:
         )
         cleaned = emoji_pattern.sub("", cleaned)
         lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
-        return " ".join(lines).strip()
+        result_text = " ".join(lines).strip()
+
+        target_lang = (lang or self.lang or "en").lower()
+        is_ru = (target_lang == "ru") or bool(re.search(r"[\u0400-\u04FF]", result_text))
+        if is_ru:
+            result_text = clean_for_russian_tts(result_text)
+
+        return result_text
 
     def execute_request(self,
                         request: str,
@@ -255,6 +389,16 @@ class AgyCaller:
         clean_req = request.strip()
         if not clean_req:
             return None
+
+        is_ru = (self.lang == "ru") or bool(re.search(r"[\u0400-\u04FF]", clean_req))
+        ru_directive = ""
+        if is_ru:
+            ru_directive = (
+                "\n\n[CRITICAL RUSSIAN DIRECTIVE: All output MUST be 100% in Russian Cyrillic characters only. "
+                "Turn ALL numbers and times into Russian spoken words (e.g. 4 -> четыре, 10:00 – 12:30 -> с десяти до двенадцати тридцати, 14:45 -> четырнадцать сорок пять). "
+                "Transliterate/translate all Latin names, subjects, foreign terms, and room codes into Russian Cyrillic (e.g. Physics HL -> физика эйч эл, KG108 -> ауд. КГ сто восемь, Michael Fæster -> Майкл Фестер, Elevmøde -> Элевмёде, Lektiecafe -> Лектиекафе). "
+                "Strictly NO digits, NO Latin characters anywhere. Speak in natural connected Russian sentences.]"
+            )
 
         tools_block = ""
         if tools:
@@ -267,9 +411,9 @@ class AgyCaller:
                 tools_block = f"\n\nAvailable tools:\n{formatted_tools}"
 
         if confirmed:
-            prompt_payload = f"The user has confirmed proceeding with this action via voice. Execute and complete: {clean_req}"
+            prompt_payload = f"The user has confirmed proceeding with this action via voice. Execute and complete: {clean_req}{ru_directive}"
         else:
-            prompt_payload = clean_req
+            prompt_payload = f"{clean_req}{ru_directive}"
 
         if self.skill_name:
             full_prompt = f"/{self.skill_name} {prompt_payload}{tools_block}"
@@ -376,7 +520,7 @@ class AgyCaller:
                 cleaned_conf = self.clean_text_for_tts(conf_prompt)
                 return AgyResponse(cleaned_conf, needs_confirmation=True, confirmation_prompt=cleaned_conf, raw_output=final_response)
 
-            cleaned_speech = self.clean_text_for_tts(final_response)
+            cleaned_speech = self.clean_text_for_tts(final_response, lang="ru" if is_ru else "en")
             if cleaned_speech:
                 print(f'Stewart: "{cleaned_speech}"')
             return AgyResponse(cleaned_speech, needs_confirmation=False, raw_output=final_response)

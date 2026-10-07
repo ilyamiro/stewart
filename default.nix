@@ -95,6 +95,7 @@ pypkgs.buildPythonApplication rec {
     faster-whisper
     pydantic
     json-repair
+    telethon
   ];
 
   makeWrapperArgs = [

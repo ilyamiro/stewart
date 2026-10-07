@@ -38,6 +38,9 @@ class CommandRouter:
         self.persona_provider = "agy"
         self.persona_caller = None
 
+        lang_cfg = self.config.get("lang", {})
+        self.lang = lang_cfg.get("prefix", "en") if isinstance(lang_cfg, dict) else "en"
+
         agy_cfg = router_cfg.get("agy", {}) or self.config.get("agy", {})
         self.agy_caller = AgyCaller(
             command=agy_cfg.get("command", "agy"),
@@ -45,7 +48,8 @@ class CommandRouter:
             effort=agy_cfg.get("effort", "low"),
             timeout=float(agy_cfg.get("timeout", 30.0)),
             dangerously_skip_permissions=bool(agy_cfg.get("dangerously_skip_permissions", True)),
-            skill_name=agy_cfg.get("skill_name", "stewart-voice")
+            skill_name=agy_cfg.get("skill_name", "stewart-voice"),
+            lang=self.lang
         )
 
         self._route_cache: Dict[str, List] = {}
