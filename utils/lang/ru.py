@@ -38,7 +38,6 @@ def find_num(text):
 
     numbers = []
 
-    # First check digits with optional suffixes like 20ти, 15%, 100
     digit_matches = re.findall(r'\b(\d+)(?:ти|ми|ка|%|процент[а-я]*)?', text_lower)
     for m in digit_matches:
         if m.isdigit():
@@ -47,7 +46,6 @@ def find_num(text):
     if numbers:
         return numbers
 
-    # Check words and combine consecutive numbers (e.g. двадцать пять -> 25)
     words = re.findall(r'[а-яё]+', text_lower)
     current_acc = 0
     in_acc = False

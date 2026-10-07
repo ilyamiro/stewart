@@ -24,9 +24,6 @@ stopwatch_start_time = None
 from typing import Union, List, Optional
 from api.commands.actions import BaseAction, ActionParameters, ActionResult, ExecutionContext, Field
 
-# =====================================================================
-# Input & Desktop Actions
-# =====================================================================
 
 class TypingParams(ActionParameters):
     context: str = Field(default="", description="Text to type into active application")
@@ -62,8 +59,16 @@ class SubprocessAction(BaseAction):
 
     def execute(self, params: SubprocessParams, ctx: ExecutionContext) -> ActionResult:
         cmd = params.command
-        if not cmd and hasattr(params, "subprocess"):
-            cmd = getattr(params, "subprocess")
+        if not cmd:
+            for k in ("subprocess", "command", "cmd", None):
+                if hasattr(params, k) and getattr(params, k):
+                    cmd = getattr(params, k)
+                    break
+                elif ctx.command and hasattr(ctx.command, "parameters") and k in ctx.command.parameters and ctx.command.parameters[k]:
+                    cmd = ctx.command.parameters[k]
+                    break
+        if not cmd and ctx.context:
+            cmd = ctx.context
         if not cmd:
             return ActionResult(success=False, error="No command specified")
         ok = ctx.desktop.launch_app(cmd)
@@ -155,13 +160,23 @@ class BrowserAction(BaseAction):
     sample_phrases = ["open website", "browse to google"]
 
     def execute(self, params: BrowserParams, ctx: ExecutionContext) -> ActionResult:
-        if not params.url:
+        url = params.url
+        if not url:
+            for k in ("url", "link", None):
+                if hasattr(params, k) and getattr(params, k):
+                    url = getattr(params, k)
+                    break
+                elif ctx.command and hasattr(ctx.command, "parameters") and k in ctx.command.parameters and ctx.command.parameters[k]:
+                    url = ctx.command.parameters[k]
+                    break
+        if not url and ctx.context:
+            url = ctx.context
+        if not url:
             return ActionResult(success=False, error="No URL specified")
-        ok = ctx.desktop.open_url(params.url)
+        ok = ctx.desktop.open_url(url)
         return ActionResult(success=ok)
 
 
-# Callable module-level instances for backward compatibility
 typing = TypingAction()
 subprocess = SubprocessAction()
 click = ClickAction()
@@ -303,12 +318,10 @@ def update(**kwargs) -> None:
         app.say("System update completed.")
         return
 
-    # NixOS
     if shutil.which("nixos-rebuild"):
         app.say("NixOS detected. Please run nixos-rebuild switch to update your system.")
         return
 
-    # Fedora / RHEL
     if shutil.which("dnf"):
         dnf_check = sp.run(["dnf", "check-update"], capture_output=True, text=True)
         lines = [l for l in dnf_check.stdout.splitlines() if l.strip() and not l.startswith("Last metadata")]
@@ -323,7 +336,6 @@ def update(**kwargs) -> None:
             app.say(app.localeService.translate("core", "core.update.update_after"))
         return
 
-    # Debian / Ubuntu
     if shutil.which("apt"):
         app.say("Updating package lists.")
         sp.run(["sudo", "apt", "update"])
@@ -331,7 +343,6 @@ def update(**kwargs) -> None:
         app.say("System update completed.")
         return
 
-    # Arch
     if shutil.which("pacman"):
         app.say("Updating Arch packages.")
         sp.run(["sudo", "pacman", "-Syu", "--noconfirm"])
@@ -359,7 +370,6 @@ def brightness(**kwargs):
         num = results[0] if results else None
 
     try:
-        # Get brightnessctl output and parse percentage in Python
         output = sp.check_output(
             ["brightnessctl"],
             text=True
@@ -388,7 +398,7 @@ def brightness(**kwargs):
         else:
             log.warning("Brightness 'set' command received without a target number; keeping current brightness.")
     else:
-        adjustment = num if num is not None else 25  # Default step
+        adjustment = num if num is not None else 25
         new_brightness = max(0, min(100, current + adjustment if command == "up" else current - adjustment))
         try:
             sp.run(
@@ -493,7 +503,7 @@ def battery(**kwargs):
                 app.say(f"Your laptop is charging and currently at {word_percent} percent. Keep it plugged in for now.")
             else:
                 app.say(f"Your laptop is charging and only at {word_percent} percent. Let it charge longer.")
-        else:  # Not charging
+        else:
             if percentage >= 80:
                 app.say(f"Your battery is at {word_percent} percent. You're good to go!")
             elif percentage >= 50:
@@ -578,14 +588,12 @@ def stopwatch(**kwargs):
 def backlight(**kwargs):
     way = kwargs["command"].parameters.get("way", "on")
 
-    # Try brightnessctl first
     if shutil.which("brightnessctl"):
         val = "100%" if way == "on" else "0%"
         res = sp.run(["brightnessctl", "--device=*kbd_backlight*", "set", val], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
         if res.returncode == 0:
             return
 
-    # Fallback to sysfs search
     base = Path("/sys/class/leds")
     if base.exists():
         for p in base.iterdir():

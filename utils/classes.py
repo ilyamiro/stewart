@@ -24,7 +24,7 @@ class MonitoredVariable:
     @value.setter
     def value(self, new_value):
         if self._callback:
-            self._callback(new_value)  # Call the callback when value changes
+            self._callback(new_value)
         self._value = new_value
 
     def set_callback(self, new_callback):

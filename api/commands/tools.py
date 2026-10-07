@@ -146,7 +146,6 @@ class ToolRegistry:
             if isinstance(cmds_section, dict):
                 config_commands = cmds_section.get("default", []) + cmds_section.get("repeat", [])
 
-        # Map action -> samples, parameters, and continues flag
         action_metadata: Dict[str, Dict[str, Any]] = {}
         for cmd_entry in config_commands:
             action_name = cmd_entry.get("action")
@@ -173,11 +172,10 @@ class ToolRegistry:
 
         for name, func in actions.items():
             if name.startswith("_"):
-                continue  # skip internal functions
+                continue
             meta = action_metadata.get(name, {})
 
             if isinstance(func, BaseAction):
-                # Inherit BaseAction's typed schema and metadata
                 tool_schema = func.to_ollama_tool()["function"]["parameters"]
                 samples = list(func.sample_phrases)
                 for s in meta.get("samples", []):
@@ -201,7 +199,6 @@ class ToolRegistry:
             if not doc:
                 doc = f"Executes system action '{name}'"
 
-            # Auto-infer parameter schema for legacy function actions
             props = {}
             if meta.get("parameters"):
                 for k, v in meta["parameters"].items():
@@ -240,7 +237,10 @@ class ToolRegistry:
         import urllib.parse
         from api.services.desktop import get_desktop_service
 
-        # 1. file tool
+        def _reg_core(tool: ActionTool):
+            if tool.name not in self._tools:
+                self.register(tool)
+
         def file_action(command=None, context: str = "", history=None, **kwargs):
             args = dict(kwargs)
             if command and hasattr(command, "parameters"):
@@ -271,8 +271,8 @@ class ToolRegistry:
             return {"status": "error", "error": f"Invalid file action '{action}' or missing path"}
 
         file_action.__name__ = "file"
-        file_action.is_query = True
-        self.register(ActionTool(
+        file_action.is_query = False
+        _reg_core(ActionTool(
             name="file",
             func=file_action,
             description="Open, rename, or delete files and directories on the local Linux filesystem.",
@@ -288,7 +288,6 @@ class ToolRegistry:
             plugin_name="core"
         ))
 
-        # 2. web tool
         def web_action(command=None, context: str = "", history=None, **kwargs):
             args = dict(kwargs)
             if command and hasattr(command, "parameters"):
@@ -314,8 +313,8 @@ class ToolRegistry:
             return {"status": "error", "error": "Neither URL nor query specified"}
 
         web_action.__name__ = "web"
-        web_action.is_query = True
-        self.register(ActionTool(
+        web_action.is_query = False
+        _reg_core(ActionTool(
             name="web",
             func=web_action,
             description="Open web URLs or perform internet search queries in the default browser.",
@@ -331,7 +330,6 @@ class ToolRegistry:
             plugin_name="core"
         ))
 
-        # 3. app tool
         def app_action(command=None, context: str = "", history=None, **kwargs):
             args = dict(kwargs)
             if command and hasattr(command, "parameters"):
@@ -377,8 +375,8 @@ class ToolRegistry:
             return {"status": "error", "error": "Missing application name or action"}
 
         app_action.__name__ = "app"
-        app_action.is_query = True
-        self.register(ActionTool(
+        app_action.is_query = False
+        _reg_core(ActionTool(
             name="app",
             func=app_action,
             description="Launch, close, or switch desktop applications (terminal, browser, files, code, etc.).",
@@ -393,7 +391,6 @@ class ToolRegistry:
             plugin_name="core"
         ))
 
-        # 4. brightness tool
         def brightness_action(command=None, context: str = "", history=None, **kwargs):
             args = dict(kwargs)
             if command and hasattr(command, "parameters"):
@@ -405,8 +402,8 @@ class ToolRegistry:
             return {"status": "success" if ok else "error", "brightness": val, "command": cmd}
 
         brightness_action.__name__ = "brightness"
-        brightness_action.is_query = True
-        self.register(ActionTool(
+        brightness_action.is_query = False
+        _reg_core(ActionTool(
             name="brightness",
             func=brightness_action,
             description="Adjust or set display screen brightness via brightnessctl.",
@@ -421,7 +418,6 @@ class ToolRegistry:
             plugin_name="core"
         ))
 
-        # 5. volume tool
         def volume_action(command=None, context: str = "", history=None, **kwargs):
             args = dict(kwargs)
             if command and hasattr(command, "parameters"):
@@ -433,8 +429,8 @@ class ToolRegistry:
             return {"status": "success" if ok else "error", "volume": val, "command": cmd}
 
         volume_action.__name__ = "volume"
-        volume_action.is_query = True
-        self.register(ActionTool(
+        volume_action.is_query = False
+        _reg_core(ActionTool(
             name="volume",
             func=volume_action,
             description="Adjust or set master system volume level via PipeWire/PulseAudio.",
@@ -449,7 +445,6 @@ class ToolRegistry:
             plugin_name="core"
         ))
 
-        # 6. music tool
         def music_action(command=None, context: str = "", history=None, **kwargs):
             args = dict(kwargs)
             if command and hasattr(command, "parameters"):
@@ -469,8 +464,8 @@ class ToolRegistry:
             return {"status": "error", "error": f"Unknown music action '{action}'"}
 
         music_action.__name__ = "music"
-        music_action.is_query = True
-        self.register(ActionTool(
+        music_action.is_query = False
+        _reg_core(ActionTool(
             name="music",
             func=music_action,
             description="Control music and media playback (pause, resume, play, next, previous, stop).",
@@ -485,7 +480,6 @@ class ToolRegistry:
             plugin_name="core"
         ))
 
-        # 7. hotkey tool
         def hotkey_action(command=None, context: str = "", history=None, **kwargs):
             args = dict(kwargs)
             if command and hasattr(command, "parameters"):
@@ -498,8 +492,8 @@ class ToolRegistry:
             return {"status": "success" if ok else "error", "pressed_keys": keys}
 
         hotkey_action.__name__ = "hotkey"
-        hotkey_action.is_query = True
-        self.register(ActionTool(
+        hotkey_action.is_query = False
+        _reg_core(ActionTool(
             name="hotkey",
             func=hotkey_action,
             description="Send keyboard shortcut or hotkey combination to focused window.",
@@ -514,7 +508,6 @@ class ToolRegistry:
             plugin_name="core"
         ))
 
-        # 8. timer tool
         def timer_action(command=None, context: str = "", history=None, **kwargs):
             args = dict(kwargs)
             if command and hasattr(command, "parameters"):
@@ -527,8 +520,8 @@ class ToolRegistry:
             return {"status": "success", "timer_action": action, "duration": duration}
 
         timer_action.__name__ = "timer"
-        timer_action.is_query = True
-        self.register(ActionTool(
+        timer_action.is_query = False
+        _reg_core(ActionTool(
             name="timer",
             func=timer_action,
             description="Set, cancel or inspect countdown timers.",
@@ -543,7 +536,6 @@ class ToolRegistry:
             plugin_name="core"
         ))
 
-        # 9. system tool
         def system_action(command=None, context: str = "", history=None, **kwargs):
             args = dict(kwargs)
             if command and hasattr(command, "parameters"):
@@ -578,8 +570,8 @@ class ToolRegistry:
             return {"status": "error", "error": f"Unknown system action '{action}'"}
 
         system_action.__name__ = "system"
-        system_action.is_query = True
-        self.register(ActionTool(
+        system_action.is_query = False
+        _reg_core(ActionTool(
             name="system",
             func=system_action,
             description="System level operations: lock screen, check battery, tell time, weather, screenshot, or switch workspace.",
@@ -600,6 +592,10 @@ class ToolRegistry:
         """
         Discovers tools from MCP servers (e.g. studieplus, gmail) and registers them as ActionTool instances.
         """
+        if getattr(self, "_mcp_synced", False) and mcp_manager is None:
+            return
+        self._mcp_synced = True
+
         if mcp_manager is not None:
             self.mcp_manager = mcp_manager
         elif self.mcp_manager is None:
@@ -650,7 +646,6 @@ class ToolRegistry:
                 tool.is_query = True
                 self.register(tool)
 
-                # Register in api.__actions__ if available
                 if self.api and hasattr(self.api, "__actions__") and isinstance(self.api.__actions__, dict):
                     self.api.__actions__[name] = caller
 
@@ -658,7 +653,6 @@ class ToolRegistry:
         except Exception as e:
             log.warning(f"Error syncing MCP tools: {e}", exc_info=True)
 
-        # Sync dynamic tools as well
         self.sync_dynamic_tools()
 
     def sync_dynamic_tools(self):
@@ -699,7 +693,6 @@ class ToolRegistry:
                 if self.api and hasattr(self.api, "__actions__") and isinstance(self.api.__actions__, dict):
                     self.api.__actions__[dt.name] = caller
 
-            # Register built-in dynamic tool creator tool
             def create_tool_action(command=None, context: str = "", history: Optional[List] = None, **kwargs):
                 args = dict(kwargs)
                 if isinstance(command, str) and "command" not in args:

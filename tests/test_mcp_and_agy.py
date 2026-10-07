@@ -1,16 +1,7 @@
-"""
-Unit tests for Stewart MCP Tool Integration & Agy Caller.
-Tests:
-1. MCPManager configuration and tool discovery for studieplus and gmail.
-2. ToolRegistry synchronization with MCP tools and Ollama/Qwen schema generation.
-3. AgyCaller text sanitization for clean Kokoro TTS speech.
-4. CommandRouter routing with mode='agy' and provider='agy'.
-"""
 import sys
 import unittest
 from pathlib import Path
 
-# Add project root to sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -42,13 +33,11 @@ class TestMCPIntegration(unittest.TestCase):
         self.assertGreater(len(tools), 0)
         tool_names = [t["name"] for t in tools]
 
-        # Verify Studieplus tools
         self.assertIn("studieplus_get_schedule", tool_names)
         self.assertIn("studieplus_get_assignments", tool_names)
         self.assertIn("study_get_ib_resources", tool_names)
         self.assertIn("study_prepare_test", tool_names)
 
-        # Verify Gmail tools
         self.assertIn("gmail_check_status", tool_names)
         self.assertIn("gmail_search_emails", tool_names)
         self.assertIn("gmail_send_email", tool_names)
@@ -63,13 +52,11 @@ class TestMCPIntegration(unittest.TestCase):
         self.assertIn("studieplus_get_schedule", names)
         self.assertIn("gmail_search_emails", names)
 
-        # Check tool properties
         tool = registry.get("studieplus_get_schedule")
         self.assertIsNotNone(tool)
         self.assertTrue(getattr(tool, "is_query", False))
         self.assertEqual(tool.plugin_name, "mcp:studieplus")
 
-        # Verify schema export for Qwen / Ollama
         schemas = registry.get_all_tool_schemas()
         schema_names = [s["function"]["name"] for s in schemas]
         self.assertIn("studieplus_get_schedule", schema_names)
@@ -91,7 +78,6 @@ class TestAgyCaller(unittest.TestCase):
         )
         cleaned = self.caller.clean_text_for_tts(raw_markdown)
 
-        # Ensure all markdown and emojis are stripped
         self.assertNotIn("###", cleaned)
         self.assertNotIn("**", cleaned)
         self.assertNotIn("*", cleaned)
@@ -120,7 +106,6 @@ class TestRouterAgyIntegration(unittest.TestCase):
         )
 
     def test_router_mode_agy(self):
-        # Mock agy caller to return plain text
         from api.commands.agy_caller import AgyResponse
         self.router.agy_caller.execute_request = lambda req, confirmed=False, **kwargs: AgyResponse(f"Mock voice response to {req}")
         results = self.router.route("what is my schedule")
@@ -138,9 +123,9 @@ class TestRouterAgyIntegration(unittest.TestCase):
 
         self.router.agy_caller.execute_request = lambda prompt, confirmed=False: AgyResponse("Very good, Sir. The volume has been adjusted.")
         resp = self.router.generate_persona_response(
-            user_query="turn up the volume",
-            tool_name="volume",
-            tool_result={"status": "success", "level": 80}
+            user_query="what is my schedule",
+            tool_name="studieplus_get_schedule",
+            tool_result={"schedule": "Math at 10:00"}
         )
         self.assertEqual(resp, "Very good, Sir. The volume has been adjusted.")
 
@@ -182,7 +167,6 @@ class TestRouterAgyIntegration(unittest.TestCase):
                 }
             }
         ]
-        # Test format_tool_schemas from ToolRegistry
         formatted = ToolRegistry.format_tool_schemas(sample_tools)
         self.assertIn("volume(level: integer)", formatted)
         self.assertIn("Adjust system sound volume", formatted)
@@ -209,12 +193,10 @@ class TestDynamicTools(unittest.TestCase):
         )
         self.assertEqual(tool.name, "echo_test")
         
-        # Test execution
         res = tool.execute(name="Illia")
         self.assertTrue(res["success"])
         self.assertEqual(res["stdout"], "hello Illia")
 
-        # Test reload from file
         from api.commands.dynamic_tools import DynamicToolManager
         reloaded_mgr = DynamicToolManager(storage_file=self.temp_file)
         loaded_tool = reloaded_mgr.get("echo_test")
@@ -231,7 +213,6 @@ class TestDynamicTools(unittest.TestCase):
             sample_phrases=["rename file"]
         )
         registry = ToolRegistry()
-        # Patch dynamic tool manager singleton in registry sync
         import api.commands.dynamic_tools as dt_mod
         orig = dt_mod._dynamic_tool_manager
         dt_mod._dynamic_tool_manager = self.mgr
@@ -250,7 +231,6 @@ class TestVoiceConfirmation(unittest.TestCase):
         caller = AgyCaller(skill_name="stewart-voice")
         raw_text = "CONFIRMATION_REQUIRED: Sir, deleting notes.txt is irreversible. Would you like me to proceed?"
         
-        # Test confirmation parsing
         import re
         conf_match = re.search(r"CONFIRMATION_REQUIRED:\s*(.*)", raw_text, re.IGNORECASE)
         self.assertTrue(bool(conf_match))
@@ -266,7 +246,6 @@ class TestVoiceConfirmation(unittest.TestCase):
             registry,
             config={"router": {"mode": "agy"}}
         )
-        # Mock agy caller returning a confirmation required response
         router.agy_caller.execute_request = lambda req, confirmed=False, **kwargs: AgyResponse(
             "Sir, deleting this requires confirmation.",
             needs_confirmation=True,

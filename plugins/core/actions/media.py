@@ -54,17 +54,14 @@ def resume_audio(**kwargs):
 
 def mute_volume(**kwargs):
     cmd = kwargs["command"].parameters.get("command", "toggle")
-    # PipeWire
     if _which("wpctl"):
         val = "1" if cmd == "mute" else ("0" if cmd == "unmute" else "toggle")
         subprocess.run(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", val], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return
-    # PulseAudio
     if _which("pactl"):
         val = "1" if cmd == "mute" else ("0" if cmd == "unmute" else "toggle")
         subprocess.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", val], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return
-    # ALSA fallback
     if _which("amixer"):
         subprocess.run(["amixer", "set", "Master", cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -75,7 +72,6 @@ def volume(**kwargs):
     command = kwargs["command"].parameters.get("command", "set")
     adjustment = num if num is not None else 25
 
-    # PipeWire support
     if _which("wpctl"):
         if command == "set" and num is not None:
             subprocess.run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{num}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -88,7 +84,6 @@ def volume(**kwargs):
             log.info(f"Decreased volume by {adjustment}% via wpctl")
         return
 
-    # PulseAudio support
     if _which("pactl"):
         if command == "set" and num is not None:
             subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{num}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -99,7 +94,6 @@ def volume(**kwargs):
             subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"-{adjustment}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return
 
-    # ALSA fallback
     if _which("amixer"):
         try:
             current_raw = os.popen('amixer get Master | grep -oP "\\[\\d+%\\]"').read().split()

@@ -1,0 +1,6 @@
+.backup/
+.venv*/
+venv/
+data/models/
+logs/
+mcp/**/__pycache__/

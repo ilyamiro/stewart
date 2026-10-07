@@ -13,7 +13,6 @@ def get_battery_info():
     try:
         info = {}
 
-        # Get the battery device path
         devices = subprocess.check_output(["upower", "--enumerate"], text=True).strip().split('\n')
         battery_path = None
         for device in devices:
@@ -24,18 +23,14 @@ def get_battery_info():
         if not battery_path:
             return {"error": "No battery found on this system."}
 
-        # Get detailed information about the battery
         battery_info = subprocess.check_output(["upower", "--show-info", battery_path], text=True)
 
-        # Parse the battery information
         for line in battery_info.split('\n'):
             if ':' in line:
                 key, value = line.split(':', 1)
                 info[key.strip()] = value.strip()
 
-        # Try to get more detailed information from sysfs
         try:
-            # Dynamically locate battery under /sys/class/power_supply
             base_ps = '/sys/class/power_supply'
             battery_path = None
             if os.path.exists(base_ps):
@@ -45,38 +40,32 @@ def get_battery_info():
                         break
 
             if battery_path and os.path.exists(battery_path):
-                # Get cycle count
                 cycle_path = os.path.join(battery_path, 'cycle_count')
                 if os.path.exists(cycle_path):
                     with open(cycle_path, 'r') as f:
                         info['cycle_count'] = f.read().strip()
 
-                # Get voltage
                 voltage_path = os.path.join(battery_path, 'voltage_now')
                 if os.path.exists(voltage_path):
                     with open(voltage_path, 'r') as f:
-                        voltage = int(f.read().strip()) / 1000000  # Convert from µV to V
+                        voltage = int(f.read().strip()) / 1000000
                         info['voltage'] = f"{voltage:.2f} volts"
 
-                # Get current power consumption
                 power_path = os.path.join(battery_path, 'power_now')
                 if os.path.exists(power_path):
                     with open(power_path, 'r') as f:
-                        power = int(f.read().strip()) / 1000000  # Convert from µW to W
+                        power = int(f.read().strip()) / 1000000
                         info['power_now'] = f"{power:.2f} watts"
 
-                # Get temperature if available
                 temp_path = os.path.join(battery_path, 'temp')
                 if os.path.exists(temp_path):
                     with open(temp_path, 'r') as f:
-                        temp = int(f.read().strip()) / 10  # Usually in tenths of degree C
+                        temp = int(f.read().strip()) / 10
                         info['temperature'] = f"{temp:.1f} degrees"
         except Exception:
-            # Sysfs detailed info is optional
             pass
 
         try:
-            # Dynamically detect NVMe drive
             nvme_candidates = ['/dev/nvme0n1', '/dev/nvme0', '/dev/sda']
             target_drive = next((d for d in nvme_candidates if os.path.exists(d)), None)
             if target_drive and shutil.which("smartctl"):
@@ -88,14 +77,11 @@ def get_battery_info():
                             if match:
                                 info['system_temperature'] = f"{match.group(1)}°C"
         except (subprocess.SubprocessError, FileNotFoundError):
-            # SMART info is optional
             pass
 
-        # Get charge rate
         if 'energy-rate' in info:
             info['charging_rate'] = info['energy-rate']
 
-        # Calculate remaining time more accurately if possible
         if 'percentage' in info and 'energy-rate' in info:
             try:
                 percentage = float(info['percentage'].replace('%', ''))
@@ -137,7 +123,6 @@ def format_time(hours):
 
 def number_to_words(text):
     """Convert numbers in text to words."""
-    # Regex to find numbers (whole or decimal) that aren't part of words
     pattern = r'(?<!\w)(\d+(\.\d+)?)(?!\w)'
 
     def replace_number(match):
@@ -147,7 +132,6 @@ def number_to_words(text):
         else:
             return num2words(int(num))
 
-    # Replace all standalone numbers with their word form
     converted_text = re.sub(pattern, replace_number, text)
     return converted_text
 
@@ -158,13 +142,11 @@ def generate_battery_report(battery_info):
     if "error" in battery_info:
         return f"I'm sorry, but I couldn't check your battery. {battery_info['error']}"
 
-    # Extract key information
     percentage = battery_info.get("percentage", "unknown").replace('%', '')
     state = battery_info.get("state", "unknown")
     time_to_empty = battery_info.get("time to empty", "unknown")
     time_to_full = battery_info.get("time to full", "unknown")
 
-    # Use calculated times if available as they're more accurate
     if 'calculated_remaining_time' in battery_info:
         time_to_empty = battery_info['calculated_remaining_time']
     if 'calculated_time_to_full' in battery_info:
@@ -179,7 +161,6 @@ def generate_battery_report(battery_info):
     temperature = battery_info.get("temperature", "unknown")
     system_temperature = battery_info.get("system_temperature", "unknown")
 
-    # Calculate battery health if possible
     health_percentage = "unknown"
     if energy_full and energy_full_design and "Wh" in energy_full and "Wh" in energy_full_design:
         try:
@@ -189,7 +170,6 @@ def generate_battery_report(battery_info):
         except (ValueError, IndexError):
             pass
 
-    # Generate varied greetings
     greetings = [
         "Hey there! I've just analyzed your battery status.",
         "I've completed a comprehensive battery analysis for you.",
@@ -198,7 +178,6 @@ def generate_battery_report(battery_info):
         "I've finished analyzing your battery's current condition."
     ]
 
-    # Generate varied phrases for battery percentage
     percentage_phrases = [
         f"Your battery is currently at {percentage} percent.",
         f"Battery level shows {percentage} percent remaining.",
@@ -207,7 +186,6 @@ def generate_battery_report(battery_info):
         f"Your current charge level is {percentage} percent."
     ]
 
-    # Generate varied phrases for battery state
     state_phrases = {
         "charging": [
             "Your laptop is currently charging.",
@@ -232,7 +210,6 @@ def generate_battery_report(battery_info):
         ]
     }
 
-    # Generate varied phrases for power consumption
     power_phrases = []
     if energy_rate != "unknown" or power_now != "unknown":
         power_value = energy_rate if energy_rate != "unknown" else power_now
@@ -245,7 +222,6 @@ def generate_battery_report(battery_info):
             f"Your system is consuming {power_value}."
         ]
 
-    # Generate varied phrases for battery health
     health_phrases = []
     if health_percentage != "unknown":
         if int(health_percentage) > 80:
@@ -273,7 +249,6 @@ def generate_battery_report(battery_info):
                 f"Battery capacity has deteriorated to {health_percentage} percent of what it was when new."
             ]
 
-    # Generate phrases for cycle count if available
     cycle_phrases = []
     if cycle_count != "unknown":
         if int(cycle_count) < 100:
@@ -301,7 +276,6 @@ def generate_battery_report(battery_info):
                 f"Battery charge cycle count is {cycle_count}, which suggests it's well-used."
             ]
 
-    # Generate temperature phrases if available
     temp_phrases = []
     if temperature != "unknown":
         temp_value = temperature.replace('°C', '')
@@ -330,7 +304,6 @@ def generate_battery_report(battery_info):
                 f"The current battery temperature is {temperature}, which is elevated."
             ]
 
-    # Generate voltage phrases if available
     voltage_phrases = []
     if voltage != "unknown":
         voltage_phrases = [
@@ -341,7 +314,6 @@ def generate_battery_report(battery_info):
             f"Your battery voltage is currently {voltage}."
         ]
 
-    # Compose the report
     report = []
     report.append(random.choice(greetings))
 
@@ -351,7 +323,6 @@ def generate_battery_report(battery_info):
     if state in state_phrases:
         report.append(random.choice(state_phrases[state]))
 
-        # Add time estimates where applicable
         if state == "discharging" and time_to_empty != "unknown":
             time_phrases = [
                 f"At this rate, you have about {time_to_empty} left.",

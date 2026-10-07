@@ -41,7 +41,6 @@ class DynamicTool:
         """
         Executes the command template with supplied arguments.
         """
-        # Interpolate variables safely into template
         cmd_str = self.command_template
         for k, v in kwargs.items():
             placeholder = "{" + k + "}"
@@ -164,7 +163,6 @@ class DynamicToolManager:
         return list(self._tools.values())
 
 
-# Global singleton instance
 _dynamic_tool_manager: Optional[DynamicToolManager] = None
 
 

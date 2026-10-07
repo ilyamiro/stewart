@@ -1102,18 +1102,6 @@ commands:
           - систему
           - машину
           - устройство
-    - action: typing
-      command:
-        - напиши
-      continues: true
-      synonyms:
-        напиши:
-          - напечатай
-          - запиши
-      responses:
-        - Записал, сэр
-        - Вписал текст, сэр
-        - Текст был записан, сэр
     - action: update
       command:
         - обнови

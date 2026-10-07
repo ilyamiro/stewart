@@ -68,7 +68,7 @@ class Runtime:
             if home:
                 paths.append(Path(home) / ".cache" / APP_NAME)
 
-        paths.append(Path(".cache"))  # Fallback
+        paths.append(Path(".cache"))
         return paths
 
     @staticmethod
@@ -119,7 +119,7 @@ class Runtime:
         Creates a subdirectory in the cache directory (e.g., 'audio', 'images').
         Ensures the path is safe and writable.
         """
-        safe_name = Path(name).name  # prevent path traversal like "../../etc"
+        safe_name = Path(name).name
         full_path = self.path / safe_name
         if safe_name in self._cached_dirs:
             return full_path

@@ -24,9 +24,9 @@ class LearnedAction:
                  description: str = "",
                  synonyms: Optional[Dict[str, List[str]]] = None,
                  equivalents: Optional[List[List[str]]] = None,
-                 action_type: str = "command_template",  # 'existing_action' or 'command_template'
-                 target_action: Optional[str] = None,     # name of existing action (e.g. 'browser', 'subprocess')
-                 command_template: Optional[str] = None,  # shell template with {context}
+                 action_type: str = "command_template",
+                 target_action: Optional[str] = None,
+                 command_template: Optional[str] = None,
                  parameters: Optional[Dict[str, Any]] = None,
                  continues: bool = True,
                  responses: Optional[List[str]] = None,
@@ -139,12 +139,10 @@ class LearnedActionManager:
                     args.update(command.parameters)
                 args.update(kwargs)
 
-                # Interpolate {context} in string values
                 for k, v in list(args.items()):
                     if isinstance(v, str) and "{context}" in v:
                         args[k] = v.replace("{context}", context.strip())
 
-                # Resolve target action from Stewart API or desktop
                 target_fn = None
                 if self.api:
                     if hasattr(self.api, "find_action"):
@@ -167,15 +165,12 @@ class LearnedActionManager:
             existing_runner.__doc__ = action.description
             return existing_runner
 
-        # Default: command_template
         def template_runner(command=None, context: str = "", history: Optional[List] = None, **kwargs):
             cmd_str = action.command_template or ""
             clean_ctx = context.strip()
-            # Escape single quotes in context if inserted into single-quoted bash arguments
             escaped_ctx = clean_ctx.replace("'", "'\\''")
             cmd_str = cmd_str.replace("{context}", escaped_ctx)
 
-            # Substitute any named parameters
             all_params = dict(action.parameters)
             if command and hasattr(command, "parameters") and isinstance(command.parameters, dict):
                 all_params.update(command.parameters)
@@ -225,11 +220,9 @@ class LearnedActionManager:
         runner = self.create_action_callable(action)
         cmd._action_callable = runner
 
-        # Register in api.__actions__ if available
         if self.api and hasattr(self.api, "__actions__") and isinstance(self.api.__actions__, dict):
             self.api.__actions__[action.name] = runner
 
-        # Register in tool registry if available
         if self.api and hasattr(self.api, "tool_registry"):
             from .tools import ActionTool
             tool = ActionTool(
@@ -287,7 +280,6 @@ class LearnedActionManager:
         self._actions[name] = action
         self.save()
 
-        # If action does NOT require thinking, live-bind directly into Manager tree
         if not requires_thinking and self.manager:
             cmd = self.compile_command(action)
             self.manager.add(cmd)

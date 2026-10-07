@@ -1,8 +1,10 @@
 # Logs
 logs/app_log
 
-# Virtual Environments
+# Virtual Environments & Backups
 venv/
+.venv*/
+.backup/
 
 # Byte-compiled / Cached files
 **/__pycache__/

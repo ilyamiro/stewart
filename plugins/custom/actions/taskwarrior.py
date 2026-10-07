@@ -44,15 +44,14 @@ def time_left(due_time: str) -> str:
 
 def fetch_tasks():
     result = subprocess.run(["task", "export"], capture_output=True, text=True)
-
     if result.returncode == 0:
         tasks = json.loads(result.stdout)
         output = []
         for task in tasks:
             if task.get("id") != 0:
                 output.append(task)
-
         return output
+    return []
 
 
 def tell_task(**kwargs):
@@ -68,7 +67,7 @@ def tell_task(**kwargs):
         app.say(beginning)
 
 
-def count_task(request):
+def count_task(**kwargs):
     result = fetch_tasks()
     if not result:
         app.say("You don't have any active tasks, sir")
@@ -76,51 +75,40 @@ def count_task(request):
         app.say(f"You have {num2words(len(result))} active tasks, sir")
 
 
-app.add_func_for_search(tell_task)
-
-main_timeline = None
+app.add_func_for_search(tell_task, count_task)
 
 if app.lang == "en":
     app.manager.add(
         app.Command(
             keywords=["tell", "task"],
             action="tell_task",
-            synonyms={"task": ["problem", "tasks"], },
+            synonyms={"task": ["problem", "tasks"]},
             equivalents=[["what", "task"]],
             tts=True
         )
     )
-
-    main_timeline = app.Timeline([
-        [
-            app.Trigger(["tell", "task"], equivalents=[["what", "task"]], synonyms={"task": ["problem", "tasks"], })
-        ],
-        [
-            app.Trigger(["how", "many",], synonyms={"many": ["much"]}, callback=count_task)
-        ]
-    ])
-
+    app.manager.add(
+        app.Command(
+            keywords=["how", "many", "tasks"],
+            action="count_task",
+            synonyms={"many": ["much"], "tasks": ["task", "todos"]},
+            tts=True
+        )
+    )
 elif app.lang == "ru":
     app.manager.add(
         app.Command(
             keywords=["список", "задач"],
             action="tell_task",
-            synonyms={"задач": ["проблем", "заданий"], },
+            synonyms={"задач": ["проблем", "заданий"]},
             tts=True
         )
     )
-
-    main_timeline = app.Timeline([
-        [
-            app.Trigger(["список", "задач"], synonyms={"задач": ["проблем", "заданий"], })
-        ],
-        [
-            app.Trigger(["сколько", ], synonyms={"сколько": ["количество"], }, callback=count_task)
-        ]
-    ])
-
-
-scenario = app.Scenario("taskwarrior", main_timeline, max_gap=1)
-
-app.add_scenario(scenario)
-
+    app.manager.add(
+        app.Command(
+            keywords=["сколько", "задач"],
+            action="count_task",
+            synonyms={"сколько": ["количество"], "задач": ["дел", "заданий"]},
+            tts=True
+        )
+    )

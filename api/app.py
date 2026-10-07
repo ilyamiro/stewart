@@ -6,7 +6,6 @@ import logging
 import re
 import random
 import subprocess
-import mpv
 import yaml
 import socket
 import inspect
@@ -18,18 +17,6 @@ from importlib import import_module
 from pathlib import Path
 from multiprocessing import Process
 
-try:
-    from pynput.keyboard import Controller as Keyboard
-    from pynput.keyboard import Key as KeyboardKey
-except (ImportError, Exception):
-    Keyboard = KeyboardKey = None
-
-try:
-    from pynput.mouse import Controller as Mouse
-    from pynput.mouse import Button as MouseButton
-except (ImportError, Exception):
-    Mouse = MouseButton = None
-
 from data.constants import (
     PROJECT_DIR, CONFIG_FILE, CONFIG_DIR, PLUGINS_DIR,
     USER_CONFIG_DIR, DEFAULT_CONFIG_DIR, USER_PLUGINS_DIR,
@@ -39,10 +26,8 @@ from audio.tts import TTS
 from utils import load_yaml, filter_lang_config, load_lang, notify, sanitize_filename
 
 from .commands.tree import Manager
-from .commands.scenarios import Trigger, Timeline, Scenario
 from .commands.tools import ToolRegistry, ActionTool
 from .commands.router import CommandRouter
-from .commands.classifier import SpacyActionClassifier
 from .commands.actions import BaseAction, ActionParameters, ActionResult, ExecutionContext, Field
 from .services.desktop import DesktopService, get_desktop_service
 from .commands.ollama import OllamaToolCaller
@@ -53,22 +38,31 @@ from .files.caching import Runtime
 log = logging.getLogger("API: app")
 
 
-# runtime = Runtime()
 
 class AudioInterface:
     def __init__(self):
         self.ipc_socket_path = "/tmp/mpv-socket"
-        try:
-            self.player = mpv.MPV(
-                ytdl=True,
-                input_default_bindings=True,
-                video=False,
-                input_ipc_server=self.ipc_socket_path
-            )
+        self._player = None
 
-        except Exception as e:
-            log.error(f"Failed to initialize MPV player: {e}")
-            self.player = None
+    @property
+    def player(self):
+        if self._player is None:
+            try:
+                import mpv
+                self._player = mpv.MPV(
+                    ytdl=True,
+                    input_default_bindings=True,
+                    video=False,
+                    input_ipc_server=self.ipc_socket_path
+                )
+            except Exception as e:
+                log.error(f"Failed to initialize MPV player: {e}")
+                self._player = None
+        return self._player
+
+    @player.setter
+    def player(self, val):
+        self._player = val
 
         self.equalizer_values = [
             {"frequency": 20, "width": 80, "gain": 0.0, "width_type": "h"},
@@ -226,9 +220,6 @@ class AppAPI:
         self.lang = self.get_lang()
         self.config = self.get_config()
 
-        self.Trigger = Trigger
-        self.Timeline = Timeline
-        self.Scenario = Scenario
         self.Event = Event
 
         self.runtime = Runtime()
@@ -248,22 +239,9 @@ class AppAPI:
 
         self.eventLogger = EventLogger()
 
-        try:
-            self.mouse = Mouse() if Mouse else None
-        except Exception as e:
-            log.warning(f"Could not initialize Mouse controller: {e}")
-            self.mouse = None
-
-        try:
-            self.keyboard = Keyboard() if Keyboard else None
-        except Exception as e:
-            log.warning(f"Could not initialize Keyboard controller: {e}")
-            self.keyboard = None
-
+        self._mouse = None
+        self._keyboard = None
         self.audio = AudioInterface()
-
-        self.MouseButton = MouseButton
-        self.Key = KeyboardKey
 
         self.localeService = LocalePluginService(self.lang)
         self.Locale = Locale
@@ -281,7 +259,51 @@ class AppAPI:
 
         self.__actions__: dict = {}
 
-        self.scenarios: list = []
+    @property
+    def mouse(self):
+        if self._mouse is None:
+            try:
+                from pynput.mouse import Controller as Mouse
+                self._mouse = Mouse()
+            except Exception as e:
+                log.warning(f"Could not initialize Mouse controller: {e}")
+                self._mouse = None
+        return self._mouse
+
+    @mouse.setter
+    def mouse(self, val):
+        self._mouse = val
+
+    @property
+    def keyboard(self):
+        if self._keyboard is None:
+            try:
+                from pynput.keyboard import Controller as Keyboard
+                self._keyboard = Keyboard()
+            except Exception as e:
+                log.warning(f"Could not initialize Keyboard controller: {e}")
+                self._keyboard = None
+        return self._keyboard
+
+    @keyboard.setter
+    def keyboard(self, val):
+        self._keyboard = val
+
+    @property
+    def MouseButton(self):
+        try:
+            from pynput.mouse import Button
+            return Button
+        except Exception:
+            return None
+
+    @property
+    def Key(self):
+        try:
+            from pynput.keyboard import Key
+            return Key
+        except Exception:
+            return None
 
     @staticmethod
     def __blank__(context, history):
@@ -374,7 +396,6 @@ class AppAPI:
             log.debug(f"No sound: {text}")
             return
 
-        # Resolve dynamic expressions (e.g. [get_part_of_day]) before hashing
         text = self.tts.parse_config_answers(text)
 
         def call_tts_in_thread(**kwargs):
@@ -399,7 +420,7 @@ class AppAPI:
                 cached_file = tts_cache / f"{cached_hash}.wav"
                 if cached_file.exists():
                     log.debug(f"Using cached tts file {cached_file} for text: {text}")
-                    self.runtime.write(f"tts:{hash_input}", cached_hash)  # Reinforce mapping
+                    self.runtime.write(f"tts:{hash_input}", cached_hash)
                     def play_cached():
                         with self._tts_lock:
                             self.is_speaking = True
@@ -444,7 +465,6 @@ class AppAPI:
             except Exception as e:
                 log.warning(f"Hook {hook.__name__} threw an error: {e}")
 
-    # < ------------------- Modules ------------------- >
     def add_func_for_search(self, *args):
         log.info(f"Added functions to actions: {args}")
         for func in args:
@@ -487,21 +507,18 @@ class AppAPI:
             for member_name, member_obj in members:
                 if not include_private and member_name.startswith('__'):
                     continue
-                # 1. BaseAction instance
                 if isinstance(member_obj, BaseAction):
                     if member_obj.api is None:
                         member_obj.api = self
                     if member_obj.desktop is None:
                         member_obj.desktop = self.desktop
                     discovered[member_obj.name or member_name] = member_obj
-                # 2. BaseAction class definition
                 elif inspect.isclass(member_obj) and issubclass(member_obj, BaseAction) and member_obj is not BaseAction:
                     try:
                         instance = member_obj(api=self, desktop=self.desktop)
                         discovered[instance.name or member_name] = instance
                     except Exception as e:
                         log.debug(f"Could not auto-instantiate action class {member_name}: {e}")
-                # 3. Standard function
                 elif inspect.isfunction(member_obj) and getattr(member_obj, "__module__", None) == module.__name__:
                     discovered[member_name] = member_obj
 
@@ -544,7 +561,6 @@ class AppAPI:
         self.__setattr__(func.__name__, func)
         log.info(f"Added API endpoint: {func.__name__}")
 
-    # < ------------------- Plugins ------------------- >
     @staticmethod
     def _load_plugin_modules(directory):
         import importlib.util
@@ -617,8 +633,6 @@ class AppAPI:
                     else:
                         log.info(f"There was an error loading manifest.yaml for plugin {path}")
 
-    #
-    # # <! ----------------------- get ----------------------- !>
     @staticmethod
     def get_lang():
         """
@@ -626,7 +640,6 @@ class AppAPI:
         """
         return load_lang()
 
-    # <! ----------------------- config ----------------------- !>
     @staticmethod
     def _recursive_merge(base: dict, override: dict) -> dict:
         merged = base.copy()
@@ -662,11 +675,9 @@ class AppAPI:
         return merged
 
     def get_config(self):
-        # 1. Base default config
         base_config_path = DEFAULT_CONFIG_DIR / "config.yaml"
         base_config = load_yaml(str(base_config_path)) or {}
 
-        # 2. User config overrides if present
         dot_stewart_cfg = Path.home() / ".stewart" / "config.yaml"
         if dot_stewart_cfg.exists():
             stewart_config = load_yaml(str(dot_stewart_cfg)) or {}
@@ -677,7 +688,6 @@ class AppAPI:
             user_config = load_yaml(str(user_config_file)) or {}
             base_config = self._recursive_merge(base_config, user_config)
 
-        # 3. Language specific config
         lang_config_path = USER_CONFIG_DIR / f"langs/{self.lang}.yaml"
         if not lang_config_path.exists():
             lang_config_path = DEFAULT_CONFIG_DIR / f"langs/{self.lang}.yaml"
@@ -686,7 +696,6 @@ class AppAPI:
             lang_config = load_yaml(str(lang_config_path))
             return self.deep_merge(base_config, lang_config)
 
-        # Fallback to en.yaml
         fallback_lang = DEFAULT_CONFIG_DIR / "langs/en.yaml"
         return self.deep_merge(base_config, load_yaml(str(fallback_lang)) or {})
 
@@ -719,26 +728,10 @@ class AppAPI:
         except Exception as e:
             log.warning(f"Could not save plugins config to user config: {e}")
 
-    # <! --------------- background processes --------------- !>
     @staticmethod
     def start_background_process(func: types.FunctionType):
         log.info(f"added {func.__name__}")
         bg_thread = threading.Thread(target=func, name=func.__name__)
         bg_thread.start()
-
-    # <! --------------- scenarios --------------- !>
-    def add_scenario(self, scenario):
-        for el in self.scenarios[:]:
-            if el.name == scenario.name:
-                self.scenarios.insert(self.scenarios.index(el), scenario)
-                self.scenarios.remove(el)
-                return
-        self.scenarios.append(scenario)
-
-    def remove_scenario(self, name):
-        for el in self.scenarios[:]:
-            if el.name == name:
-                self.scenarios.remove(el)
-
 
 app = AppAPI()

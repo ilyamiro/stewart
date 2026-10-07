@@ -1,0 +1,1992 @@
+{
+  "studieplus": [
+    {
+      "name": "studieplus_get_schedule",
+      "description": "Gets school timetable (classes, rooms, teachers, homework notes) for a day or week.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "default": "today",
+            "description": "'today', 'tomorrow', or 'YYYY-MM-DD'"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "day",
+              "week"
+            ],
+            "default": "day",
+            "description": "'day' or 'week'"
+          }
+        }
+      }
+    },
+    {
+      "name": "studieplus_get_assignments",
+      "description": "Queries school assignments with deadlines and descriptions. (Note: Maths AA HL submitted on paper).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "graded",
+              "submitted",
+              "all"
+            ],
+            "default": "open",
+            "description": "Assignment status filter"
+          },
+          "due_date": {
+            "type": "string",
+            "description": "'today', 'tomorrow', or 'YYYY-MM-DD'"
+          },
+          "days_ahead": {
+            "type": "integer",
+            "description": "Upcoming days window"
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Start date ('YYYY-MM-DD')"
+          },
+          "to_date": {
+            "type": "string",
+            "description": "End date ('YYYY-MM-DD')"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Subject filter (e.g. 'Maths', 'Physics')"
+          },
+          "with_details": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include full descriptions and attachments"
+          }
+        }
+      }
+    },
+    {
+      "name": "studieplus_get_conversations",
+      "description": "Fetches school messages and announcements with thread content and attachments.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "default": 10,
+            "description": "Max conversations to fetch"
+          },
+          "with_content": {
+            "type": "boolean",
+            "default": true,
+            "description": "Fetch message body and attachments"
+          },
+          "view_all": {
+            "type": "boolean",
+            "default": false,
+            "description": "Fetch beyond 14 days"
+          }
+        }
+      }
+    },
+    {
+      "name": "studieplus_check_session",
+      "description": "Checks if Studie+ web session is authenticated.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "study_get_ib_resources",
+      "description": "Searches, downloads, and opens IB past papers and markschemes from official mirrors.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "default": "math aa",
+            "description": "Subject (e.g. 'math aa', 'physics', 'economics')"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "HL",
+              "SL",
+              "both"
+            ],
+            "default": "HL",
+            "description": "HL or SL"
+          },
+          "paper_num": {
+            "type": "integer",
+            "description": "Paper number (1, 2, 3)"
+          },
+          "year": {
+            "type": "string",
+            "description": "Exam year (e.g. '2025')"
+          },
+          "session": {
+            "type": "string",
+            "description": "'May' or 'November'"
+          },
+          "component": {
+            "type": "string",
+            "enum": [
+              "paper",
+              "markscheme",
+              "all"
+            ],
+            "default": "paper",
+            "description": "'paper' or 'markscheme'"
+          },
+          "query": {
+            "type": "string",
+            "description": "Title search keyword"
+          },
+          "download": {
+            "type": "boolean",
+            "default": true,
+            "description": "Download matching PDF"
+          },
+          "open_after_download": {
+            "type": "boolean",
+            "default": true,
+            "description": "Open PDF in system viewer"
+          }
+        }
+      }
+    },
+    {
+      "name": "study_prepare_test",
+      "description": "Prepares for an IB test: scans covered curriculum topics from schedule cache and opens target past papers.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "default": "Maths AA HL",
+            "description": "Subject name"
+          },
+          "test_date": {
+            "type": "string",
+            "default": "2026-10-27",
+            "description": "Test date ('YYYY-MM-DD')"
+          },
+          "from_date": {
+            "type": "string",
+            "default": "2026-08-10",
+            "description": "Start of term date"
+          },
+          "auto_download_papers": {
+            "type": "boolean",
+            "default": true,
+            "description": "Download past papers"
+          },
+          "open_after_download": {
+            "type": "boolean",
+            "default": true,
+            "description": "Open downloaded papers"
+          }
+        }
+      }
+    },
+    {
+      "name": "study_get_past_topics",
+      "description": "Lists covered curriculum topics and lessons taught from schedule cache.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "default": "Maths AA HL",
+            "description": "Subject name"
+          },
+          "from_date": {
+            "type": "string",
+            "default": "2026-08-10",
+            "description": "Start date"
+          },
+          "to_date": {
+            "type": "string",
+            "description": "End date (defaults to today)"
+          }
+        }
+      }
+    }
+  ],
+  "gmail": [
+    {
+      "name": "gmail_check_status",
+      "description": "Checks Gmail connection and message count for ilyamiro.work@gmail.com.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "gmail_search_emails",
+      "description": "Searches Gmail inbox by query keywords, sender, subject, or unread status.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search keyword in body/subject"
+          },
+          "sender": {
+            "type": "string",
+            "description": "Filter by sender email or name"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Filter by subject keyword"
+          },
+          "unread_only": {
+            "type": "boolean",
+            "default": false,
+            "description": "Only unread emails"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 10,
+            "description": "Max emails to return"
+          }
+        }
+      }
+    },
+    {
+      "name": "gmail_get_email",
+      "description": "Gets full email body text, headers, and attachments by ID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "email_id": {
+            "type": "string",
+            "description": "Email message ID"
+          }
+        },
+        "required": [
+          "email_id"
+        ]
+      }
+    },
+    {
+      "name": "gmail_send_email",
+      "description": "Sends an email from ilyamiro.work@gmail.com.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "description": "Recipient email address"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Email subject"
+          },
+          "body": {
+            "type": "string",
+            "description": "Email body content"
+          },
+          "cc": {
+            "type": "string",
+            "description": "Optional CC recipient"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "File paths to attach"
+          }
+        },
+        "required": [
+          "to",
+          "subject",
+          "body"
+        ]
+      }
+    }
+  ],
+  "telegram": [
+    {
+      "name": "telegram_check_auth",
+      "description": "Checks if Telegram user session is authenticated.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "telegram_send_login_code",
+      "description": "Sends Telegram login verification code to phone number.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "Phone number with country code (e.g. +45...)"
+          }
+        },
+        "required": [
+          "phone"
+        ]
+      }
+    },
+    {
+      "name": "telegram_sign_in",
+      "description": "Completes Telegram authentication with verification code and optional 2FA password.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Verification code"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number"
+          },
+          "password": {
+            "type": "string",
+            "description": "Optional 2FA password"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      }
+    },
+    {
+      "name": "telegram_get_unread",
+      "description": "Fetches unread messages and chats with recent message text.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "default": 15,
+            "description": "Max unread chats to retrieve"
+          }
+        }
+      }
+    },
+    {
+      "name": "telegram_get_dialogs",
+      "description": "Lists recent dialogs (chats, direct messages, groups, channels).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max dialogs to return"
+          },
+          "unread_only": {
+            "type": "boolean",
+            "default": false,
+            "description": "Only return chats with unread messages"
+          },
+          "dialog_type": {
+            "type": "string",
+            "enum": [
+              "all",
+              "user",
+              "group",
+              "channel"
+            ],
+            "default": "all",
+            "description": "Chat filter"
+          }
+        }
+      }
+    },
+    {
+      "name": "telegram_get_messages",
+      "description": "Gets recent messages from a chat, channel, or contact by ID/username.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string",
+            "description": "Chat ID, '@username', or 'me'"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 20,
+            "description": "Number of messages to fetch"
+          }
+        },
+        "required": [
+          "chat_id"
+        ]
+      }
+    },
+    {
+      "name": "telegram_send_message",
+      "description": "Sends a text message to a user or chat.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string",
+            "description": "Target chat ID or username"
+          },
+          "text": {
+            "type": "string",
+            "description": "Message text"
+          }
+        },
+        "required": [
+          "chat_id",
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "telegram_send_voice_message",
+      "description": "Sends audio voice message via Silero TTS or audio file. ru=Cyrillic only (transliterate Latin), en=Latin only, 1 line, no emojis.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Spoken text (1 line, no emojis)"
+          },
+          "audio_path": {
+            "type": "string",
+            "description": "Optional existing audio file path (.ogg/.wav)"
+          },
+          "chat_id": {
+            "type": "string",
+            "description": "Target chat ID (defaults to current chat)"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "ru",
+              "en"
+            ],
+            "default": "auto",
+            "description": "'ru' or 'en'"
+          },
+          "speaker": {
+            "type": "string",
+            "description": "Optional speaker voice"
+          }
+        }
+      }
+    },
+    {
+      "name": "telegram_forward_messages",
+      "description": "Forwards or copies messages between chats (drop_author=True removes forward header).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from_chat_id": {
+            "type": "string",
+            "description": "Source chat ID/username"
+          },
+          "to_chat_id": {
+            "type": "string",
+            "description": "Target chat ID/username"
+          },
+          "message_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Message IDs to forward"
+          },
+          "drop_author": {
+            "type": "boolean",
+            "default": false,
+            "description": "Forward as clean copy without author tag"
+          }
+        },
+        "required": [
+          "from_chat_id",
+          "to_chat_id",
+          "message_ids"
+        ]
+      }
+    },
+    {
+      "name": "telegram_download_media",
+      "description": "Downloads attached media/files from a Telegram message to local disk.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string",
+            "description": "Chat ID or username"
+          },
+          "message_id": {
+            "type": "integer",
+            "description": "Message ID"
+          },
+          "output_path": {
+            "type": "string",
+            "description": "Optional destination path"
+          }
+        },
+        "required": [
+          "chat_id",
+          "message_id"
+        ]
+      }
+    },
+    {
+      "name": "telegram_send_file",
+      "description": "Uploads and sends a local file, photo, or document to a chat.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string",
+            "description": "Target chat ID or username"
+          },
+          "file_path": {
+            "type": "string",
+            "description": "Local file path"
+          },
+          "caption": {
+            "type": "string",
+            "description": "Optional caption"
+          }
+        },
+        "required": [
+          "chat_id",
+          "file_path"
+        ]
+      }
+    }
+  ],
+  "calendar": [
+    {
+      "name": "calendar_check_auth",
+      "description": "Checks if Google Calendar is authenticated.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "calendar_list_events",
+      "description": "Lists upcoming Google Calendar events with optional time range and search query.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "calendar_id": {
+            "type": "string",
+            "default": "primary",
+            "description": "Calendar ID"
+          },
+          "time_min": {
+            "type": "string",
+            "description": "Start time ('YYYY-MM-DD' or ISO)"
+          },
+          "time_max": {
+            "type": "string",
+            "description": "End time ('YYYY-MM-DD' or ISO)"
+          },
+          "max_results": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max events to return"
+          },
+          "query": {
+            "type": "string",
+            "description": "Text search query"
+          }
+        }
+      }
+    },
+    {
+      "name": "calendar_create_event",
+      "description": "Creates a Google Calendar event (times: 'YYYY-MM-DD HH:MM' or ISO format).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "Event title"
+          },
+          "start_time": {
+            "type": "string",
+            "description": "Start time"
+          },
+          "end_time": {
+            "type": "string",
+            "description": "End time"
+          },
+          "description": {
+            "type": "string",
+            "description": "Notes/details"
+          },
+          "location": {
+            "type": "string",
+            "description": "Location or room"
+          },
+          "calendar_id": {
+            "type": "string",
+            "default": "primary",
+            "description": "Calendar ID"
+          },
+          "color_id": {
+            "type": "string",
+            "description": "Color ID (1-11)"
+          }
+        },
+        "required": [
+          "summary",
+          "start_time",
+          "end_time"
+        ]
+      }
+    },
+    {
+      "name": "calendar_quick_add",
+      "description": "Creates a calendar event from natural language text.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Event description with title, date, and time"
+          },
+          "calendar_id": {
+            "type": "string",
+            "default": "primary",
+            "description": "Calendar ID"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "calendar_update_event",
+      "description": "Updates an existing calendar event's title, time, location, or notes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "description": "Event ID"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Updated title"
+          },
+          "start_time": {
+            "type": "string",
+            "description": "Updated start time"
+          },
+          "end_time": {
+            "type": "string",
+            "description": "Updated end time"
+          },
+          "description": {
+            "type": "string",
+            "description": "Updated notes"
+          },
+          "location": {
+            "type": "string",
+            "description": "Updated location"
+          },
+          "calendar_id": {
+            "type": "string",
+            "default": "primary",
+            "description": "Calendar ID"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    },
+    {
+      "name": "calendar_delete_event",
+      "description": "Deletes a Google Calendar event by ID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "description": "Event ID to delete"
+          },
+          "calendar_id": {
+            "type": "string",
+            "default": "primary",
+            "description": "Calendar ID"
+          }
+        },
+        "required": [
+          "event_id"
+        ]
+      }
+    }
+  ],
+  "github": [
+    {
+      "name": "github_check_auth",
+      "description": "Checks if GitHub account is authenticated.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "github_set_token",
+      "description": "Sets and verifies GitHub Personal Access Token.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "GitHub PAT"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "github_list_repos",
+      "description": "Lists repositories with visibility ('all', 'public', 'private') and sort filters.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "all",
+              "public",
+              "private"
+            ],
+            "default": "all",
+            "description": "Visibility filter"
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "updated",
+              "created",
+              "pushed",
+              "full_name"
+            ],
+            "default": "updated",
+            "description": "Sort field"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max repos to return"
+          }
+        }
+      }
+    },
+    {
+      "name": "github_get_repo_info",
+      "description": "Gets repository details by 'owner/repo'.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": "string",
+            "description": "Repository ('owner/repo')"
+          }
+        },
+        "required": [
+          "repo"
+        ]
+      }
+    },
+    {
+      "name": "github_list_issues",
+      "description": "Lists issues across repos or for a specific 'owner/repo'.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": "string",
+            "description": "Optional 'owner/repo'"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed",
+              "all"
+            ],
+            "default": "open",
+            "description": "Issue state"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max issues"
+          }
+        }
+      }
+    },
+    {
+      "name": "github_create_issue",
+      "description": "Creates an issue in 'owner/repo'.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": "string",
+            "description": "Target 'owner/repo'"
+          },
+          "title": {
+            "type": "string",
+            "description": "Issue title"
+          },
+          "body": {
+            "type": "string",
+            "description": "Issue description"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional labels"
+          }
+        },
+        "required": [
+          "repo",
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "github_list_pull_requests",
+      "description": "Lists pull requests for 'owner/repo'.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": "string",
+            "description": "Target 'owner/repo'"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed",
+              "all"
+            ],
+            "default": "open",
+            "description": "PR state"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max PRs"
+          }
+        },
+        "required": [
+          "repo"
+        ]
+      }
+    },
+    {
+      "name": "github_get_notifications",
+      "description": "Fetches GitHub notifications across repositories.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include read notifications"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max notifications"
+          }
+        }
+      }
+    }
+  ],
+  "drive": [
+    {
+      "name": "gdrive_check_auth",
+      "description": "Checks Google Drive authentication and storage quota.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "gdrive_list_files",
+      "description": "Lists files and folders in Drive with optional folder_id, query filter, and limit.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string",
+            "description": "Optional parent folder ID"
+          },
+          "query": {
+            "type": "string",
+            "description": "Drive query filter"
+          },
+          "page_size": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max files to return"
+          },
+          "order_by": {
+            "type": "string",
+            "default": "modifiedTime desc",
+            "description": "Sort order"
+          },
+          "owned_only": {
+            "type": "boolean",
+            "default": false,
+            "description": "Only return files owned by user"
+          }
+        }
+      }
+    },
+    {
+      "name": "gdrive_search_files",
+      "description": "Searches Drive files by name substring and file_type category.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name_contains": {
+            "type": "string",
+            "description": "Name search substring"
+          },
+          "file_type": {
+            "type": "string",
+            "enum": [
+              "pdf",
+              "doc",
+              "sheet",
+              "slide",
+              "image",
+              "folder",
+              "audio",
+              "video"
+            ],
+            "description": "File type filter"
+          },
+          "folder_id": {
+            "type": "string",
+            "description": "Optional parent folder ID"
+          },
+          "page_size": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max results"
+          }
+        }
+      }
+    },
+    {
+      "name": "gdrive_get_file_info",
+      "description": "Gets metadata and download links for a Drive file by ID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "Drive file ID"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "gdrive_download_file",
+      "description": "Downloads a file to disk (auto-exports Docs/Sheets/Slides to PDF/docx/xlsx).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "Drive file ID"
+          },
+          "destination_path": {
+            "type": "string",
+            "description": "Optional destination path"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "gdrive_upload_file",
+      "description": "Uploads a local file to Google Drive.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Source file path"
+          },
+          "folder_id": {
+            "type": "string",
+            "description": "Destination folder ID (default root)"
+          },
+          "file_name": {
+            "type": "string",
+            "description": "Optional custom file name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional description"
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      }
+    },
+    {
+      "name": "gdrive_create_folder",
+      "description": "Creates a new folder on Google Drive.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "folder_name": {
+            "type": "string",
+            "description": "Folder name"
+          },
+          "parent_id": {
+            "type": "string",
+            "description": "Parent folder ID (default root)"
+          }
+        },
+        "required": [
+          "folder_name"
+        ]
+      }
+    },
+    {
+      "name": "gdrive_delete_file",
+      "description": "Moves a file/folder to trash (or permanently deletes if permanent=True).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "File or folder ID"
+          },
+          "permanent": {
+            "type": "boolean",
+            "default": false,
+            "description": "Permanent deletion"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "gdrive_move_file",
+      "description": "Moves a file or folder to another destination folder in Drive.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "File or folder ID"
+          },
+          "target_folder_id": {
+            "type": "string",
+            "description": "Destination folder ID"
+          }
+        },
+        "required": [
+          "file_id",
+          "target_folder_id"
+        ]
+      }
+    },
+    {
+      "name": "gdrive_share_file",
+      "description": "Shares a file/folder with an email or enables link access.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "Drive file ID"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "reader",
+              "commenter",
+              "writer"
+            ],
+            "default": "reader",
+            "description": "Permission role"
+          },
+          "email": {
+            "type": "string",
+            "description": "Optional user email"
+          },
+          "anyone_with_link": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow public link access"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    }
+  ],
+  "youtube": [
+    {
+      "name": "youtube_search",
+      "description": "Searches YouTube for videos, channels, or playlists.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "max_results": {
+            "type": "integer",
+            "default": 10,
+            "description": "Max results"
+          },
+          "search_type": {
+            "type": "string",
+            "enum": [
+              "video",
+              "channel",
+              "playlist"
+            ],
+            "default": "video",
+            "description": "Item type"
+          },
+          "order": {
+            "type": "string",
+            "enum": [
+              "relevance",
+              "date",
+              "viewCount",
+              "rating"
+            ],
+            "default": "relevance",
+            "description": "Sort order"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "youtube_get_video_details",
+      "description": "Gets metadata, view count, and description for a video URL or ID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "video_id_or_url": {
+            "type": "string",
+            "description": "YouTube video ID or URL"
+          }
+        },
+        "required": [
+          "video_id_or_url"
+        ]
+      }
+    },
+    {
+      "name": "youtube_get_transcript",
+      "description": "Extracts subtitle transcript text from a YouTube video.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "video_id_or_url": {
+            "type": "string",
+            "description": "YouTube video ID or URL"
+          },
+          "language": {
+            "type": "string",
+            "default": "en",
+            "description": "Language code (e.g. 'en', 'ru', 'da')"
+          }
+        },
+        "required": [
+          "video_id_or_url"
+        ]
+      }
+    },
+    {
+      "name": "youtube_check_auth",
+      "description": "Checks YouTube authorization and channel stats.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "youtube_get_my_channel",
+      "description": "Gets details of your YouTube channel.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "youtube_list_my_videos",
+      "description": "Lists videos uploaded to your channel.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "max_results": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max videos"
+          }
+        }
+      }
+    },
+    {
+      "name": "youtube_list_my_playlists",
+      "description": "Lists your YouTube playlists.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "max_results": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max playlists"
+          }
+        }
+      }
+    },
+    {
+      "name": "youtube_list_my_subscriptions",
+      "description": "Lists subscribed channels.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "max_results": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max subscriptions"
+          }
+        }
+      }
+    },
+    {
+      "name": "youtube_get_playlist_items",
+      "description": "Lists videos in a playlist by ID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "playlist_id": {
+            "type": "string",
+            "description": "Playlist ID"
+          },
+          "max_results": {
+            "type": "integer",
+            "default": 20,
+            "description": "Max items"
+          }
+        },
+        "required": [
+          "playlist_id"
+        ]
+      }
+    }
+  ],
+  "maps": [
+    {
+      "name": "maps_check_auth",
+      "description": "Checks open-source maps and transit status (OpenStreetMap, Transitous MOTIS, OSRM). No API key required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "maps_get_directions",
+      "description": "Gets route navigation, travel time, and step-by-step directions between origin and destination for driving, transit (bus/train), walking, or bicycling via open-source routing (OSRM/BRouter/Transitous).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "Starting address, city, landmark, or 'lat,lon'"
+          },
+          "destination": {
+            "type": "string",
+            "description": "Destination address, landmark, or 'lat,lon'"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "driving",
+              "transit",
+              "walking",
+              "bicycling"
+            ],
+            "default": "driving",
+            "description": "Travel mode"
+          },
+          "departure_time": {
+            "type": "string",
+            "description": "Departure time (ISO string, e.g. '2026-10-06 08:30' or 'now')"
+          },
+          "arrival_time": {
+            "type": "string",
+            "description": "Target arrival time"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code (e.g. 'en', 'da', 'ru')"
+          }
+        },
+        "required": [
+          "origin",
+          "destination"
+        ]
+      }
+    },
+    {
+      "name": "maps_get_bus_schedule",
+      "description": "Queries public transit bus schedules, departures, line numbers (e.g. Bus 3A, 114), stops, total travel time, and transfer points via Transitous open transit engine.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "Starting address, bus stop, or location"
+          },
+          "destination": {
+            "type": "string",
+            "description": "Destination address, school, or location"
+          },
+          "departure_time": {
+            "type": "string",
+            "default": "now",
+            "description": "Departure time (e.g. 'now', '2026-10-06 08:00', or timestamp)"
+          },
+          "arrival_time": {
+            "type": "string",
+            "description": "Desired arrival time"
+          },
+          "bus_line": {
+            "type": "string",
+            "description": "Optional filter for a specific bus line (e.g. '3A', '114')"
+          }
+        },
+        "required": [
+          "origin",
+          "destination"
+        ]
+      }
+    },
+    {
+      "name": "maps_get_distance_matrix",
+      "description": "Calculates travel times and distances. Use mode='all' to compare driving, bus/transit, bicycling, and walking commute times side-by-side.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "origins": {
+            "type": "string",
+            "description": "Origin address or coordinates"
+          },
+          "destinations": {
+            "type": "string",
+            "description": "Destination address or coordinates"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "driving",
+              "transit",
+              "walking",
+              "bicycling",
+              "all"
+            ],
+            "default": "driving",
+            "description": "Travel mode or 'all' to compare all commute options"
+          },
+          "departure_time": {
+            "type": "string",
+            "description": "Departure time ('now' or timestamp)"
+          }
+        },
+        "required": [
+          "origins",
+          "destinations"
+        ]
+      }
+    },
+    {
+      "name": "maps_search_places",
+      "description": "Searches for places, transit stops, restaurants, shops, or amenities near a location via OpenStreetMap.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query (e.g. 'bus stop near Aarhus Gymnasium', 'pharmacy', 'bakery')"
+          },
+          "location": {
+            "type": "string",
+            "description": "Optional center location (e.g. 'Aarhus, Denmark')"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "maps_get_place_details",
+      "description": "Gets full details for an OpenStreetMap feature (opening hours, phone, address, website, OpenStreetMap URL).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "place_id": {
+            "type": "string",
+            "description": "OSM ID (e.g. 'N12345') or place search query"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code"
+          }
+        },
+        "required": [
+          "place_id"
+        ]
+      }
+    },
+    {
+      "name": "maps_geocode",
+      "description": "Converts a street address or location name to latitude/longitude coordinates via OpenStreetMap Nominatim.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address or location name to geocode"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "maps_reverse_geocode",
+      "description": "Converts latitude and longitude coordinates into a human-readable street address via OpenStreetMap Nominatim.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "description": "Latitude coordinate"
+          },
+          "longitude": {
+            "type": "number",
+            "description": "Longitude coordinate"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ]
+      }
+    },
+    {
+      "name": "maps_get_static_map",
+      "description": "Generates an OpenStreetMap web link and embed map URL for a location or center coordinate.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "center": {
+            "type": "string",
+            "description": "Center location/address or coordinates"
+          },
+          "zoom": {
+            "type": "integer",
+            "default": 14,
+            "description": "Zoom level (0-19)"
+          },
+          "size": {
+            "type": "string",
+            "default": "600x400",
+            "description": "Image dimensions widthxheight"
+          }
+        }
+      }
+    }
+  ],
+  "memory": [
+    {
+      "name": "memory_search",
+      "description": "Searches persistent memory / notes database using fast full-text search (BM25 ranking). Returns matching excerpts with file, section, and line numbers.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query terms or phrase"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 5,
+            "description": "Max matching snippets to return (default 5)"
+          },
+          "topic": {
+            "type": "string",
+            "description": "Optional filter by topic or file name"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Optional filter by tag (e.g. 'study', 'people', 'preference')"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "memory_get",
+      "description": "Retrieves the full content of a memory file/topic or a specific section.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Topic or file name (without .md)"
+          },
+          "file_name": {
+            "type": "string",
+            "description": "Specific file path (e.g. 'preferences.md' or 'school/notes.md')"
+          },
+          "section": {
+            "type": "string",
+            "description": "Specific heading / section title to fetch"
+          }
+        }
+      }
+    },
+    {
+      "name": "memory_list_topics",
+      "description": "Lists all available memory files, section headings, tags, and stats without reading the entire content (low token overhead).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "memory_save",
+      "description": "Saves, appends, or updates notes/facts in the persistent memory markdown database.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "The information or note content to save"
+          },
+          "topic": {
+            "type": "string",
+            "default": "notes",
+            "description": "Topic or file name (e.g. 'preferences', 'people', 'school', 'notes')"
+          },
+          "section": {
+            "type": "string",
+            "description": "Optional markdown section heading (e.g. 'Daily Schedule', 'Coding Rules')"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "append",
+              "overwrite"
+            ],
+            "default": "append",
+            "description": "Whether to append to the topic/section or overwrite it"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of tags"
+          }
+        },
+        "required": [
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "memory_delete",
+      "description": "Deletes a specific section or an entire topic/file from persistent memory.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Topic or file name"
+          },
+          "section": {
+            "type": "string",
+            "description": "Optional specific section heading to delete"
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      }
+    }
+  ],
+  "streaming": [
+    {
+      "name": "streaming_search",
+      "description": "Searches for movies and TV series across IMDb, TVMaze, and FMHY streaming sources. Returns titles, release years, IMDb IDs, media type (movie/series), posters, cast, and instant player links.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Title or search terms (e.g. 'Inception', 'Dune 2', 'Arcane')"
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "all",
+              "movie",
+              "series"
+            ],
+            "default": "all",
+            "description": "Filter by 'movie', 'series', or 'all'"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 8,
+            "description": "Maximum number of results (default 8)"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "streaming_get_player_links",
+      "description": "Gets direct streaming player links for any movie or TV series across top FMHY providers (VidLink, Flixer, Cinecat, HydraHD, MultiEmbed, Rive, etc.). Automatically checks reachability so you get working links in priority order.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Movie or series title (e.g. 'Interstellar' or 'The Boys')"
+          },
+          "id": {
+            "type": "string",
+            "description": "Optional IMDb ID (e.g. 'tt1375666') or TMDB ID"
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "movie",
+              "series"
+            ],
+            "default": "movie",
+            "description": "Type: 'movie' or 'series'"
+          },
+          "season": {
+            "type": "integer",
+            "default": 1,
+            "description": "Season number for TV series (default 1)"
+          },
+          "episode": {
+            "type": "integer",
+            "default": 1,
+            "description": "Episode number for TV series (default 1)"
+          },
+          "verify": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to verify URL reachability in parallel"
+          }
+        }
+      }
+    },
+    {
+      "name": "streaming_open",
+      "description": "Opens any movie or series directly in the user's browser. Adapts top FMHY streaming sites: if one website is unreachable, it automatically goes down the list to try the next one until a working player opens. Also provides backup links.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Movie or series name/query, supports formats like 'Inception', 'Breaking Bad s01e01', 'Arcane'"
+          },
+          "title": {
+            "type": "string",
+            "description": "Explicit title (if not using query)"
+          },
+          "id": {
+            "type": "string",
+            "description": "Optional IMDb ID (e.g. 'tt1375666')"
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "movie",
+              "series"
+            ],
+            "default": "movie",
+            "description": "Type: 'movie' or 'series'"
+          },
+          "season": {
+            "type": "integer",
+            "default": 1,
+            "description": "Season number for series (default 1)"
+          },
+          "episode": {
+            "type": "integer",
+            "default": 1,
+            "description": "Episode number for series (default 1)"
+          },
+          "provider": {
+            "type": "string",
+            "default": "auto",
+            "description": "Specific provider or 'auto' (VidLink, Flixer, Cinecat, HydraHD, MultiEmbed, Rive, etc.)"
+          }
+        }
+      }
+    },
+    {
+      "name": "streaming_list_providers",
+      "description": "Lists all adapted FMHY streaming providers, their base URLs, priority rank, and supported features (Auto-Next, 4K, Multi-Server, Direct Player, etc.).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ],
+  "life": [
+    {
+      "name": "tts_synthesize",
+      "description": "Synthesizes speech to audio (.ogg/.wav) via Silero TTS. ru=Cyrillic only (transliterate Latin), en=Latin only, 1 line, no emojis.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Spoken text (1 line, no emojis)"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "ru",
+              "en"
+            ],
+            "default": "auto",
+            "description": "Language: 'ru' or 'en'"
+          },
+          "speaker": {
+            "type": "string",
+            "description": "Optional speaker voice"
+          },
+          "output_path": {
+            "type": "string",
+            "description": "Output audio file path"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "ogg",
+              "wav"
+            ],
+            "default": "ogg",
+            "description": "Format: 'ogg' or 'wav'"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "convert_file",
+      "description": "Converts documents (docx/pdf/txt), images (png/jpg/webp), or audio/video (mp3/wav/ogg/mp4).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Source file path"
+          },
+          "target_format": {
+            "type": "string",
+            "description": "Target format/extension (e.g. 'pdf', 'docx', 'png', 'mp3')"
+          },
+          "output_path": {
+            "type": "string",
+            "description": "Optional output file path"
+          }
+        },
+        "required": [
+          "file_path",
+          "target_format"
+        ]
+      }
+    },
+    {
+      "name": "weather_get_forecast",
+      "description": "Gets current weather and 5-day forecast (temperature, conditions, wind, precipitation).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "day_offset": {
+            "type": "integer",
+            "description": "Day offset (0=today, 1=tomorrow, up to 4). If omitted, returns all days."
+          }
+        }
+      }
+    },
+    {
+      "name": "vision_extract_text",
+      "description": "Extracts text from images/blackboards/notes via local OCR (supports eng, dan, rus, ukr, equ).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "image_path": {
+            "type": "string",
+            "description": "Image file path"
+          },
+          "language": {
+            "type": "string",
+            "default": "eng",
+            "description": "OCR languages (e.g. 'eng', 'dan', 'rus', 'equ')"
+          },
+          "preprocess": {
+            "type": "boolean",
+            "default": true,
+            "description": "Auto-enhance contrast and orientation"
+          },
+          "detailed": {
+            "type": "boolean",
+            "default": false,
+            "description": "Return token bounding boxes and confidence"
+          },
+          "psm": {
+            "type": "integer",
+            "description": "Tesseract PSM mode (0..13)"
+          }
+        },
+        "required": [
+          "image_path"
+        ]
+      }
+    },
+    {
+      "name": "vision_analyze_image",
+      "description": "Analyzes image content: scene description, math/formula solving, diagram inspection, layout categorization.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "image_path": {
+            "type": "string",
+            "description": "Image file path"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Specific question or focus for analysis"
+          },
+          "language": {
+            "type": "string",
+            "default": "eng+dan+rus",
+            "description": "OCR languages"
+          }
+        },
+        "required": [
+          "image_path"
+        ]
+      }
+    },
+    {
+      "name": "vision_inspect_image",
+      "description": "Returns image technical metadata: dimensions, aspect ratio, file size, sharpness, brightness, EXIF.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "image_path": {
+            "type": "string",
+            "description": "Image file path"
+          }
+        },
+        "required": [
+          "image_path"
+        ]
+      }
+    },
+    {
+      "name": "system_control",
+      "description": "Interacts with this PC across Hyprland, Niri, and Serpantinum desktop shell. Single unified MCP entrypoint for all desktop automation: launching any installed desktop application entry (Discord, Zen Browser, Obsidian, Telegram, Bottles, GIMP, LibreOffice, Mindustry, etc.) or listing apps ('system / apps'), media management (YouTube Music playback & search, playerctl play/pause/next/prev/vol), window control (move, focus, resize, fullscreen, float, close), switching workspaces, taking screenshots (instant full screen capture to file & clipboard, area selection, satty annotation editor, QR scan, recording), toggling Serpantinum UI widgets (launcher, clipboard, music, system dashboard, wallpaper, calendar, network, volume), audio volume & display brightness, locking screen, querying desktop status (active window, workspaces, media track), or dispatching raw compositor/shell IPC commands. Accepts structured arguments or slash-separated IPC calls like '(system / open / terminal)', 'system / open / discord', 'system / apps', 'system / media / youtube_music / lofi beats', 'system / window / move / right', 'system / workspace / 2', 'system / screenshot / full', 'system / shell / toggle / launcher', 'system / volume / raise'. Call this tool to unlock full desktop automation and OS capabilities on this PC.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "IPC command string or slash path, e.g. '(system / open / terminal)', 'system / open / discord', 'system / apps / browser', 'system / open / browser / https://music.youtube.com', 'system / media / youtube_music / lofi beats', 'system / media / play_pause', 'system / window / move / right', 'system / workspace / 2', 'system / screenshot / full', 'system / shell / toggle / launcher', 'system / volume / raise', or 'system / status'."
+          },
+          "action": {
+            "type": "string",
+            "description": "Action category if not using command string: 'open' (or 'launch' any desktop app entry), 'apps' (list/search installed desktop apps), 'close', 'focus', 'move', 'workspace', 'media', 'screenshot', 'volume', 'brightness', 'lock', 'shell', 'status', or 'raw'."
+          },
+          "target": {
+            "type": "string",
+            "description": "Action target: desktop app name or ID (e.g. 'terminal', 'discord', 'zen', 'obsidian', 'bottles', 'calc', 'telegram', 'com.discordapp.Discord'), search query for apps ('browser', 'game'), direction ('left', 'right', 'up', 'down'), workspace number, shell widget ('launcher', 'clipboard', 'music', 'system', 'wallpaper', 'calendar', 'network', 'volume'), media action ('play', 'pause', 'play_pause', 'next', 'previous'), or screenshot mode ('full', 'area', 'edit', 'record', 'scan_qr')."
+          },
+          "args": {
+            "type": "string",
+            "description": "Optional parameters or arguments, e.g. URL for browser, search query for YouTube Music, file path or extra parameters for desktop apps, workspace number, delta for volume/brightness, or raw command."
+          }
+        }
+      }
+    }
+  ]
+}

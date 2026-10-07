@@ -1,9 +1,11 @@
+import time
+PROCESS_START_TIME = time.time()
+
 import logging
 import random
 import subprocess
 import threading
 import os
-import time
 import sys
 import traceback
 
@@ -14,8 +16,9 @@ from utils import system_setup, admin, clear
 log = logging.getLogger("main")
 
 if admin():
-    log.error("The app should not be run with super user (sudo or admin) privileges. Exiting. ")
+    log.error("The app should not be run with super user (sudo or admin) privileges. Exiting.")
     sys.exit()
+
 
 def parse_cli_early():
     if "-h" in sys.argv or "--help" in sys.argv:
@@ -60,10 +63,27 @@ parse_cli_early()
 
 from data.constants import PLUGINS_DIR
 
-# Voice mode: torch must be imported and its BLAS backend initialized BEFORE libmpv / Kokoro threads
-# are created (AppAPI). Otherwise the first TorchScript (Silero VAD) call crashes in libopenblas
-# (SIGFPE/SIGSEGV). Skipped in text mode to keep that path fast.
-if "--text-mode" not in sys.argv:
+
+def check_text_mode_early() -> bool:
+    if "--text-mode" in sys.argv:
+        return True
+    try:
+        from pathlib import Path
+        for p in [Path.home() / ".config/stewart/config.yaml", Path.home() / ".stewart/config.yaml"]:
+            if p.exists():
+                with open(p, "r", encoding="utf-8") as f:
+                    for line in f:
+                        stripped = line.strip()
+                        if stripped.startswith("text-mode:") and "true" in stripped.lower():
+                            return True
+    except Exception:
+        pass
+    return False
+
+
+IS_TEXT_MODE = check_text_mode_early()
+
+if not IS_TEXT_MODE:
     try:
         import torch as _torch
         _torch.mm(_torch.ones(8, 8), _torch.ones(8, 8))
@@ -75,12 +95,10 @@ from api import app as iapp
 
 utils.import_utils(iapp.lang, globals())
 
-
 STARTUP_AUDIO_DONE = threading.Event()
 
 
 def trigger_startup_feedback(api, config):
-    """Triggers startup sound and voice synthesis as early as possible with answer variation."""
     try:
         startup_cfg = config.get("start-up", {})
         voice_enable = startup_cfg.get("voice-enable", True)
@@ -97,8 +115,7 @@ def trigger_startup_feedback(api, config):
 
         if sound_enable and os.path.exists(sound_path):
             try:
-                play_audio(sound_path)
-                log.info("Finished startup sound playback")
+                threading.Thread(target=play_audio, args=(sound_path,), daemon=True, name="StartupSound").start()
             except Exception as e:
                 log.warning(f"Startup sound error: {e}")
 
@@ -108,14 +125,12 @@ def trigger_startup_feedback(api, config):
                 chosen = random.choice(answers)
                 cached_wav = api.get_cached_audio_path(chosen)
                 if cached_wav and os.path.exists(cached_wav):
-                    log.info(f"Triggered early startup voice playback (cached): '{chosen}'")
                     api.is_speaking = True
                     try:
                         play_audio(cached_wav)
                     finally:
                         api.is_speaking = False
                 else:
-                    log.info(f"Triggered early startup voice synthesis: '{chosen}'")
                     api.say_sync(chosen)
     except Exception as e:
         log.error(f"Error during startup feedback: {e}")
@@ -128,32 +143,26 @@ def main():
         system_setup()
         set_logging(True)
 
-        log.debug("Started running...")
-
-        start_time = time.time()
-
+        start_time = PROCESS_START_TIME
         app = App(iapp)
         config = app.api.config
 
-        if "--text-mode" in sys.argv:
+        if "--text-mode" in sys.argv or IS_TEXT_MODE:
             config["settings"]["text-mode"] = True
-
-        # Trigger audio and voice feedback at the earliest possible instant
-        audio_thread = threading.Thread(
-            target=trigger_startup_feedback,
-            args=(app.api, config),
-            daemon=True,
-            name="Startup-Audio"
-        )
-        audio_thread.start()
 
         if config["settings"]["text-mode"]:
             from audio.tts.synthesis import TORCH_READY
             TORCH_READY.set()
             app.start(start_time)
+            audio_thread = threading.Thread(
+                target=trigger_startup_feedback,
+                args=(app.api, config),
+                daemon=True,
+                name="Startup-Audio"
+            )
+            audio_thread.start()
             app.run()
         else:
-            # Parallelize STT loading with app plugin and command tree initialization
             stt_result = {}
 
             def init_stt():
@@ -161,9 +170,7 @@ def main():
                     from audio.input import STT
                     stt = STT(app.api.lang)
                     if hasattr(stt, "wait_ready"):
-                        ready = stt.wait_ready(timeout=60)
-                        if not ready:
-                            log.warning("STT background model loading did not signal ready in 60s")
+                        stt.wait_ready(timeout=60)
                     stt_result["stt"] = stt
                 except Exception as e:
                     stt_result["error"] = e
@@ -171,15 +178,19 @@ def main():
             stt_thread = threading.Thread(target=init_stt, daemon=True, name="STT-Init")
             stt_thread.start()
 
-            # Concurrently initialize plugins and command tree on main thread
             app.start(start_time)
 
-            # Wait for STT initialization to complete
+            audio_thread = threading.Thread(
+                target=trigger_startup_feedback,
+                args=(app.api, config),
+                daemon=True,
+                name="Startup-Audio"
+            )
+            audio_thread.start()
+
             stt_thread.join()
 
             if "error" in stt_result or "stt" not in stt_result:
-                err = stt_result.get("error", "Unknown error")
-                log.error(f"Could not initialize speech recognition: {err}. Switching to text mode.")
                 from audio.tts.synthesis import TORCH_READY
                 TORCH_READY.set()
                 config["settings"]["text-mode"] = True
@@ -188,11 +199,8 @@ def main():
 
             stt = stt_result["stt"]
 
-            # Wait for startup sound and voice greeting to finish before listening
-            if not STARTUP_AUDIO_DONE.wait(timeout=15):
-                log.warning("Startup audio playback timed out waiting to complete")
+            STARTUP_AUDIO_DONE.wait(timeout=15)
 
-            # Cleanly flush microphone backlog and reset VAD state
             if hasattr(stt, "flush"):
                 stt.flush()
 
@@ -205,7 +213,6 @@ def main():
             app.run(stt, None)
 
             last_time = time.time()
-
             buffer = b""
             while True:
                 data = stt.stream.read(512, exception_on_overflow=False)
@@ -215,8 +222,6 @@ def main():
                     if len(buffer) > 6000:
                         result = stt.check_speaker(buffer)
                         if result:
-                            # subprocess.run(["wmctrl", "-a", ""])
-                            log.debug("Going out of the sleeping mode")
                             elapsed_time = time.time() - last_time
                             if elapsed_time < 600:
                                 app.api.say(random.choice(config["answers"]["default"]))
@@ -232,15 +237,12 @@ def main():
                                 app.api.say(random.choice(config["answers"]["half_day"]))
 
                             app.run(stt, last_time)
-
-                            log.info("Successfully went into sleeping mode")
-
                             last_time = time.time()
 
                     buffer = b""
 
     except Exception as e:
-        log.debug(f"App loop ended with the following error: {e}: \n{traceback.format_exc()} ")
+        log.debug(f"App loop ended with error: {e}: \n{traceback.format_exc()}")
 
 
 if __name__ == "__main__":

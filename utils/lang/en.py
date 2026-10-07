@@ -144,7 +144,7 @@ def seconds_readable(total_seconds):
         readable_time.append(f"{num2words(hours)} hour{'s' if hours > 1 else ''}")
     if minutes > 0:
         readable_time.append(f"{num2words(minutes)} minute{'s' if minutes > 1 else ''}")
-    if seconds > 0 or not readable_time:  # Include seconds if total is 0 or less
+    if seconds > 0 or not readable_time:
         readable_time.append(f"{num2words(seconds)} second{'s' if seconds > 1 else ''}")
 
     return " and ".join(readable_time)

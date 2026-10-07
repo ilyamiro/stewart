@@ -26,7 +26,6 @@ def num2words(*args, **kwargs):
 log = logging.getLogger("utils")
 
 
-# --------------- Inspection Functions ---------------
 def get_caller_dir():
     return os.path.dirname(inspect.stack()[1].filename)
 
@@ -58,7 +57,6 @@ def called_from():
         f"'{function_name}' was called by {caller_function_name} on line {caller_line_number} in {caller_filename}.")
 
 
-# --------------- Configuration Functions ---------------
 def load_yaml(path: str):
     """
     Load YAML configuration from a file.
@@ -125,19 +123,16 @@ def normalize_lang(lang: str) -> str:
 
 
 def load_lang() -> str:
-    # 1. Environment variable override
     env_lang = os.environ.get("STEWART_LANG")
     if env_lang:
         return normalize_lang(env_lang)
 
-    # 2. Command line flag override (--lang, -l)
     for idx, arg in enumerate(sys.argv):
         if arg in ("--lang", "-l") and idx + 1 < len(sys.argv):
             return normalize_lang(sys.argv[idx + 1])
         if arg.startswith("--lang="):
             return normalize_lang(arg.split("=", 1)[1])
 
-    # 3. Read from lang file
     from data.constants import get_lang_file
     lang_file = get_lang_file()
     if lang_file and os.path.exists(lang_file):
@@ -149,7 +144,6 @@ def load_lang() -> str:
         except Exception:
             pass
 
-    # 4. Read from config.yaml if available
     from data.constants import CONFIG_FILE
     if CONFIG_FILE and os.path.exists(CONFIG_FILE):
         try:
@@ -203,7 +197,6 @@ def filter_lang_config(file, lang_prefix):
     return lang_config
 
 
-# --------------- System & Subprocess Functions ---------------
 
 def admin():
     current_platform = platform.system()
@@ -219,20 +212,6 @@ def admin():
     else:
         raise NotImplementedError(f"Unsupported platform: {current_platform}")
 
-# DEPRECATED
-# def run(*args, stdout: bool = False):
-#     """
-#     Run a system command using subprocess.
-#
-#     Parameters:
-#     - args: Command-line arguments for subprocess.
-#     - stdout (bool): If True, output is shown. Otherwise, it's suppressed.
-#     """
-#     subprocess.run(
-#         args,
-#         stdout=subprocess.DEVNULL if not stdout else None,
-#         stderr=subprocess.STDOUT
-#     )
 
 
 def run_stdout(*args, shell: bool = False):
@@ -249,9 +228,8 @@ def system_setup():
     Perform platform-specific system setup.
     """
     if platform.system() != "Linux":
-        return  # Only apply on Linux
+        return
 
-    # Check if xhost is available and DISPLAY is set (i.e., under X11/XWayland)
     if shutil.which("xhost") and os.environ.get("DISPLAY"):
         try:
             subprocess.run(["xhost", f"+local:{os.environ['USER']}"], check=True)
@@ -275,7 +253,6 @@ def notify(title: str, message: str, timeout: int = 10):
         log.warning(f"Could not display notification: {e}")
 
 
-# --------------- Internet & System Functions ---------------
 def internet(host="https://google.com", timeout=3) -> bool:
     """
     Check if the system has an active internet connection by attempting to reach a host.
@@ -320,7 +297,6 @@ def clear():
         print("\033c")
 
 
-# --------------- Text Processing & Utility Functions ---------------
 
 def sanitize_filename(filename):
     sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
@@ -385,7 +361,6 @@ def extract_number(input_string: str):
     return None
 
 
-# --------------- Module Management Functions ---------------
 def import_functions_from_a_module(module):
     members = inspect.getmembers(module)
     functions = [member[0] for member in members if inspect.isfunction(member[1])]
@@ -406,7 +381,6 @@ def import_all_from_module(module_name):
         globals()[attr] = getattr(module, attr)
 
 
-# --------------- Config Parsing & Handling Functions ---------------
 def track_time(func, *args, **kwargs):
     """
     This function tracks the execution time of a given function.
@@ -419,11 +393,11 @@ def track_time(func, *args, **kwargs):
     Returns:
         The result of the function execution and the time taken.
     """
-    start_time = time.time()  # Record the start time
-    result = func(*args, **kwargs)  # Execute the function
-    end_time = time.time()  # Record the end time
+    start_time = time.time()
+    result = func(*args, **kwargs)
+    end_time = time.time()
 
-    execution_time = end_time - start_time  # Calculate execution time
+    execution_time = end_time - start_time
     return result, execution_time
 
 
@@ -454,20 +428,17 @@ def fetch_weather():
     import time
     from pathlib import Path
 
-    # 1. Try reading serpantinum cached weather directly (<1ms)
     serpantinum_cache = Path.home() / ".cache/serpantinum/weather/weather.json"
     data = None
     if serpantinum_cache.exists():
         try:
             mtime = os.path.getmtime(serpantinum_cache)
-            # Accept cache up to 2 hours old
             if time.time() - mtime < 7200:
                 with open(serpantinum_cache, "r", encoding="utf-8") as f:
                     data = json.load(f)
         except Exception:
             data = None
 
-    # 2. Try serpantinum CLI if cache is missing/stale
     if not data and shutil.which("serpantinum"):
         try:
             res = subprocess.run(
@@ -482,7 +453,6 @@ def fetch_weather():
         except Exception:
             data = None
 
-    # Parse serpantinum data into standard OpenWeatherMap format
     if data and "current_temp" in data:
         try:
             temp = float(data.get("current_temp", 0.0))
@@ -495,7 +465,6 @@ def fetch_weather():
             raw_desc = str(forecast0.get("desc", "Clear")).strip()
             desc_lower = raw_desc.lower()
 
-            # Normalize description to standard keys: 'clear sky', 'rain', 'clouds', 'snow', 'thunderstorm', 'fog'
             if any(w in desc_lower for w in ("cloud", "облач", "пасмур")):
                 weather_desc = "clouds"
             elif any(w in desc_lower for w in ("rain", "дожд")):
@@ -532,7 +501,6 @@ def fetch_weather():
         except Exception:
             pass
 
-    # 3. Fallback to OpenWeatherMap API
     import requests
     params = {
         "lat": MY_CITY_LAT,

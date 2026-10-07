@@ -5,9 +5,6 @@ from api.commands.actions import BaseAction, ActionParameters, ActionResult, Exe
 log = logging.getLogger("action: desktop")
 
 
-# =====================================================================
-# Window Management Actions
-# =====================================================================
 
 class CloseWindowParams(ActionParameters):
     force: bool = Field(default=False, description="Whether to force-kill the window if not responding")
@@ -73,9 +70,6 @@ class MoveWindowToMonitorAction(BaseAction):
         return ActionResult(success=ok)
 
 
-# =====================================================================
-# Workspace Actions
-# =====================================================================
 
 class SwitchWorkspaceParams(ActionParameters):
     workspace: Optional[str] = Field(default=None, description="Workspace number, name, or direction (e.g. '1', '2', '+1', '-1')")
@@ -125,9 +119,6 @@ class MoveToWorkspaceAction(BaseAction):
         return ActionResult(success=ok, data={"workspace": ws})
 
 
-# =====================================================================
-# Shell, Session & Media Actions
-# =====================================================================
 
 class SerpWidgetParams(ActionParameters):
     widget: str = Field(default="launcher", description="Name of shell widget to toggle ('launcher', 'clipboard', 'music', 'calendar', 'volume', 'network', 'system', 'wallpaper', 'guide')")
@@ -209,9 +200,6 @@ class MediaControlAction(BaseAction):
         return ActionResult(success=ok)
 
 
-# =====================================================================
-# Callable Module-Level Instances for Full Backward Compatibility
-# =====================================================================
 close_window = CloseWindowAction()
 toggle_floating = ToggleFloatingAction()
 toggle_fullscreen = ToggleFullscreenAction()

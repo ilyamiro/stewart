@@ -51,7 +51,7 @@ pypkgs.buildPythonApplication rec {
       let base = baseNameOf path; in
       !(base == ".git"
         || base == ".venv"
-        || base == ".venv_qwen"
+        || base == ".backup"
         || base == ".idea"
         || base == "__pycache__"
         || base == "docs"
@@ -93,11 +93,7 @@ pypkgs.buildPythonApplication rec {
     scipy
     vosk
     faster-whisper
-    spacy
-    spacy-models.en_core_web_sm
-    llama-cpp-python
-    peft
-    accelerate
+    pydantic
     json-repair
   ];
 

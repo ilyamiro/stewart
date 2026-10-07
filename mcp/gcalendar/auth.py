@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+"""Interactive Google Calendar OAuth 2.0 authentication script."""
+import sys
+import os
+from pathlib import Path
+from gcalendar.client import get_calendar_client, get_credentials_path, get_token_path
+
+def main():
+    print("=" * 65)
+    print("Google Calendar Authentication Setup (OAuth 2.0)")
+    print("=" * 65)
+
+    client = get_calendar_client()
+    token_file = get_token_path()
+    print(f"Token storage destination: {token_file}")
+
+    print("Checking current authentication status...")
+    auth_status = client.check_auth()
+    if auth_status.get("authenticated"):
+        cal = auth_status.get("primary_calendar", {})
+        print("\n✅ Already authenticated with Google Calendar!")
+        print(f"Primary Calendar: {cal.get('summary')} ({cal.get('id')})")
+        print(f"Timezone: {cal.get('timeZone')}")
+        print(f"Token: {token_file}")
+        return 0
+
+    creds_file = get_credentials_path()
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+
+    if not creds_file and not (client_id and client_secret):
+        print("\n⚠️  No Google OAuth 2.0 Client credentials found!")
+        print("\nTo set up Google Calendar access:")
+        print("1. Go to Google Cloud Console: https://console.cloud.google.com/apis/credentials")
+        print("2. Create a project (or select an existing one) and enable 'Google Calendar API'.")
+        print("3. Go to 'Credentials' -> 'Create Credentials' -> 'OAuth client ID'.")
+        print("4. Application type: Choose 'Desktop app' (name: 'Life Assistant').")
+        print("5. Download the client secret JSON file.")
+        print(f"6. Place it at: ~/.config/life/calendar_credentials.json")
+        print("   (Or place it as 'credentials.json' in this project, or set GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET in .env)")
+        print("\nOnce placed, re-run 'bin/calendar-auth' to authenticate in your browser.\n")
+        return 1
+
+    print(f"\nFound credentials at: {creds_file or 'Environment variables'}")
+    print("Starting local authorization server...")
+    print("Your web browser will open automatically to authorize Google Calendar access.")
+
+    res = client.authenticate_interactive()
+    if "error" in res:
+        print(f"\n❌ Authentication failed: {res['error']}")
+        return 1
+
+    cal = res.get("primary_calendar", {})
+    print("\n🎉 Google Calendar authentication successful!")
+    print(f"Connected Calendar: {cal.get('summary')} ({cal.get('id')})")
+    print(f"Token saved to: {token_file}")
+    print("\nYou can now create, list, and manage Google Calendar events via Antigravity!")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

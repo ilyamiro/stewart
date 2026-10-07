@@ -1,12 +1,12 @@
 audio:
   stt:
-    backend: vosk # Options: 'vosk', 'whisper'
-    model: small # Model size ('tiny', 'base', 'small', 'medium', 'large-v3', 'turbo' for whisper; 'small' for vosk)
-    strength: high # Recognition strength/precision: 'low' (tiny), 'medium' (base), 'high' (small), 'ultra' (large-v3)
-    beam_size: 5 # Beam search width (1 = fast greedy, 5 = high precision standard)
-    pause_threshold: 0.8 # Seconds of silence before ending speech buffer (prevents cutting off between words)
-    vad_threshold: 0.5 # VAD sensitivity threshold (0.0 to 1.0, default 0.5)
-    min_speech_duration: 0.25 # Minimum speech duration to transcribe (in seconds)
+    backend: whisper
+    model: small
+    strength: high
+    beam_size: 5
+    pause_threshold: 0.8
+    vad_threshold: 0.5
+    min_speech_duration: 0.25
     speaker-recognition: false
     speech-mode-restricted: false
   tts:
@@ -50,45 +50,60 @@ start-up:
   voice-enable: true
 
 router:
-  mode: hybrid # Dual-engine: instant algorithmic matching first (<0.1ms), then Antigravity (agy -p)
-  confidence_threshold: 0.50 # Minimum confidence score for model prediction
+  mode: hybrid
+  confidence_threshold: 0.50
   model:
-    provider: agy # 'agy' (Antigravity gemini-3.8-flash-low with stewart-voice skill)
-    auto_train: false
+    provider: agy
     fallback_to_algorithmic: true
-  qwen:
-    model_size: "1.5b"
-    model_path: data/models/gguf/qwen2.5-1.5b-tool-caller-q8_0.gguf
-    max_new_tokens: 128
   ollama:
     endpoint: http://localhost:11434
     model: llama3.2:1b
     timeout: 3.0
   agy:
     command: agy
-    model: gemini-3.8-flash-low # 3.8 flash light (low thinking)
+    model: gemini-3.8-flash-low
     effort: low
     skill_name: stewart-voice
     timeout: 60.0
     dangerously_skip_permissions: true
-
   persona:
-    enabled: true # Dynamic British butler voice responses via Antigravity (agy)
-    provider: agy # 'agy' (Antigravity gemini-3.8-flash-low with stewart-voice skill)
+    enabled: true
+    provider: agy
     skill_name: stewart-voice
-    model_size: "1.5b"
-    model_path: data/models/gguf/qwen2.5-1.5b-persona-q8_0.gguf
-    max_new_tokens: 64
-    temperature: 0.6
 
 mcp:
   enabled: true
   servers:
+    life:
+      command: bin/life-mcp
+      args: []
     studieplus:
-      command: /home/ilyamiro/Projects/life/bin/studieplus-mcp
+      command: bin/studieplus-mcp
       args: []
     gmail:
-      command: /home/ilyamiro/Projects/life/bin/gmail-mcp
+      command: bin/gmail-mcp
       args: []
-
-
+    telegram:
+      command: bin/telegram-mcp
+      args: []
+    calendar:
+      command: bin/calendar-mcp
+      args: []
+    drive:
+      command: bin/drive-mcp
+      args: []
+    github:
+      command: bin/github-mcp
+      args: []
+    maps:
+      command: bin/maps-mcp
+      args: []
+    youtube:
+      command: bin/youtube-mcp
+      args: []
+    memory:
+      command: bin/memory-mcp
+      args: []
+    streaming:
+      command: bin/streaming-mcp
+      args: []

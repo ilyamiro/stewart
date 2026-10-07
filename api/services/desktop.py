@@ -26,9 +26,6 @@ class DesktopService:
     def __init__(self, api=None):
         self.api = api
 
-    # ---------------------------------------------------------
-    # Compositor & Shell Detection
-    # ---------------------------------------------------------
     def get_compositor(self) -> str:
         """Identifies active Wayland compositor or desktop environment."""
         if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
@@ -76,7 +73,6 @@ class DesktopService:
         if nums:
             return nums[0]
 
-        # Use modules.words2num for spoken number words
         words = text.strip().split()
         for word in words:
             clean = re.sub(r"[^a-zA-Z]", "", word).lower()
@@ -87,7 +83,6 @@ class DesktopService:
                 except Exception:
                     pass
 
-        # Check Russian language number parsing if applicable
         try:
             from utils.lang.ru import find_num
             ru_nums = find_num(text)
@@ -98,9 +93,6 @@ class DesktopService:
 
         return "+1"
 
-    # ---------------------------------------------------------
-    # Window Management
-    # ---------------------------------------------------------
     def close_active_window(self) -> bool:
         """Closes the currently focused active window."""
         comp = self.get_compositor()
@@ -111,7 +103,6 @@ class DesktopService:
             sp.run(["niri", "msg", "action", "close-window"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
             return True
 
-        # Keyboard fallback (Alt+F4)
         if self.api and getattr(self.api, "keyboard", None) and getattr(self.api, "Key", None):
             try:
                 with self.api.keyboard.pressed(self.api.Key.alt):
@@ -188,9 +179,6 @@ class DesktopService:
             return True
         return False
 
-    # ---------------------------------------------------------
-    # Shell & System Session
-    # ---------------------------------------------------------
     def toggle_widget(self, widget: str = "launcher") -> bool:
         """Toggles a shell widget (e.g. launcher, clipboard, music, calendar)."""
         return self.run_serp("msg", "toggle", widget)
@@ -224,9 +212,6 @@ class DesktopService:
             return True
         return False
 
-    # ---------------------------------------------------------
-    # Input Automation (Keyboard, Mouse, Typing)
-    # ---------------------------------------------------------
     def get_system_layout(self) -> str:
         """Queries localectl for current system X11 keyboard layout."""
         try:
@@ -351,9 +336,6 @@ class DesktopService:
                 log.debug(f"pynput scroll failed: {e}")
         return False
 
-    # ---------------------------------------------------------
-    # Applications, Browsing & Media
-    # ---------------------------------------------------------
     def launch_app(self, command: Union[str, List[str]], detached: bool = True) -> bool:
         """Launches a desktop application in detached background mode."""
         try:
@@ -382,9 +364,6 @@ class DesktopService:
             return True
         return False
 
-    # ---------------------------------------------------------
-    # Power Actions
-    # ---------------------------------------------------------
     def power_off(self, delay_minutes: Optional[int] = None) -> bool:
         """Powers down system immediately or schedules shutdown."""
         if delay_minutes is None:

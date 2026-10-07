@@ -11,7 +11,6 @@ import logging
 
 log = logging.getLogger("API: actions")
 
-# Check if Pydantic is available in the current environment
 try:
     import pydantic
     _HAS_PYDANTIC = True
@@ -54,7 +53,6 @@ class ActionParameters:
 
             if name in kwargs:
                 val = kwargs[name]
-                # Light type casting for common primitive types
                 val = self._cast_value(val, expected_type)
                 setattr(self, name, val)
             elif default_val is not Ellipsis and default_val is not None:
@@ -62,7 +60,6 @@ class ActionParameters:
             else:
                 setattr(self, name, None)
 
-        # Allow extra parameters passed dynamically
         for k, v in kwargs.items():
             if not hasattr(self, k):
                 setattr(self, k, v)
@@ -121,7 +118,6 @@ class ActionParameters:
             origin = get_origin(typ)
             args = get_args(typ)
 
-            # Handle Optional[...] / Union[T, None]
             if origin is Union:
                 non_none = [a for a in args if a is not type(None)]
                 if len(non_none) == 1:
@@ -248,7 +244,6 @@ class BaseAction(ABC):
         Callable interface allowing BaseAction instances to be dispatched directly
         by App.do(), ActionTool.invoke(), or action executor threads.
         """
-        # Resolve DesktopService
         desktop = self.desktop
         if desktop is None:
             if self.api and hasattr(self.api, "desktop"):
@@ -257,19 +252,23 @@ class BaseAction(ABC):
                 from api.services.desktop import get_desktop_service
                 desktop = get_desktop_service(api=self.api)
 
-        # Merge parameters
         param_dict: Dict[str, Any] = {}
         if command and hasattr(command, "parameters") and isinstance(command.parameters, dict):
             param_dict.update(command.parameters)
         param_dict.update(kwargs)
 
-        # Pass context if parameter schema specifies context or requires_context is set
+        if None in param_dict:
+            val = param_dict.pop(None)
+            if "command" not in param_dict:
+                param_dict["command"] = val
+            if "url" not in param_dict and self.name == "browser":
+                param_dict["url"] = val
+
         if context and "context" not in param_dict:
             schema_props = getattr(self.parameters_schema, "__annotations__", {})
             if "context" in schema_props or self.requires_context:
                 param_dict["context"] = context
 
-        # Instantiate parameter object
         try:
             params = self.parameters_schema(**param_dict)
         except Exception as e:
@@ -288,10 +287,8 @@ class BaseAction(ABC):
         try:
             result = self.execute(params, ctx)
             if not isinstance(result, ActionResult):
-                # Normalize legacy return types
                 result = ActionResult(success=True, data=result)
 
-            # Trigger spoken feedback if produced by action
             if result.spoken_feedback:
                 ctx.say(result.spoken_feedback)
 

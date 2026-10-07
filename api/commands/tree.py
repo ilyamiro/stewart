@@ -62,7 +62,6 @@ class Command:
         self.tts = tts
         self._action_callable = None
 
-        # Precompute set of all words and fast synonym-to-keyword lookup
         self._all_words_set = set(self.keywords)
         self._synonym_to_key_map = {}
         for kw, syns in self.synonyms.items():
@@ -70,7 +69,6 @@ class Command:
                 self._all_words_set.add(syn)
                 self._synonym_to_key_map[syn] = kw
 
-        # Precompute requirement clusters for fast matching
         self._req_groups = [
             frozenset([kw] + self.synonyms.get(kw, []))
             for kw in self.keywords
@@ -105,9 +103,6 @@ class CandidateMatch:
         self.k_len = k_len
         self.exact_count = k_len if exact_count < 0 else exact_count
         self.span = end - start + 1
-        # Specificity score: keyword count dominates (1000 per keyword),
-        # penalize span (-10 per word), bonus for canonical order (+50),
-        # slight penalty for fuzzy/approximated words (-150 per fuzzy word)
         fuzzy_penalty = (k_len - self.exact_count) * 150
         self.score = (k_len * 1000) - (self.span * 10) + (50 if in_order else 0) - fuzzy_penalty
 
@@ -223,7 +218,6 @@ class Manager:
     @staticmethod
     def _tokenize(request: str) -> List[Token]:
         tokens = []
-        # Find all words ignoring surrounding punctuation
         for m in re.finditer(r"[^\s,!?;:()[\]{}\"'`~*.]+", request):
             text = m.group(0)
             clean = text.lower()
@@ -256,7 +250,6 @@ class Manager:
                 self._query_cache[request] = []
             return []
 
-        # Find candidate commands whose requirement groups are all present in query_words or fuzzy matches
         candidate_cmd_indices = set()
         for w in all_query_words:
             if w in self._word_to_cmd_indices:
@@ -270,7 +263,6 @@ class Manager:
             req_groups = cmd._req_groups
             k_len = len(req_groups)
 
-            # Check if all requirement groups have at least one matching token
             pos_lists = []
             possible = True
             for group in req_groups:
@@ -345,10 +337,8 @@ class Manager:
                 self._query_cache[request] = []
             return []
 
-        # Sort candidates by end index, then by score descending
         candidates.sort(key=lambda c: (c.end, -c.score))
 
-        # Dynamic Programming for Weighted Non-Overlapping Intervals
         n = len(candidates)
         dp: List[Tuple[float, List[CandidateMatch]]] = [(0, [])] * (n + 1)
 
@@ -356,10 +346,8 @@ class Manager:
             curr = candidates[i - 1]
             curr_indices_set = set(curr.matched_indices)
 
-            # Option 1: Do not include candidate curr
             best_without = dp[i - 1]
 
-            # Option 2: Include candidate curr; find best non-overlapping predecessor
             best_prev_score = 0
             best_prev_list = []
             for j in range(i - 1, 0, -1):
@@ -397,7 +385,6 @@ class Manager:
 
             subsequent_words = [tokens[idx] for idx in range(match.end + 1, next_start)]
 
-            # If there's a next command, strip trailing connector words before the next command
             if i + 1 < m:
                 while subsequent_words and subsequent_words[-1].clean in CONNECTORS:
                     subsequent_words.pop()

@@ -7,7 +7,6 @@ import os
 import re
 import json
 import signal
-import inspect
 import concurrent.futures
 from datetime import datetime
 from pathlib import Path
@@ -27,41 +26,18 @@ class App:
     def decorator(func):
         def wrapper(self, *args, **kwargs):
             self.api.load_plugins()
-
             self.api.__run_hooks__(self.api.__pre_init_callbacks__)
-
-            log.debug(f"Ran {len(self.api.__pre_init_callbacks__)} pre-init hooks: {self.api.__pre_init_callbacks__}")
-
             self.config = self.api.config
             self.lang = self.api.lang
-
-            log.info("Configuration file loaded")
-
             func(self, *args, **kwargs)
-
             self.api.__run_hooks__(self.api.__post_init_callbacks__)
-
-            log.debug(f"Ran {len(self.api.__post_init_callbacks__)} post-init hooks: {self.api.__post_init_callbacks__}")
-
             self.api.add_func_for_search(self.protocol, self.stop, self.repeat, self.grammar_restrict, self.sleep)
-
         return wrapper
 
     @decorator
     def start(self, start_time):
-        log.debug("App initialization started")
-
         self.trigger_timed_needed = self.config["settings"]["trigger"]["trigger-mode"] != "disabled"
-
         self.tree_init()
-
-        log.debug(f"Active scenarios: {[scenario.name for scenario in self.api.scenarios]}")
-
-        self.scenario_active = []
-
-        log.debug("Finished app initialization")
-
-        log.debug(f"Start up time: {time.time() - start_time:.6f}")
 
     def run(self, stt=None, last_time=None):
         self.running = True
@@ -72,15 +48,14 @@ class App:
 
             if self.config["audio"]["stt"]["speech-mode-restricted"] and getattr(self.stt, "backend", "vosk") == "vosk":
                 self.grammar_recognition_restricted_create()
-                self.stt.recognizer = self.stt.set_grammar(f"{PROJECT_DIR}/data/grammar/grammar-{self.lang}.txt",
-                                                           self.stt.create_new_recognizer())
+                self.stt.recognizer = self.stt.set_grammar(
+                    f"{PROJECT_DIR}/data/grammar/grammar-{self.lang}.txt",
+                    self.stt.create_new_recognizer()
+                )
 
-            # Prime and contextualize Whisper STT with active command tree vocabulary & hotwords
             if self.stt and hasattr(self.stt, "set_command_vocabulary"):
                 triggers = self.config.get("settings", {}).get("trigger", {}).get("triggers", ["stewart"])
                 self.stt.set_command_vocabulary(self.api.manager, triggers=triggers)
-
-            log.debug("Speech to text instance initialized")
 
             if hasattr(self.stt, "flush"):
                 self.stt.flush()
@@ -93,7 +68,6 @@ class App:
                     if not user_input:
                         continue
                     if user_input.lower() in ("exit", "quit", ":q"):
-                        log.info("Exiting text mode.")
                         self.running = False
                         break
                     if user_input.lower().startswith("lang ") or user_input.lower().startswith(":lang "):
@@ -104,7 +78,6 @@ class App:
                         continue
                     self.process_trigger_no_voice(user_input)
             except (EOFError, KeyboardInterrupt):
-                log.info("Exiting text mode.")
                 self.running = False
 
     def recognition(self):
@@ -112,12 +85,9 @@ class App:
         was_speaking = False
         while self.running:
             if time.time() - self.last_time > threshold:
-                log.debug(
-                    f"Going into sleep mode due to inactivity for {threshold} seconds (~{threshold / 60} minutes)")
                 self.running = False
             data = self.stt.stream.read(1024, exception_on_overflow=False)
 
-            # Prevent assistant from hearing its own voice while speaking responses
             if getattr(self.api, "is_speaking", False):
                 was_speaking = True
                 continue
@@ -128,100 +98,18 @@ class App:
                 continue
 
             for word in self.stt.listen(data):
-                log.info(f"Speech recognized: '{word}'")
                 self.process_trigger(word)
 
-
-    def stream_persona_speech(self, request: str, tool_name: Optional[str] = None, tool_result: Optional[Any] = None) -> bool:
-        """
-        Streams persona tokens and immediately dispatches the first clause to Kokoro TTS
-        upon encountering punctuation (. , ! ? ; \n), achieving sub-200ms perceptual latency.
-        Remaining clauses are synthesized in background while ongoing speech is playing.
-        """
-        router = getattr(self.api, "router", None)
-        if not router or not getattr(router, "persona_enabled", False):
-            return False
-
-        delimiters = re.compile(r"([.,!?;—\n]+)")
-        buffer = ""
-        dispatched_count = 0
-        full_response = []
-
-        try:
-            token_stream = router.stream_persona_response(
-                user_query=request,
-                tool_name=tool_name,
-                tool_result=tool_result,
-                lang=self.lang
-            )
-
-            for token in token_stream:
-                buffer += token
-                full_response.append(token)
-                parts = delimiters.split(buffer)
-                if len(parts) > 1:
-                    first_clause = (parts[0] + parts[1]).strip()
-                    first_clause = re.sub(r"<tool_call>.*?</tool_call>", "", first_clause, flags=re.DOTALL)
-                    first_clause = re.sub(r"<tool_response>.*?</tool_response>", "", first_clause, flags=re.DOTALL).strip(' "`\'')
-                    # Strip leading numbered list markers (e.g. "1. ", "2) ")
-                    first_clause = re.sub(r"^\d+[\.)]\s*", "", first_clause).strip()
-                    if first_clause and any(c.isalpha() for c in first_clause):
-                        log.debug(f"Persona first-clause streamed to TTS: '{first_clause}'")
-                        self.api.say(first_clause)
-                        dispatched_count += 1
-                        buffer = "".join(parts[2:])
-                    elif len(parts) > 3:
-                        # Skip past non-alphabetic fragments (like standalone digits or punctuation)
-                        buffer = "".join(parts[2:])
-
-            remaining = buffer.strip()
-            remaining = re.sub(r"<tool_call>.*?</tool_call>", "", remaining, flags=re.DOTALL)
-            remaining = re.sub(r"<tool_response>.*?</tool_response>", "", remaining, flags=re.DOTALL).strip(' "`\'')
-            remaining = re.sub(r"^\d+[\.)]\s*", "", remaining).strip()
-            if remaining and any(c.isalpha() for c in remaining):
-                log.debug(f"Persona trailing clause streamed to TTS: '{remaining}'")
-                self.api.say(remaining)
-                dispatched_count += 1
-
-            complete_text = "".join(full_response).strip()
-            if complete_text:
-                log.info(f"Persona generated response (streamed): '{complete_text}'")
-
-            return dispatched_count > 0
-        except Exception as e:
-            log.warning(f"Persona streaming voice error: {e}", exc_info=True)
-            # Fallback to non-streaming if stream failed before any dispatch
-            if dispatched_count == 0:
-                try:
-                    ans = router.generate_persona_response(
-                        request,
-                        tool_name=tool_name,
-                        tool_result=tool_result,
-                        lang=self.lang
-                    )
-                    if ans:
-                        self.api.say(ans)
-                        return True
-                except Exception as fe:
-                    log.debug(f"Persona non-streaming fallback failed: {fe}")
-            return dispatched_count > 0
-
     def ask_voice_confirmation(self, prompt: str, timeout: float = 8.0) -> bool:
-        """
-        Asks the user for confirmation using TTS voice, then waits for a spoken affirmative or negative response.
-        Works in both voice mode (via STT) and text-mode (via console input).
-        """
         if not prompt:
             prompt = "Do you confirm this action, Sir?"
 
-        log.info(f"Asking voice confirmation: '{prompt}'")
+        print(f'Stewart: "{prompt}"')
         self.api.say(prompt)
 
-        # Wait until TTS has finished speaking before listening to avoid hearing assistant's own voice
         while getattr(self.api, "is_speaking", False):
             time.sleep(0.05)
 
-        # Play audio chime to cue the user that listening is active
         chime_file = None
         try:
             from data.constants import DEFAULT_DATA_DIR
@@ -243,7 +131,6 @@ class App:
             except Exception:
                 return False
 
-        # Voice mode listening
         affirmatives = {"yes", "sure", "proceed", "do it", "confirm", "yeah", "yep", "ok", "okay", "да", "давай", "подтверждаю", "конечно", "делай"}
         negatives = {"no", "cancel", "stop", "don't", "abort", "нет", "отмена", "не надо", "стоп"}
 
@@ -256,10 +143,8 @@ class App:
                 data = self.stt.stream.read(1024, exception_on_overflow=False)
                 for phrase in self.stt.listen(data):
                     clean_phrase = phrase.strip().lower()
-                    log.info(f"Confirmation speech heard: '{clean_phrase}'")
                     words = set(clean_phrase.split())
                     if words.intersection(affirmatives):
-                        log.info("Voice confirmation: GRANTED")
                         if chime_file:
                             try:
                                 play_audio(chime_file)
@@ -267,18 +152,15 @@ class App:
                                 pass
                         return True
                     if words.intersection(negatives):
-                        log.info("Voice confirmation: DENIED")
                         return False
-            except Exception as e:
-                log.warning(f"Error during voice confirmation listening: {e}")
+            except Exception:
                 break
 
-        log.info("Voice confirmation: TIMEOUT (denied by default)")
         return False
 
     def handle(self, request):
         if not request:
-            if self.config["settings"]["trigger"]["trigger-mode"] != "disabled" and not self.scenario_active:
+            if self.config["settings"]["trigger"]["trigger-mode"] != "disabled":
                 self.api.__no_command_default__(context=None, history=None)
             return
 
@@ -287,18 +169,14 @@ class App:
             {"request": request}
         ))
 
-        self.scan_scenarios(request)
-
         result, execution_time = track_time(lambda: self.api.manager.find(request))
         if result:
             self.last_time = time.time()
 
-            # Execute action IMMEDIATELY without waiting for TTS, logging, or event recording
             if len(result) == 1:
                 command = result[0]
                 cmd_obj = command[0]
 
-                # Voice confirmation flow for invasive actions
                 if getattr(cmd_obj, "needs_confirmation", False) or cmd_obj.action == "confirmation":
                     conf_prompt = cmd_obj.parameters.get("prompt", cmd_obj.parameters.get("text", ""))
                     confirmed = self.ask_voice_confirmation(conf_prompt)
@@ -315,41 +193,37 @@ class App:
                         self.api.say("Understood, cancelled Sir.")
                     return
 
-                # Direct spoken response from agy or router
                 if cmd_obj.action == "speak":
                     text_to_speak = cmd_obj.parameters.get("text") or (cmd_obj.responses[0] if cmd_obj.responses else "")
                     if text_to_speak:
+                        print(f'Stewart: "{text_to_speak}"')
                         self.api.say(text_to_speak)
                     return
 
+                print(f"✓ ⚡ Executing: {cmd_obj.action} ({' '.join(cmd_obj.keywords)})")
                 action_res = self.do(command, request=request)
 
-
-                # Process TTS / responses after action has been launched via first-chunk streaming
-                cmd_name = command[0].action if hasattr(command[0], "action") else None
-                spoken = self.stream_persona_speech(request, tool_name=cmd_name, tool_result=action_res)
-
-                if not spoken:
-                    if command[0].responses and not command[0].tts:
-                        answer = random.choice(command[0].responses)
-                        self.api.say(answer)
-                    elif not command[0].responses and not command[0].tts:
-                        answer = random.choice(self.config["answers"]["multi"])
-                        self.api.say(answer)
+                if command[0].responses and not command[0].tts:
+                    answer = random.choice(command[0].responses)
+                    print(f'Stewart: "{answer}"')
+                    self.api.say(answer)
+                elif not command[0].tts:
+                    answers_list = self.config.get("answers", {}).get("multi", ["Done, Sir."])
+                    answer = random.choice(answers_list)
+                    print(f'Stewart: "{answer}"')
+                    self.api.say(answer)
             else:
                 for command in result:
+                    print(f"✓ ⚡ Executing: {command[0].action} ({' '.join(command[0].keywords)})")
                     self.do(command, request=request)
 
-                spoken = self.stream_persona_speech(request, tool_name="multi_action")
-
-                if not spoken and all(not command[0].tts for command in result):
-                    answer = random.choice(self.config["answers"]["multi"])
+                if all(not command[0].tts for command in result):
+                    answers_list = self.config.get("answers", {}).get("multi", ["Done, Sir."])
+                    answer = random.choice(answers_list)
+                    print(f'Stewart: "{answer}"')
                     self.api.say(answer)
 
             result_visual = {" ".join(cmd[0].keywords): cmd[1] for cmd in result}
-            log.info(f"Command search time: {execution_time:.6f}")
-            log.debug(f"Recognized commands: {result_visual}")
-
             self.api.eventLogger.record(self.api.Event(
                 "command_detected",
                 {
@@ -358,10 +232,22 @@ class App:
                 }
             ))
 
-        elif not result and not self.scenario_active:
-            spoken = self.stream_persona_speech(request)
-
-            if not spoken:
+        else:
+            router = getattr(self.api, "router", None)
+            if router:
+                routed = router.route(request, history=self.api.eventLogger.history)
+                if routed:
+                    for cmd_pair in routed:
+                        cmd = cmd_pair[0]
+                        if cmd.action == "speak":
+                            text_to_speak = cmd.parameters.get("text", "")
+                            if text_to_speak:
+                                self.api.say(text_to_speak)
+                        else:
+                            self.do(cmd_pair, request=request)
+                else:
+                    self.api.__no_command_callback__(context=request, history=self.api.eventLogger.history)
+            else:
                 self.api.__no_command_callback__(context=request, history=self.api.eventLogger.history)
 
         self.api.eventLogger.length(self.config["settings"]["max-history-length"])
@@ -374,8 +260,6 @@ class App:
                     self.trigger_timed_needed = False
                     self.trigger_counter(int(self.config["settings"]["trigger"]["trigger-time"]))
                 self.handle(result)
-            else:
-                log.debug(f"Input '{request}' did not match wake word")
         else:
             self.handle(request)
 
@@ -387,10 +271,6 @@ class App:
             self.handle(request)
 
     def remove_trigger_word(self, request):
-        """
-        Removes trigger words from the input with phonetic tolerance,
-        split-word repairing, and conversational greeting stripping.
-        """
         req_clean = request.strip().lower()
         if not req_clean:
             return "blank", "blank"
@@ -403,7 +283,6 @@ class App:
         if tokens[0] in greetings and len(tokens) > 1:
             tokens = tokens[1:]
 
-        # Split wake-word merge (e.g. 'stew art' -> 'stewart')
         if len(tokens) >= 2 and tokens[0] == "stew" and tokens[1] in ("art", "ward", "ert"):
             tokens = ["stewart"] + tokens[2:]
 
@@ -413,13 +292,11 @@ class App:
             if standard not in all_triggers:
                 all_triggers.append(standard)
 
-        # 1. Exact match on first token
         for trigger in all_triggers:
             trig_clean = trigger.strip().lower()
             if tokens[0] == trig_clean:
                 return trig_clean, " ".join(tokens[1:]).strip()
 
-        # 2. Check whole string starts with multi-word or exact trigger
         cleaned_str = " ".join(tokens)
         for trigger in all_triggers:
             trig_clean = trigger.strip().lower()
@@ -431,7 +308,6 @@ class App:
                 parts = cleaned_str.split(trig_clean, 1)
                 return trig_clean, parts[1].strip()
 
-        # 3. Fuzzy match on first token
         from audio.input.corrector import fast_damerau_levenshtein
         first = tokens[0]
         for trigger in all_triggers:
@@ -446,11 +322,9 @@ class App:
     def trigger_counter(self, times):
         trigger_word_countdown_thread = threading.Timer(times, self.trigger_timed_needed)
         trigger_word_countdown_thread.start()
-        log.info("Trigger countdown started")
 
     def trigger_change(self):
         self.trigger_timed_needed = True
-        log.info("Trigger countdown ended")
 
     def tree_init(self):
         commands = self.config["commands"]["default"]
@@ -458,36 +332,42 @@ class App:
 
         for command in commands:
             self.add_command(
-                command[f"command"],
+                command["command"],
                 command["action"],
                 command.get("parameters", {}),
-                command.get(f"responses", {}),
-                command.get(f"synonyms", {}),
+                command.get("responses", []),
+                command.get("synonyms", {}),
                 command.get("equivalents", []),
                 command.get("tts", False),
                 command.get("continues", False)
             )
 
         for repeat in commands_repeat:
-            for key in repeat[f"links"]:
+            param_key = repeat.get("parameter")
+            if not param_key:
+                action_name = repeat.get("action", "")
+                if action_name == "browser":
+                    param_key = "url"
+                elif action_name in ("hotkey", "key"):
+                    param_key = "hotkey"
+                else:
+                    param_key = "command"
+
+            for key in repeat.get("links", {}):
                 add = [key,] if key.count(" ") == 0 else key.split()
                 self.add_command(
-                    [*repeat.get(f"command"), *add],
+                    [*repeat.get("command", []), *add],
                     repeat.get("action"),
-                    {repeat.get("parameter"): repeat.get(f"links").get(key)},
+                    {param_key: repeat.get("links", {}).get(key)},
                     [],
-                    repeat.get(f"synonyms"),
+                    repeat.get("synonyms"),
                 )
 
-        # Synchronize tools from all loaded plugins and actions
         if hasattr(self.api, "tool_registry"):
             self.api.tool_registry.sync_from_app(self.api)
-        # Initialize router (model loading/auto-training)
         if hasattr(self.api, "router"):
             self.api.router.config = self.config
             self.api.router.initialize()
-
-        log.info("Command manager and tool router initialized")
 
     def add_command(self, com: list, action: str, parameters: dict = None, responses: list = None,
                     synonyms: dict = None, equivalents: list = None, tts: bool = False, continues: bool = False):
@@ -507,25 +387,7 @@ class App:
 
         self.api.manager.add(command)
 
-    def scan_scenarios(self, request, intent=None):
-        if not self.api.scenarios:
-            self.scenario_active = []
-            return
-
-        user_requests = [event for event in self.api.eventLogger.history if event.type == "user_request"]
-
-        updated_scenarios = []
-
-        for scenario in self.api.scenarios:
-            if scenario.check_scenario(request, user_requests, intent=intent):
-                updated_scenarios.append(scenario)
-
-        self.scenario_active = updated_scenarios
-
     def do(self, command, request=""):
-        """
-        Start the action thread via pre-warmed thread pool executor
-        """
         cmd_obj = command[0]
         ctx = command[1] if (len(command) > 1 and command[1]) else request
         action = getattr(cmd_obj, "_action_callable", None)
@@ -545,19 +407,14 @@ class App:
                     cmd_obj.action.startswith(("studieplus_", "study_", "gmail_")))
         if is_query:
             try:
-                # Wait up to 10 seconds for query results so persona model can speak them
                 query_result = future.result(timeout=10.0)
                 return query_result if query_result is not None else {"status": "success", "action": cmd_obj.action}
             except Exception as e:
-                log.warning(f"Query action '{cmd_obj.action}' error or timeout: {e}")
                 return {"status": "error", "error": str(e)}
 
         return {"status": "success", "action": cmd_obj.action, "context": command[1]}
 
     def find_action(self, name):
-        """
-        Find a module that has a function that corresponds to an action that has to be done
-        """
         if name == "speak":
             return lambda command=None, context=None, history=None: self.api.say(command.parameters.get("text", "") if command else (context or ""))
         action = self.api.__actions__.get(name)
@@ -567,27 +424,15 @@ class App:
             tool = self.api.tool_registry.get(name)
             if tool:
                 return tool.func
-        log.info(f"Action not found: {name}")
         return None
 
-
     def grammar_recognition_restricted_create(self):
-        """
-        Creates a file of words that are used in commands
-        This file is used for a vosk speech-to-text model to speed up the recognition speed and quality
-        """
         with open(f"{PROJECT_DIR}/data/grammar/grammar-{self.lang}.txt", "w") as file:
-            file.write('["' + " ".join(self.config["settings"]["trigger"].get(f"triggers")))
-            file.write(self.config["audio"]["stt"].get(f"restricted-add-line"))
+            file.write('["' + " ".join(self.config["settings"]["trigger"].get("triggers")))
+            file.write(self.config["audio"]["stt"].get("restricted-add-line"))
             file.write(" " + self.api.manager.construct_recognizer_string() + '"]')
 
-    # below methods are actions that need access to the main app instance
-    # <!--------------------------------------------------------------------!>
-
     def grammar_restrict(self, **kwargs):
-        """
-        An action function inside an app class that enables or disables 'improved but limited' speech recognition
-        """
         if not self.config["settings"]["text-mode"]:
             if getattr(self.stt, "backend", "vosk") == "vosk":
                 match kwargs["command"].parameters["way"]:
@@ -596,16 +441,12 @@ class App:
                     case "off":
                         self.stt.recognizer = self.stt.set_grammar(
                             f"{PROJECT_DIR}/data/grammar/grammar-{self.lang}.txt",
-                            self.stt.create_new_recognizer())
-            else:
-                log.info("Whisper backend active; open vocabulary is supported natively.")
+                            self.stt.create_new_recognizer()
+                        )
         else:
             self.api.say("voice recognition is not active, sir")
 
     def repeat(self, **kwargs):
-        """
-        An action function inside an app class that repeat an action performed the last time
-        """
         self.handle(self.history[-1].get("request"))
 
     @staticmethod
@@ -613,7 +454,6 @@ class App:
         os.kill(os.getpid(), signal.SIGKILL)
 
     def sleep(self, **kwargs):
-        # run("loginctl", "lock-session")
         self.running = False
 
     def protocol(self, **kwargs):

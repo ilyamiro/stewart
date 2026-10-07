@@ -11,7 +11,6 @@ except ImportError:
 
 from data.constants import LOG_DIR, LOG_FILENAME
 
-# Suppress noisy warnings from third-party libraries (PyTorch, HuggingFace, Plyer dbus)
 warnings.filterwarnings("ignore", category=UserWarning, module=r"torch\..*")
 warnings.filterwarnings("ignore", category=FutureWarning, module=r"torch\..*")
 warnings.filterwarnings("ignore", category=UserWarning, module=r"plyer\..*")
@@ -20,7 +19,6 @@ warnings.filterwarnings("ignore", message=r".*repo_id.*")
 warnings.filterwarnings("ignore", message=r".*unauthenticated requests.*")
 warnings.filterwarnings("ignore", message=r".*dbus package is not installed.*")
 
-# Prevent noisy third-party libraries from polluting stdout
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
@@ -41,19 +39,18 @@ NOISY_LOGGERS = [
 
 def logging_clear_files():
     log_files = sorted(glob.glob(os.path.join(LOG_DIR, "log_*.log")), key=os.path.getmtime)
-
-    # Keep only the last 10 log files
     if len(log_files) > 10:
         for log_file in log_files[:-10]:
-            os.remove(log_file)
+            try:
+                os.remove(log_file)
+            except Exception:
+                pass
 
 
 class HuggingFaceWarningFilter(logging.Filter):
     def filter(self, record):
         msg = record.getMessage()
-        if "unauthenticated requests" in msg or "HF_TOKEN" in msg:
-            return False
-        return True
+        return not ("unauthenticated requests" in msg or "HF_TOKEN" in msg)
 
 
 def logging_imports_disable():
@@ -73,27 +70,22 @@ def logging_imports_disable():
 
 def logging_setup():
     if not os.path.exists(LOG_DIR):
-        os.makedirs(LOG_DIR)
+        os.makedirs(LOG_DIR, exist_ok=True)
 
     logging.basicConfig(
         level=logging.DEBUG,
-        format='stewart - %(name)s -  %(asctime)s:  (%(levelname)s) - %(message)s',
+        format='stewart - %(name)s - %(asctime)s: (%(levelname)s) - %(message)s',
         handlers=[
-            logging.FileHandler(LOG_FILENAME),
-            logging.StreamHandler()
+            logging.FileHandler(LOG_FILENAME, encoding="utf-8")
         ]
     )
 
     logging_imports_disable()
     logging_clear_files()
-
     logging.debug("Logging system setup ended successfully. Application started")
 
 
 def set_logging(enable: bool):
-    """
-    Enable or disable logging
-    """
     logging.disable(logging.NOTSET if enable else logging.CRITICAL)
     if enable:
         logging_imports_disable()
